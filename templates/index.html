@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="icon"
+      href="/static/images/playground-mode.png"
+      type="image/png"
+    />
+    <title>WebScape</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
+
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #2d2c2f;
+        --accent-color: #ff66c4;
+      }
+      body,
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent-color) var(--secondary-color);
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--bg-color);
+        color: #a9a9a9;
+        font-family: "Montserrat", sans-serif;
+      }
+      /* modal content */
+      .modal-body {
+        padding: 0 2.5rem !important;
+      }
+      .login-input:focus,
+      .login-input:not(:placeholder-shown) {
+        background-color: transparent;
+        color: white;
+        outline: none;
+        box-shadow: none;
+      }
+
+      .login-input:focus + label,
+      .login-input:not(:placeholder-shown) + label {
+        background-color: transparent;
+      }
+      #modalLabel::after {
+        background-color: transparent;
+      }
+      .login-modal-content {
+        background-color: #371569;
+        border: 2px solid #a64eff;
+        margin: 5rem auto;
+      }
+      .modal-content {
+        background-color: #32124b;
+        border-radius: 12px;
+        height: 450px;
+        width: 400px;
+      }
+
+      .login-input {
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid #fff;
+        border-radius: 0;
+        color: #fff;
+      }
+
+      .login-input::placeholder {
+        color: #aaa;
+      }
+
+      .btn-pink {
+        background-color: #ff5fc5;
+        color: white;
+        font-weight: bold;
+        letter-spacing: 1px;
+        border-radius: 8px;
+      }
+
+      .btn-pink:hover {
+        background-color: #ff40b5;
+      }
+
+      .text-pink {
+        color: #ff5fc5;
+      }
+
+      .text-pink:hover {
+        color: #ff40b5;
+        text-decoration: underline;
+      }
+      /* ------- */
+      .sidebar {
+        background-color: #3a1464;
+        width: 80px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 50px;
+      }
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+      }
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+      .sidebar .nav-item.badges i {
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item.account i {
+        font-size: 32px;
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+
+      main {
+        margin-left: 80px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 15px;
+      }
+      .section {
+        margin-left: 80px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 15px;
+      }
+      .section h1 {
+        font-family: "Luckiest Guy", sans-serif;
+        font-size: 4vw;
+        color: #ff69b4;
+        margin-bottom: 0;
+        user-select: none;
+      }
+      h1 {
+        font-family: "Luckiest Guy", sans-serif;
+        font-size: 9.5vw;
+        color: #ff69b4;
+        margin-bottom: 0;
+        user-select: none;
+      }
+      h2 {
+        font-family: "Anton", sans-serif;
+        font-weight: 700;
+        font-size: 2.3vw;
+        color: #6f2dbd;
+        margin-top: 0;
+        margin-bottom: 40px;
+        user-select: none;
+      }
+      .book-icon {
+        color: #b3b3b3;
+        font-size: 18vw;
+        width: 300px;
+        user-select: none;
+        margin-bottom: 50px;
+      }
+      .btn-login {
+        border: 2px solid #ff69b4;
+        color: #ff69b4;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 1.25rem;
+        width: 180px;
+        height: 70px;
+        margin-right: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .btn-login {
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+
+        &:hover {
+          color: #ffffff;
+          background-color: var(--accent-color);
+        }
+      }
+      .btn-getstarted,
+      #btn {
+        background-color: var(--accent-color);
+        /* background-image: linear-gradient(
+            315deg,
+            var(--accent-color) 0%,
+            var(--secondary-color) 74%
+          ); */
+        border: none;
+        color: white;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 1.25rem;
+        width: 180px;
+        height: 70px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .btn-getstarted:hover {
+        background-color: #c54fa3;
+        color: white;
+      }
+
+      @media (max-width: 575.98px) {
+        .sidebar {
+          width: 60px;
+          padding-top: 15px;
+          gap: 35px;
+        }
+        .sidebar .nav-item {
+          font-size: 11px;
+        }
+        .sidebar .nav-item i {
+          font-size: 22px;
+          margin-bottom: 3px;
+        }
+        .sidebar .nav-item.account i {
+          font-size: 26px;
+        }
+        main {
+          margin-left: 60px;
+          padding: 0 10px;
+        }
+        h1 {
+          font-size: 12vw;
+        }
+        h2 {
+          font-size: 3vw;
+          margin-bottom: 30px;
+        }
+        .book-icon {
+          font-size: 25vw;
+          margin-bottom: 40px;
+        }
+        .btn-login,
+        .btn-getstarted {
+          width: 140px;
+          height: 55px;
+          font-size: 1rem;
+        }
+        .btn-login {
+          margin-right: 10px;
+        }
+      }
+
+      .card {
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+        &:hover {
+          /* up slightly */
+          transform: translateY(-15px);
+          transition: transform 0.2s ease-in-out;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          background-color: #481c89;
+        }
+      }
+
+      .card h2 {
+        font-family: "Anton", cursive;
+        font-size: 2rem;
+        color: #d1d1d3;
+        user-select: none;
+      }
+      .card p {
+        font-size: 0.9rem;
+        text-align: left;
+        color: #8a8a8f;
+      }
+      .btn-pink {
+        background-color: var(--accent-color);
+        border: none;
+        font-family: "Luckiest Guy", cursive;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: white;
+        user-select: none;
+      }
+      .btn-pink:hover,
+      .btn-pink:focus {
+        background-color: #c54fa3;
+        color: white;
+      }
+      .card-img-top {
+        width: 100%;
+        height: auto;
+        max-height: 190px;
+        object-fit: contain;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <div class="nav-item levels">
+        <i class="fas fa-bars" aria-hidden="true"></i>
+        <span>Levels</span>
+      </div>
+      <div class="nav-item badges">
+        <i class="fas fa-award" aria-hidden="true"></i>
+        <span>Badges</span>
+      </div>
+      <div class="nav-item options">
+        <i class="fas fa-paint-brush" aria-hidden="true"></i>
+        <span>Options</span>
+      </div>
+      <div class="nav-item account mt-auto mb-4">
+        <i class="fas fa-user-circle" aria-hidden="true"></i>
+        <span>Account</span>
+      </div>
+    </nav>
+    <main>
+      <h1>WEBSCAPE</h1>
+      <h2>Escape The Struggles for Learning Web Fundamentals</h2>
+      <img
+        src="/static/images/book-icon.png"
+        alt="webscape-logo"
+        class="book-icon"
+      />
+      <div class="d-flex justify-content-center">
+        <button
+          type="button"
+          class="btn btn-login"
+          data-bs-target="#loginModal"
+          data-bs-toggle="modal"
+        >
+          Login
+        </button>
+        <button
+          class="btn btn-getstarted"
+          onclick="location.href='#game-modes'"
+        >
+          Get Started
+        </button>
+      </div>
+    </main>
+    <!-- LOGIN MODAL -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content login-modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title w-100 text-center ms-3">
+              <img
+                src="/static/images/book-icon.png"
+                alt="Book Icon"
+                style="width: 120px"
+              />
+              <div
+                style="
+                  color: var(--accent-color);
+                  font-size: 24px;
+                  margin-top: 10px;
+                  font-family: 'Luckiest Guy', cursive;
+                "
+              >
+                LOGIN
+              </div>
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+              style="margin-bottom: 5rem"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <div class="form-floating flex-grow-1 position-relative">
+                  <input
+                    type="text"
+                    class="form-control login-input ps-5"
+                    id="usernameInput"
+                    placeholder="Username"
+                  />
+                  <label
+                    style="margin-left: 2.2rem; color: var(--accent-color)"
+                    for="usernameInput"
+                    id="modalLabel"
+                    >Username</label
+                  >
+                  <i
+                    class="fas fa-user position-absolute text-white"
+                    style="top: 50%; left: 10px; transform: translateY(-50%)"
+                  ></i>
+                </div>
+              </div>
+              <div class="mb-3">
+                <div class="form-floating flex-grow-1 position-relative">
+                  <input
+                    type="password"
+                    class="form-control login-input ps-5"
+                    id="passwordInput"
+                    placeholder="Password"
+                  />
+                  <label
+                    style="margin-left: 2.2rem; color: var(--accent-color)"
+                    id="modalLabel"
+                    for="passwordInput"
+                    >Password</label
+                  >
+                  <i
+                    class="fas fa-lock position-absolute text-white"
+                    style="top: 50%; left: 10px; transform: translateY(-50%)"
+                  ></i>
+                </div>
+              </div>
+              <div class="form-check mb-3 ms-2 fs-6">
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="rememberMe"
+                />
+                <label
+                  class="form-check-label text-gray small"
+                  for="rememberMe"
+                  id="rememberMeLabel"
+                  >Remember me</label
+                >
+              </div>
+              <button type="submit" class="btn btn-pink w-100 mb-3">
+                SUBMIT
+              </button>
+              <p class="text-center text-gray mb-0 small">
+                Don’t have an account?
+                <a href="/register" class="text-pink">Register here</a>
+              </p>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!--  -->
+    <div class="section">
+      <h1 id="game-modes">GAME MODES</h1>
+      <div class="container">
+        <div class="row mt-3 text-center g-4">
+          <div class="col-12 col-md-4">
+            <div class="card p-3 h-100 d-flex flex-column align-items-center">
+              <img
+                alt="Illustration of orange and purple stairs with a pink star on top"
+                class="card-img-top"
+                height="180"
+                src="/static/images/classic-mode.png"
+                width="300"
+              />
+              <h2>Classic</h2>
+              <p>
+                Learn step-by-step with gamified levels covering HTML and CSS
+                fundamentals. Unlock new genres as you advance!
+              </p>
+              <button class="btn btn-pink mt-auto w-100">START</button>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card p-3 h-100 d-flex flex-column align-items-center">
+              <img
+                alt="Illustration of a boy coding on a laptop with colorful code blocks floating around"
+                class="card-img-top"
+                height="180"
+                src="/static/images/competitive-mode.png"
+                width="300"
+              />
+              <h2>Competitive</h2>
+              <p>
+                Competitive enough? <br />
+                Go head-to-head against other players in time-based coding duels
+                and quizzes.
+              </p>
+              <button class="btn btn-pink mt-auto w-100">START</button>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card p-3 h-100 d-flex flex-column align-items-center">
+              <img
+                alt="Pink terminal icon with a command prompt symbol inside a rounded rectangle"
+                class="card-img-top"
+                height="180"
+                src="/static/images/playground-mode.png"
+                width="300"
+              />
+              <h2>Playground</h2>
+              <p>
+                Write and test your HTML, CSS, and JS code freely in a live
+                coding environment.
+              </p>
+              <button
+                class="btn btn-pink mt-auto w-100"
+                onclick="window.location.href='/playground'"
+              >
+                START
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+      integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>

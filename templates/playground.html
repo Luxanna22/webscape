@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Code Playground | WebScape</title>
+    <link
+      rel="icon"
+      href="/static/images/playground-mode.png"
+      type="image/png"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
+
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #371569;
+        --accent-color: #ff66c4;
+      }
+
+      * {
+        box-sizing: border-box;
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--bg-color);
+        color: #a9a9a9;
+        font-family: "Montserrat", sans-serif;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        background-color: #3a1464;
+        width: 80px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 50px;
+      }
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+      }
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+      .sidebar .nav-item.badges i {
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item.account i {
+        font-size: 32px;
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+
+      .playground {
+        margin-left: 80px;
+        padding: 20px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .section-title,
+      .section-title a {
+        color: white;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 24px;
+        margin-bottom: 10px;
+        text-decoration: none;
+
+        &:hover {
+          color: var(--accent-color);
+        }
+      }
+
+      .tabs {
+        display: flex;
+        background-color: var(--secondary-color);
+        border-radius: 10px 10px 0 0;
+      }
+
+      .tab {
+        padding: 10px 20px;
+        cursor: pointer;
+        color: #fff;
+        font-weight: bold;
+        border-bottom: 3px solid transparent;
+      }
+
+      .tab.active {
+        color: var(--accent-color);
+        border-bottom: 3px solid var(--accent-color);
+      }
+
+      .editor-container {
+        display: flex;
+        flex: 1;
+        background-color: #1e1e1e;
+        border-radius: 0 0 10px 10px;
+        overflow: hidden;
+      }
+
+      .editor,
+      .live-output {
+        width: 50%;
+        height: 100%;
+        overflow-y: auto;
+      }
+
+      .live-output {
+        background: #f0f0f0;
+        color: black;
+      }
+
+      .code-editor {
+        display: none;
+        height: 100%;
+      }
+
+      .code-editor.active {
+        display: block;
+      }
+
+      .code-editor-content {
+        display: flex;
+        height: 100%;
+      }
+
+      .line-numbers {
+        width: 40px;
+        background: #2c2c2c;
+        color: #888;
+        text-align: right;
+        padding: 10px 5px;
+        font-family: monospace;
+        font-size: 14px;
+        line-height: 20px;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      .code-area {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        outline: none;
+        resize: none;
+        background: #1e1e1e;
+        color: white;
+        font-family: monospace;
+        font-size: 14px;
+        line-height: 20px;
+        overflow: auto;
+      }
+
+      /* Scrollbars */
+      .editor::-webkit-scrollbar,
+      .live-output::-webkit-scrollbar {
+        width: 8px;
+      }
+      .editor::-webkit-scrollbar-thumb,
+      .live-output::-webkit-scrollbar-thumb {
+        background: var(--accent-color);
+        border-radius: 10px;
+      }
+
+      /* ---------------------------------- */
+      .tabs-container {
+        display: flex;
+        justify-content: space-between;
+        background-color: var(--secondary-color);
+        align-items: center;
+      }
+      .live-output-label {
+        font-size: 16px;
+        color: #fff;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <div class="nav-item levels">
+        <a href="/"
+          ><img
+            src="/static/images/book-icon.png"
+            alt="webscape-logo"
+            width="50px"
+        /></a>
+        <br />
+      </div>
+      <div class="nav-item levels">
+        <i class="fas fa-bars" aria-hidden="true"></i>
+        <span>Levels</span>
+      </div>
+      <div class="nav-item badges">
+        <i class="fas fa-award" aria-hidden="true"></i>
+        <span>Badges</span>
+      </div>
+      <div class="nav-item options">
+        <i class="fas fa-paint-brush" aria-hidden="true"></i>
+        <span>Options</span>
+      </div>
+      <div class="nav-item account mt-auto mb-4">
+        <i class="fas fa-user-circle" aria-hidden="true"></i>
+        <span>Account</span>
+      </div>
+    </nav>
+
+    <!-- Playground -->
+    <div class="playground">
+      <div class="section-title">
+        <a href="/#game-modes"
+          ><i class="fas fa-angle-left" style="margin-right: 1rem"></i> Code
+          Playground</a
+        >
+      </div>
+
+      <div class="tabs-container">
+        <div class="tabs">
+          <div class="tab active" data-lang="html">HTML</div>
+          <div class="tab" data-lang="css">CSS</div>
+          <div class="tab" data-lang="js">JavaScript</div>
+        </div>
+        <div class="live-output-label">
+          <span>Live Output</span>
+        </div>
+      </div>
+
+      <div class="editor-container">
+        <div class="editor">
+          <!-- HTML Editor -->
+          <div class="code-editor active" id="html-editor">
+            <div class="code-editor-content">
+              <div class="line-numbers" id="html-lines">1</div>
+              <textarea class="code-area" id="html-code" spellcheck="false">
+&lt;h1 id="heading"&gt;Hello, Welcome to WebScape!&lt;/h1&gt;
+&lt;button onclick="changeColor()"&gt;Click Me!&lt;/button&gt;</textarea
+              >
+            </div>
+          </div>
+
+          <!-- CSS Editor -->
+          <div class="code-editor" id="css-editor">
+            <div class="code-editor-content">
+              <div class="line-numbers" id="css-lines">1</div>
+              <textarea class="code-area" id="css-code" spellcheck="false">
+h1 { color: hotpink; }</textarea
+              >
+            </div>
+          </div>
+
+          <!-- JS Editor -->
+          <div class="code-editor" id="js-editor">
+            <div class="code-editor-content">
+              <div class="line-numbers" id="js-lines">1</div>
+              <textarea class="code-area" id="js-code" spellcheck="false">
+function changeColor() {
+    document.getElementById("heading").style.color = "blue";
+}</textarea
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Live output -->
+        <div class="live-output">
+          <iframe
+            id="output-frame"
+            sandbox="allow-scripts"
+            style="width: 100%; height: 100%; border: none"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
+    <!-- FontAwesome -->
+    <script
+      src="https://kit.fontawesome.com/yourkitid.js"
+      crossorigin="anonymous"
+    ></script>
+
+    <script src="/static/playground.js"></script>
+  </body>
+</html>
