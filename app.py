@@ -13,10 +13,17 @@ db_cursor = db_connection.cursor()
 
 app = Flask(__name__)
 
+# temp credentials for login and registration modal with role based admin and user
+# admin credentials
+admin_username = "admin"
+admin_password = "admin123"
+# user credentials
+user_username = "user"
+user_password = "user123"
+
 @app.route('/') 
 def home():
-    # handle login and registration logic, role based admin and user
-    
+    # handle login and registration modal logic, role based admin and user
     
     return render_template('index.html')
 

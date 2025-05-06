@@ -468,13 +468,110 @@
               </button>
               <p class="text-center text-gray mb-0 small">
                 Don’t have an account?
-                <a href="/register" class="text-pink">Register here</a>
+                <a
+                  href="#"
+                  class="text-pink"
+                  data-bs-toggle="modal"
+                  data-bs-target="#registerModal"
+                  >Register here</a
+                >
               </p>
             </form>
           </div>
         </div>
       </div>
     </div>
+    <!-- register modal when register here is clicked -->
+    <div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content login-modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title w-100 text-center ms-3">
+              <img
+                src="/static/images/book-icon.png"
+                alt="Book Icon"
+                style="width: 120px"
+              />
+              <div
+                style="
+                  color: var(--accent-color);
+                  font-size: 24px;
+                  margin-top: 10px;
+                  font-family: 'Luckiest Guy', cursive;
+                "
+              >
+                REGISTER
+              </div>
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+              style="margin-bottom: 5rem"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <div class="form-floating flex-grow-1 position-relative">
+                  <input
+                    type="text"
+                    class="form-control login-input ps-5"
+                    id="usernameInput"
+                    placeholder="Username"
+                  />
+                  <label
+                    style="margin-left: 2.2rem; color: var(--accent-color)"
+                    for="usernameInput"
+                    id="modalLabel"
+                    >Username</label
+                  >
+                  <i
+                    class="fas fa-user position-absolute text-white"
+                    style="top: 50%; left: 10px; transform: translateY(-50%)"
+                  ></i>
+                </div>
+              </div>
+              <div class="mb-3">
+                <div class="form-floating flex-grow-1 position-relative">
+                  <input
+                    type="password"
+                    class="form-control login-input ps-5"
+                    id="passwordInput"
+                    placeholder="Password"
+                  />
+                  <label
+                    style="margin-left: 2.2rem; color: var(--accent-color)"
+                    id="modalLabel"
+                    for="passwordInput"
+                    >Password</label
+                  >
+                  <i
+                    class="fas fa-lock position-absolute text-white"
+                    style="top: 50%; left: 10px; transform: translateY(-50%)"
+                  ></i>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-pink w-100 mb-3">
+                SUBMIT
+              </button>
+            </form>
+            <p class="text-center text-gray mb-0 small">
+              Already have an account?
+              <a
+                href="#"
+                class="text-pink"
+                data-bs-toggle="modal"
+                data-bs-target="#loginModal"
+                >Login here</a
+              >
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!--  -->
     <div class="section">
       <h1 id="game-modes">GAME MODES</h1>
