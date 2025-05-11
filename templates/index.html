@@ -73,7 +73,7 @@
       .modal-content {
         background-color: #32124b;
         border-radius: 12px;
-        height: 450px;
+        height: 480px;
         width: 400px;
       }
 
@@ -103,6 +103,7 @@
 
       .text-pink {
         color: #ff5fc5;
+        cursor: pointer;
       }
 
       .text-pink:hover {
@@ -129,6 +130,7 @@
         font-size: 14px;
         color: #a9a9a9;
         user-select: none;
+        cursor: pointer;
       }
       .sidebar .nav-item i {
         font-size: 28px;
@@ -348,7 +350,7 @@
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
         <span>Options</span>
       </div>
-      <div class="nav-item account mt-auto mb-4">
+      <div class="nav-item account mt-auto mb-4" onclick="handleAccountClick()">
         <i class="fas fa-user-circle" aria-hidden="true"></i>
         <span>Account</span>
       </div>
@@ -367,6 +369,8 @@
           class="btn btn-login"
           data-bs-target="#loginModal"
           data-bs-toggle="modal"
+          id="loginButton"
+          style="display: none"
         >
           Login
         </button>
@@ -409,14 +413,16 @@
             ></button>
           </div>
           <div class="modal-body">
-            <form>
+            <form id="loginForm" onsubmit="handleLogin(event)">
               <div class="mb-3">
                 <div class="form-floating flex-grow-1 position-relative">
                   <input
                     type="text"
                     class="form-control login-input ps-5"
                     id="usernameInput"
+                    name="username"
                     placeholder="Username"
+                    required
                   />
                   <label
                     style="margin-left: 2.2rem; color: var(--accent-color)"
@@ -436,7 +442,9 @@
                     type="password"
                     class="form-control login-input ps-5"
                     id="passwordInput"
+                    name="password"
                     placeholder="Password"
+                    required
                   />
                   <label
                     style="margin-left: 2.2rem; color: var(--accent-color)"
@@ -467,7 +475,7 @@
                 SUBMIT
               </button>
               <p class="text-center text-gray mb-0 small">
-                Don’t have an account?
+                Don't have an account?
                 <a
                   href="#"
                   class="text-pink"
@@ -512,18 +520,20 @@
             ></button>
           </div>
           <div class="modal-body">
-            <form>
+            <form id="registerForm" onsubmit="handleRegister(event)">
               <div class="mb-3">
                 <div class="form-floating flex-grow-1 position-relative">
                   <input
                     type="text"
                     class="form-control login-input ps-5"
-                    id="usernameInput"
+                    id="registerUsernameInput"
+                    name="username"
                     placeholder="Username"
+                    required
                   />
                   <label
                     style="margin-left: 2.2rem; color: var(--accent-color)"
-                    for="usernameInput"
+                    for="registerUsernameInput"
                     id="modalLabel"
                     >Username</label
                   >
@@ -536,15 +546,39 @@
               <div class="mb-3">
                 <div class="form-floating flex-grow-1 position-relative">
                   <input
+                    type="email"
+                    class="form-control login-input ps-5"
+                    id="registerEmailInput"
+                    name="email"
+                    placeholder="Email"
+                    required
+                  />
+                  <label
+                    style="margin-left: 2.2rem; color: var(--accent-color)"
+                    for="registerEmailInput"
+                    id="modalLabel"
+                    >Email</label
+                  >
+                  <i
+                    class="fas fa-envelope position-absolute text-white"
+                    style="top: 50%; left: 10px; transform: translateY(-50%)"
+                  ></i>
+                </div>
+              </div>
+              <div class="mb-3">
+                <div class="form-floating flex-grow-1 position-relative">
+                  <input
                     type="password"
                     class="form-control login-input ps-5"
-                    id="passwordInput"
+                    id="registerPasswordInput"
+                    name="password"
                     placeholder="Password"
+                    required
                   />
                   <label
                     style="margin-left: 2.2rem; color: var(--accent-color)"
                     id="modalLabel"
-                    for="passwordInput"
+                    for="registerPasswordInput"
                     >Password</label
                   >
                   <i
@@ -609,7 +643,12 @@
                 Go head-to-head against other players in time-based coding duels
                 and quizzes.
               </p>
-              <button class="btn btn-pink mt-auto w-100">START</button>
+              <button
+                class="btn btn-pink mt-auto w-100"
+                onclick="checkLoginAndRedirect()"
+              >
+                START
+              </button>
             </div>
           </div>
           <div class="col-12 col-md-4">
@@ -647,5 +686,104 @@
       integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
       crossorigin="anonymous"
     ></script>
+    <script>
+      // Add login handling function
+      function handleLogin(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+
+        fetch("/login", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              window.location.href = data.redirect;
+            } else {
+              alert(data.message || "Login failed");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred during login");
+          });
+      }
+
+      // Add registration handling function
+      function handleRegister(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+
+        fetch("/register", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              window.location.href = data.redirect;
+            } else {
+              alert(data.message || "Registration failed");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred during registration");
+          });
+      }
+
+      // Handle account click in sidebar
+      function handleAccountClick() {
+        fetch("/check_login")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.logged_in) {
+              // TODO: Show account details or profile page
+              console.log("User is logged in");
+            } else {
+              const loginModal = new bootstrap.Modal(
+                document.getElementById("loginModal")
+              );
+              loginModal.show();
+            }
+          });
+      }
+
+      // Check login status and update UI
+      function checkLoginStatus() {
+        fetch("/check_login")
+          .then((response) => response.json())
+          .then((data) => {
+            const loginButton = document.getElementById("loginButton");
+            if (data.logged_in) {
+              loginButton.style.display = "none";
+            } else {
+              loginButton.style.display = "block";
+            }
+          });
+      }
+
+      // Check login status when page loads
+      document.addEventListener("DOMContentLoaded", checkLoginStatus);
+
+      // Existing checkLoginAndRedirect function
+      function checkLoginAndRedirect() {
+        fetch("/check_login")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.logged_in) {
+              window.location.href = "/user/competitive";
+            } else {
+              const loginModal = new bootstrap.Modal(
+                document.getElementById("loginModal")
+              );
+              loginModal.show();
+            }
+          });
+      }
+    </script>
   </body>
 </html>
