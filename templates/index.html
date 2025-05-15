@@ -625,7 +625,12 @@
                 Learn step-by-step with gamified levels covering HTML and CSS
                 fundamentals. Unlock new genres as you advance!
               </p>
-              <button class="btn btn-pink mt-auto w-100">START</button>
+              <button
+                class="btn btn-pink mt-auto w-100"
+                onclick="checkLoginAndRedirect('classic')"
+              >
+                START
+              </button>
             </div>
           </div>
           <div class="col-12 col-md-4">
@@ -645,7 +650,7 @@
               </p>
               <button
                 class="btn btn-pink mt-auto w-100"
-                onclick="checkLoginAndRedirect()"
+                onclick="checkLoginAndRedirect('competitive')"
               >
                 START
               </button>
@@ -770,12 +775,16 @@
       document.addEventListener("DOMContentLoaded", checkLoginStatus);
 
       // Existing checkLoginAndRedirect function
-      function checkLoginAndRedirect() {
+      function checkLoginAndRedirect(mode) {
         fetch("/check_login")
           .then((response) => response.json())
           .then((data) => {
             if (data.logged_in) {
-              window.location.href = "/user/competitive";
+              if (mode === "classic") {
+                window.location.href = "/user/classic";
+              } else if (mode === "competitive") {
+                window.location.href = "/user/competitive";
+              }
             } else {
               const loginModal = new bootstrap.Modal(
                 document.getElementById("loginModal")
