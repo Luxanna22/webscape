@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Competitive Mode - WebScape</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #2d2c2f;
+        --accent-color: #ff66c4;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: #a9a9a9;
+        font-family: "Montserrat", sans-serif;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        background-color: #3a1464;
+        width: 80px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 50px;
+      }
+
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+        cursor: pointer;
+      }
+
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+
+      .main-content {
+        margin-left: 80px;
+        padding: 2rem;
+      }
+
+      .game-mode-card {
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        border-radius: 15px;
+        padding: 2rem;
+        transition: transform 0.2s ease-in-out;
+        cursor: pointer;
+      }
+
+      .game-mode-card:hover {
+        transform: translateY(-10px);
+        background-color: #481c89;
+      }
+
+      .game-mode-card h2 {
+        font-family: "Anton", sans-serif;
+        color: #ff69b4;
+        font-size: 2rem;
+      }
+
+      .game-mode-card p {
+        color: #8a8a8f;
+      }
+
+      .game-mode-card i {
+        font-size: 3rem;
+        color: #ff69b4;
+        margin-bottom: 1rem;
+      }
+
+      .matchmaking-container {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        border-radius: 15px;
+        width: 50%;
+        margin: 0 auto;
+      }
+
+      .matchmaking-animation {
+        width: 100px;
+        height: 100px;
+        border: 5px solid #ff69b4;
+        border-top: 5px solid transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 2rem auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .btn-queue {
+        background-color: var(--accent-color);
+        color: white;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 1.25rem;
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 8px;
+        transition: background-color 0.2s;
+      }
+
+      .btn-queue:hover {
+        background-color: #c54fa3;
+      }
+
+      .match-found {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+      }
+
+      .opponent-info {
+        background-color: #371569;
+        border: 2px solid #7e31ef;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+        max-width: 50%;
+        margin: 0 auto;
+        margin-bottom: 1rem;
+      }
+
+      .opponent-info h3 {
+        color: #ff69b4;
+        font-family: "Anton", sans-serif;
+      }
+
+      @media (max-width: 575.98px) {
+        .sidebar {
+          width: 60px;
+          padding-top: 15px;
+          gap: 35px;
+        }
+        .sidebar .nav-item {
+          font-size: 11px;
+        }
+        .sidebar .nav-item i {
+          font-size: 22px;
+          margin-bottom: 3px;
+        }
+        .main-content {
+          margin-left: 60px;
+          padding: 1rem;
+        }
+        .matchmaking-container {
+          width: 90%;
+          max-width: 90%;
+        }
+        .opponent-info {
+          max-width: 100%;
+          margin: 0;
+          padding: 1rem;
+          border-radius: 10px;
+          margin-bottom: 1rem;
+        }
+      }
+
+      .section-title,
+      .section-title a {
+        color: white;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 24px;
+        margin-bottom: 10px;
+        text-decoration: none;
+
+        &:hover {
+          color: var(--accent-color);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <div class="nav-item levels">
+        <a href="/"
+          ><img
+            src="/static/images/book-icon.png"
+            alt="webscape-logo"
+            width="50px"
+        /></a>
+        <br />
+      </div>
+      <div class="nav-item levels">
+        <i class="fas fa-bars" aria-hidden="true"></i>
+        <span>Levels</span>
+      </div>
+      <div class="nav-item badges">
+        <i class="fas fa-award" aria-hidden="true"></i>
+        <span>Badges</span>
+      </div>
+      <div class="nav-item options">
+        <i class="fas fa-paint-brush" aria-hidden="true"></i>
+        <span>Options</span>
+      </div>
+      <div
+        class="nav-item account mt-auto mb-4"
+        onclick="window.location.href='/logout'"
+      >
+        <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+        <span>Logout</span>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="section-title">
+        <a href="/#game-modes"
+          ><i class="fas fa-angle-left" style="margin-right: 1rem"></i>
+          Competitive</a
+        >
+      </div>
+      <h1
+        class="text-center mb-5"
+        style="font-family: 'Luckiest Guy', cursive; color: #ff69b4"
+        id="game-mode-title"
+      >
+        Choose your battleground
+      </h1>
+
+      <!-- Game Mode Selection -->
+      <div class="row justify-content-center" id="gameModeSelection">
+        <div class="col-md-4 mb-4">
+          <div
+            class="game-mode-card text-center"
+            onclick="selectGameMode('code')"
+          >
+            <i class="fas fa-code"></i>
+            <h2>Code Challenge</h2>
+            <p>
+              Test your coding skills in real-time against other players. Solve
+              challenges and compete for the best solution!
+            </p>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div
+            class="game-mode-card text-center"
+            onclick="selectGameMode('quiz')"
+          >
+            <i class="fas fa-question-circle"></i>
+            <h2>Quiz Battle</h2>
+            <p>
+              Challenge your knowledge of web development in a fast-paced quiz
+              competition!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Matchmaking UI -->
+      <div class="matchmaking-container" id="matchmakingUI">
+        <h2 style="font-family: 'Luckiest Guy', cursive; color: #ff69b4">
+          Finding Opponent...
+        </h2>
+        <div class="matchmaking-animation"></div>
+        <p>Waiting for another player to join...</p>
+        <button class="btn-queue" onclick="cancelQueue()">Cancel Queue</button>
+      </div>
+
+      <!-- Match Found UI -->
+      <div class="match-found" id="matchFoundUI">
+        <h2 style="font-family: 'Luckiest Guy', cursive; color: #ff69b4">
+          Match Found!
+        </h2>
+        <div class="opponent-info">
+          <h3>Opponent: <span id="opponentName">Player123</span></h3>
+          <p>Rating: <span id="opponentRating">1500</span></p>
+        </div>
+        <button class="btn-queue" onclick="startMatch()">Start Match</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+      let selectedMode = null;
+      let socket = null;
+      let isUserInQueue = false;
+      function selectGameMode(mode) {
+        selectedMode = mode;
+        const gameModeTitle =
+          mode === "quiz" ? "Quiz Battle" : "Code Challenge";
+        document.getElementById("gameModeSelection").style.display = "none";
+        document.getElementById("matchmakingUI").style.display = "block";
+        isUserInQueue = true;
+        connectSocket();
+        document.getElementById("game-mode-title").textContent = gameModeTitle;
+      }
+
+      function connectSocket() {
+        socket = io();
+
+        socket.on("connect", function () {
+          console.log("Socket.IO connected");
+          socket.emit("queue", {
+            type: "queue",
+            mode: selectedMode,
+          });
+        });
+
+        socket.on("match_found", function (data) {
+          showMatchFound(data.opponent);
+        });
+
+        socket.on("queue_status", function (data) {
+          console.log("Queue status:", data.status);
+        });
+
+        socket.on("disconnect", function () {
+          console.log("Socket.IO disconnected");
+        });
+      }
+
+      function cancelQueue() {
+        if (socket) {
+          socket.emit("cancel_queue");
+          socket.disconnect();
+        }
+        document.getElementById("game-mode-title").textContent =
+          "Choose your battleground";
+        document.getElementById("matchmakingUI").style.display = "none";
+        document.getElementById("gameModeSelection").style.display = "flex";
+      }
+
+      function showMatchFound(opponent) {
+        document.getElementById("matchmakingUI").style.display = "none";
+        document.getElementById("matchFoundUI").style.display = "block";
+        document.getElementById("opponentName").textContent = opponent.name;
+        document.getElementById("opponentRating").textContent = opponent.rating;
+      }
+
+      function startMatch() {
+        if (socket) {
+          socket.emit("start_match");
+        }
+        // Redirect to the appropriate game mode page
+        window.location.href =
+          selectedMode === "code"
+            ? "/user/competitive/code"
+            : "/user/competitive/quiz";
+      }
+    </script>
+  </body>
+</html>
