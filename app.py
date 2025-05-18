@@ -8,20 +8,21 @@ import bcrypt
 
 def get_db_connection():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database="capstone_v1"
-    )
+    host="localhost",
+    user="root",
+    password="",
+    database="capstone_v1"
+)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Store active queues and matches
-code_queue = []
-quiz_queue = []
+code_queue = []  # Will store tuples of (socket_id, user_id)
+quiz_queue = []  # Will store tuples of (socket_id, user_id)
 active_matches = {}
+socket_to_user = {}  # Map socket IDs to user IDs
 
 # Login required decorator
 def login_required(f):
@@ -138,6 +139,33 @@ def playground():
     return render_template('playground.html')
 
 # -------------------------------------------------------USER--------------------------------------------------------------------#
+@app.route('/user/classic')
+@login_required
+def user_classic():
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Fetch all levels with their titles and descriptions
+        query = "SELECT id, title, description FROM levels"
+        db_cursor.execute(query)
+        levels = db_cursor.fetchall()
+        
+        return render_template('user/classic.html', levels=levels)
+    except Exception as e:
+        print("Database error:", str(e))
+        return render_template('user/classic.html', levels=[])
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/user/classic/<level>')
+@login_required
+def user_chapter_list(level):
+    return render_template('user/chapter_list.html', level=level)
+
 @app.route('/user/competitive')
 @login_required
 def user_competitive():
@@ -163,16 +191,18 @@ def admin_dashboard():
 def handle_connect():
     if 'user_id' not in session:
         return False  # Reject the connection if not logged in
-    print('Client connected:', request.sid)
+    socket_to_user[request.sid] = session['user_id']
+    print('Client connected:', request.sid, 'User:', session['user_id'])
 
 @socketio.on('disconnect')
 def handle_disconnect():
     print('Client disconnected:', request.sid)
+    # Remove from socket_to_user mapping
+    if request.sid in socket_to_user:
+        del socket_to_user[request.sid]
     # Remove from queues if present
-    if request.sid in code_queue:
-        code_queue.remove(request.sid)
-    if request.sid in quiz_queue:
-        quiz_queue.remove(request.sid)
+    code_queue[:] = [(sid, uid) for sid, uid in code_queue if sid != request.sid]
+    quiz_queue[:] = [(sid, uid) for sid, uid in quiz_queue if sid != request.sid]
     # Handle disconnection from active matches
     for match_id, players in active_matches.items():
         if request.sid in players:
@@ -182,79 +212,120 @@ def handle_disconnect():
             else:
                 emit('opponent_disconnected', room=match_id)
 
+def get_username_by_user_id(user_id):
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        query = "SELECT username FROM users WHERE id = %s"
+        db_cursor.execute(query, (user_id,))
+        result = db_cursor.fetchone()
+        return result['username'] if result else f'Player{user_id}'
+    except Exception as e:
+        print("Database error:", str(e))
+        return f'Player{user_id}'
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
 @socketio.on('queue')
 def handle_queue(data):
     if 'user_id' not in session:
         return False  # Reject the queue request if not logged in
         
     mode = data.get('mode')
-    user_id = request.sid
+    socket_id = request.sid
+    user_id = session['user_id']
     
     if mode == 'code':
         if len(code_queue) > 0:
-            opponent = code_queue.pop(0)
+            opponent_socket, opponent_user_id = code_queue.pop(0)
             # Create a unique room for the match
-            room = f'match_{user_id}_{opponent}'
-            active_matches[room] = [user_id, opponent]
+            room = f'match_{socket_id}_{opponent_socket}'
+            active_matches[room] = [socket_id, opponent_socket]
             
-            join_room(room, user_id)
-            join_room(room, opponent)
+            join_room(room, socket_id)
+            join_room(room, opponent_socket)
             
-            # Notify both players
+            # Get opponent's username from database
+            opponent_username = get_username_by_user_id(opponent_user_id)
+            current_username = get_username_by_user_id(user_id)
+            
+            # Notify both players with their respective opponent's username
             emit('match_found', {
                 'opponent': {
-                    'name': session.get('username', f'Player{opponent[:4]}'),
+                    'name': opponent_username,
                     'rating': 1500
                 }
-            }, room=room)
+            }, room=socket_id)
+            
+            emit('match_found', {
+                'opponent': {
+                    'name': current_username,
+                    'rating': 1500
+                }
+            }, room=opponent_socket)
         else:
-            code_queue.append(user_id)
+            code_queue.append((socket_id, user_id))
             emit('queue_status', {'status': 'waiting'})
     
     elif mode == 'quiz':
         if len(quiz_queue) > 0:
-            opponent = quiz_queue.pop(0)
-            room = f'match_{user_id}_{opponent}'
-            active_matches[room] = [user_id, opponent]
+            opponent_socket, opponent_user_id = quiz_queue.pop(0)
+            room = f'match_{socket_id}_{opponent_socket}'
+            active_matches[room] = [socket_id, opponent_socket]
             
-            join_room(room, user_id)
-            join_room(room, opponent)
+            join_room(room, socket_id)
+            join_room(room, opponent_socket)
+            
+            # Get opponent's username from database
+            opponent_username = get_username_by_user_id(opponent_user_id)
+            current_username = get_username_by_user_id(user_id)
+            
+            # Notify both players with their respective opponent's username
+            emit('match_found', {
+                'opponent': {
+                    'name': opponent_username,
+                    'rating': 1500
+                }
+            }, room=socket_id)
             
             emit('match_found', {
                 'opponent': {
-                    'name': session.get('username', f'Player{opponent[:4]}'),
+                    'name': current_username,
                     'rating': 1500
                 }
-            }, room=room)
+            }, room=opponent_socket)
         else:
-            quiz_queue.append(user_id)
+            quiz_queue.append((socket_id, user_id))
             emit('queue_status', {'status': 'waiting'})
 
 @socketio.on('cancel_queue')
 def handle_cancel_queue():
-    user_id = request.sid
-    if user_id in code_queue:
-        code_queue.remove(user_id)
-    if user_id in quiz_queue:
-        quiz_queue.remove(user_id)
+    socket_id = request.sid
+    # Remove from queues if present
+    code_queue[:] = [(sid, uid) for sid, uid in code_queue if sid != socket_id]
+    quiz_queue[:] = [(sid, uid) for sid, uid in quiz_queue if sid != socket_id]
     emit('queue_cancelled')
 
 @socketio.on('start_match')
 def handle_start_match():
     # Find the room the user is in
-    user_id = request.sid
+    socket_id = request.sid
     for match_id, players in active_matches.items():
-        if user_id in players:
+        if socket_id in players:
             emit('match_started', room=match_id)
             break
 
 @socketio.on('code_update')
 def handle_code_update(data):
     # Find the room the user is in and broadcast to other player
-    user_id = request.sid
+    socket_id = request.sid
     for match_id, players in active_matches.items():
-        if user_id in players:
-            emit('code_update', data, room=match_id, skip_sid=user_id)
+        if socket_id in players:
+            emit('code_update', data, room=match_id, skip_sid=socket_id)
             break
 
 if __name__ == '__main__':
