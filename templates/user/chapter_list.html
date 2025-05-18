@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ level|upper }} Chapters - WebScape</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #2d2c2f;
+        --accent-color: #ff66c4;
+        --primary-gray: #c6c5c5;
+        --purple-accent: #7e31ef;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: #a9a9a9;
+        font-family: "Montserrat", sans-serif;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        background-color: #3a1464;
+        width: 80px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 50px;
+      }
+
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+        cursor: pointer;
+      }
+
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+
+      .main-content {
+        margin-left: 80px;
+        padding: 2rem;
+      }
+
+      .chapter-number {
+        font-family: "Anton", sans-serif;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+        color: #ff69b4;
+      }
+
+      .chapter-card {
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        border-radius: 15px;
+        padding: 2rem;
+        transition: transform 0.2s ease-in-out;
+        margin-bottom: 1.5rem;
+        position: relative;
+        height: 17rem;
+      }
+
+      .chapter-card:hover {
+        transform: translateY(-10px);
+        background-color: #481c89;
+      }
+
+      .chapter-card.locked {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .chapter-card.locked:hover {
+        transform: none;
+      }
+
+      .chapter-card .lock-icon {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        z-index: 100;
+        font-size: 7rem;
+      }
+
+      .chapter-card .rewards {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        display: flex;
+        gap: 1rem;
+      }
+
+      .chapter-card .rewards i {
+        color: #ff69b4;
+      }
+
+      .chapter-card .chapter-number {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        font-size: 1rem;
+      }
+
+      .chapter-card .start-btn {
+        background-color: #ff69b4;
+        color: white;
+        border: none;
+        padding: 0.5rem 1.5rem;
+        border-radius: 25px;
+        font-weight: bold;
+        margin-top: 1rem;
+        transition: background-color 0.2s;
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
+      }
+
+      .chapter-card .start-btn:hover {
+        background-color: #ff4da6;
+      }
+
+      .chapter-card .start-btn:disabled {
+        background-color: #666;
+        cursor: not-allowed;
+      }
+
+      .chapter-card h2 {
+        font-family: "Anton", sans-serif;
+        color: var(--primary-gray);
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+        padding-right: 6rem;
+        margin-top: 2rem;
+      }
+
+      .chapter-card p {
+        color: #8a8a8f;
+        margin-bottom: 1.5rem;
+        padding-right: 1rem;
+      }
+
+      .chapter-card .progress {
+        height: 8px;
+        background-color: #2d2c2f;
+        margin-bottom: 1rem;
+        margin-right: 1rem;
+      }
+
+      .chapter-card .progress-bar {
+        background-color: var(--accent-color);
+      }
+
+      .section-title,
+      .section-title a {
+        color: white;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 24px;
+        margin-bottom: 10px;
+        text-decoration: none;
+      }
+
+      .section-title a:hover {
+        color: var(--accent-color);
+      }
+
+      @media (max-width: 575.98px) {
+        .sidebar {
+          width: 60px;
+          padding-top: 15px;
+          gap: 35px;
+        }
+        .sidebar .nav-item {
+          font-size: 11px;
+        }
+        .sidebar .nav-item i {
+          font-size: 22px;
+          margin-bottom: 3px;
+        }
+        .main-content {
+          margin-left: 60px;
+          padding: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <div class="nav-item levels">
+        <a href="/"
+          ><img
+            src="/static/images/book-icon.png"
+            alt="webscape-logo"
+            width="50px"
+        /></a>
+        <br />
+      </div>
+      <div class="nav-item levels">
+        <i class="fas fa-bars" aria-hidden="true"></i>
+        <span>Levels</span>
+      </div>
+      <div class="nav-item badges">
+        <i class="fas fa-award" aria-hidden="true"></i>
+        <span>Badges</span>
+      </div>
+      <div class="nav-item options">
+        <i class="fas fa-paint-brush" aria-hidden="true"></i>
+        <span>Options</span>
+      </div>
+      <div
+        class="nav-item account mt-auto mb-4"
+        onclick="window.location.href='/logout'"
+      >
+        <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+        <span>Logout</span>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="section-title">
+        <a href="/user/classic"
+          ><i class="fas fa-angle-left" style="margin-right: 1rem"></i> {{
+          level|upper }}</a
+        >
+      </div>
+      <h1
+        class="text-center mb-5"
+        style="font-family: 'Luckiest Guy', cursive; color: #ff69b4"
+      >
+        {{ level|upper }} Chapters
+      </h1>
+
+      <div class="container">
+        <div class="row">
+          {% for chapter in chapters %}
+          <div class="col-md-6">
+            <div
+              class="chapter-card {% if not loop.first and not chapters[loop.index0-1].is_completed %}locked{% endif %}"
+            >
+              <div class="chapter-number">Chapter {{ chapter.order_num }}</div>
+              {% if not loop.first and not chapters[loop.index0-1].is_completed
+              %}
+              <i class="fas fa-lock lock-icon"></i>
+              {% endif %}
+              <div class="rewards">
+                <span><i class="fas fa-star"></i> {{ chapter.xp_reward }}</span>
+                <span
+                  ><i class="fas fa-trophy"></i> {{ chapter.points_reward
+                  }}</span
+                >
+              </div>
+              <h2>{{ chapter.title }}</h2>
+              <p>{{ chapter.description }}</p>
+              <div class="progress">
+                <div
+                  class="progress-bar"
+                  role="progressbar"
+                  style="width: {{ chapter.user_progress }}%"
+                ></div>
+              </div>
+              <small>{{ chapter.user_progress }}% Complete</small>
+              <button
+                class="start-btn"
+                onclick="startChapter('{{ chapter.id }}')"
+                {%
+                if
+                not
+                loop.first
+                and
+                not
+                chapters[loop.index0-1].is_completed
+                %}disabled{%
+                endif
+                %}
+              >
+                Start Chapter
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const level = "{{ level }}";
+
+      function startChapter(chapterId) {
+        window.location.href = `/user/classic/${level.toLowerCase()}/${chapterId}`;
+      }
+    </script>
+  </body>
+</html>
