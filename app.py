@@ -164,7 +164,140 @@ def user_classic():
 @app.route('/user/classic/<level>')
 @login_required
 def user_chapter_list(level):
-    return render_template('user/chapter_list.html', level=level)
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Get level info
+        level_query = "SELECT id, title FROM levels WHERE title = %s"
+        db_cursor.execute(level_query, (level,))
+        level_info = db_cursor.fetchone()
+        
+        if not level_info:
+            return redirect(url_for('user_classic'))
+        
+        # Get chapters for this level
+        chapters_query = """
+        SELECT c.*, COALESCE(up.progress, 0) as user_progress, COALESCE(up.completed, FALSE) as is_completed
+        FROM chapters c
+        LEFT JOIN user_progress up ON c.id = up.chapter_id AND up.user_id = %s
+        WHERE c.level_id = %s
+        ORDER BY c.order_num
+        """
+        db_cursor.execute(chapters_query, (session['user_id'], level_info['id']))
+        chapters = db_cursor.fetchall()
+        
+        return render_template('user/chapter_list.html', 
+                             level=level_info['title'], 
+                             chapters=chapters)
+    except Exception as e:
+        print("Database error:", str(e))
+        return redirect(url_for('user_classic'))
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/user/classic/<level>/<int:chapter_id>')
+@login_required
+def user_lesson_content(level, chapter_id):
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Get chapter info
+        chapter_query = """
+        SELECT c.*, l.title as level_title 
+        FROM chapters c 
+        JOIN levels l ON c.level_id = l.id 
+        WHERE c.id = %s
+        """
+        db_cursor.execute(chapter_query, (chapter_id,))
+        chapter = db_cursor.fetchone()
+        
+        if not chapter:
+            return redirect(url_for('user_chapter_list', level=level))
+        
+        # Get lesson content for this chapter
+        content_query = """
+        SELECT * FROM lesson_content 
+        WHERE chapter_id = %s 
+        ORDER BY page_num
+        """
+        db_cursor.execute(content_query, (chapter_id,))
+        lesson_pages = db_cursor.fetchall()
+        
+        if not lesson_pages:
+            return redirect(url_for('user_chapter_list', level=level))
+        
+        # Get user progress for this chapter
+        progress_query = """
+        SELECT progress FROM user_progress 
+        WHERE user_id = %s AND chapter_id = %s
+        """
+        db_cursor.execute(progress_query, (session['user_id'], chapter_id))
+        progress = db_cursor.fetchone()
+        
+        current_page = 1
+        if progress:
+            current_page = min(progress['progress'] + 1, len(lesson_pages))
+        
+        return render_template('user/lesson-content.html',
+                             chapter=chapter,
+                             lesson_pages=lesson_pages,
+                             current_page=current_page,
+                             total_pages=len(lesson_pages))
+    except Exception as e:
+        print("Database error:", str(e))
+        return redirect(url_for('user_chapter_list', level=level))
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/user/classic/<level>/<int:chapter_id>/progress', methods=['POST'])
+@login_required
+def update_lesson_progress(level, chapter_id):
+    try:
+        data = request.get_json()
+        page_num = data.get('page_num', 1)
+        
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        
+        # Update or insert progress
+        upsert_query = """
+        INSERT INTO user_progress (user_id, chapter_id, progress, completed)
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE 
+        progress = VALUES(progress),
+        completed = VALUES(completed)
+        """
+        
+        # Calculate progress percentage and completion
+        progress = (page_num / data.get('total_pages', 1)) * 100
+        completed = page_num >= data.get('total_pages', 1)
+        
+        db_cursor.execute(upsert_query, (session['user_id'], chapter_id, progress, completed))
+        db_connection.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        print("Database error:", str(e))
+        return jsonify({'success': False, 'error': str(e)})
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+# Update the startChapter function in chapter_list.html
+@app.route('/user/classic/<level>/<int:chapter_id>/start')
+@login_required
+def start_chapter(level, chapter_id):
+    return redirect(url_for('user_lesson_content', level=level, chapter_id=chapter_id))
 
 @app.route('/user/competitive')
 @login_required
@@ -327,6 +460,59 @@ def handle_code_update(data):
         if socket_id in players:
             emit('code_update', data, room=match_id, skip_sid=socket_id)
             break
+
+# Create chapters table if it doesn't exist
+def init_chapters_table():
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        
+        # Create chapters table
+        create_chapters_table = """
+        CREATE TABLE IF NOT EXISTS chapters (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            level_id VARCHAR(50),
+            name VARCHAR(100) NOT NULL,
+            title VARCHAR(100) NOT NULL,
+            description TEXT,
+            xp_reward INT DEFAULT 0,
+            points_reward INT DEFAULT 0,
+            order_num INT NOT NULL,
+            FOREIGN KEY (level_id) REFERENCES levels(id) ON DELETE CASCADE
+        )
+        """
+        
+        db_cursor.execute(create_chapters_table)
+        db_connection.commit()
+        
+        # Create user_progress table to track chapter completion
+        create_user_progress_table = """
+        CREATE TABLE IF NOT EXISTS user_progress (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            chapter_id INT NOT NULL,
+            progress INT DEFAULT 0,
+            completed BOOLEAN DEFAULT FALSE,
+            last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_user_chapter (user_id, chapter_id)
+        )
+        """
+        
+        db_cursor.execute(create_user_progress_table)
+        db_connection.commit()
+        
+    except Exception as e:
+        print("Error initializing tables:", str(e))
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+# Call this when the app starts
+init_chapters_table()
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)
