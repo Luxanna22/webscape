@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="icon"
+      href="/static/images/playground-mode.png"
+      type="image/png"
+    />
+    <title>WebScape</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
+
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #2d2c2f;
+        --accent-color: #ff66c4;
+      }
+      body,
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent-color) var(--secondary-color);
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--bg-color);
+        color: #a9a9a9;
+        font-family: "Montserrat", sans-serif;
+      }
+
+      .login-input {
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid #fff;
+        border-radius: 0;
+        color: #fff;
+      }
+
+      .login-input::placeholder {
+        color: #aaa;
+      }
+
+      .btn-pink {
+        background-color: #ff5fc5;
+        color: white;
+        font-weight: bold;
+        letter-spacing: 1px;
+        border-radius: 8px;
+      }
+
+      .btn-pink:hover {
+        background-color: #ff40b5;
+      }
+
+      .text-pink {
+        color: #ff5fc5;
+        cursor: pointer;
+      }
+
+      .text-pink:hover {
+        color: #ff40b5;
+        text-decoration: underline;
+      }
+      /* ------- */
+      .sidebar {
+        background-color: #3a1464;
+        width: 80px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 50px;
+      }
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+        cursor: pointer;
+      }
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+      .sidebar .nav-item.badges i {
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item.account i {
+        font-size: 32px;
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+
+      main {
+        margin-left: 80px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 15px;
+      }
+      .section {
+        margin-left: 80px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 15px;
+      }
+      .section h1 {
+        font-family: "Luckiest Guy", sans-serif;
+        font-size: 4vw;
+        color: #ff69b4;
+        margin-bottom: 0;
+        user-select: none;
+      }
+      h1 {
+        font-family: "Luckiest Guy", sans-serif;
+        font-size: calc(1.375rem + 1.5vw);
+        color: #ff69b4;
+        margin-bottom: 0;
+        user-select: none;
+      }
+      h2 {
+        font-family: "Anton", sans-serif;
+        font-weight: 700;
+        font-size: 2.3vw;
+        color: #6f2dbd;
+        margin-top: 0;
+        user-select: none;
+      }
+      .book-icon {
+        color: #b3b3b3;
+        font-size: 18vw;
+        width: 300px;
+        user-select: none;
+        margin-bottom: 50px;
+      }
+      .card {
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+        &:hover {
+          /* up slightly */
+          transform: translateY(-15px);
+          transition: transform 0.2s ease-in-out;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          background-color: #481c89;
+        }
+      }
+
+      .section-title,
+      .section-title a {
+        color: white;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 24px;
+        margin-bottom: 10px;
+        text-decoration: none;
+
+        &:hover {
+          color: var(--accent-color);
+        }
+      }
+      .main-content {
+        margin-left: 80px;
+        padding: 1rem;
+      }
+
+      .card h2 {
+        font-family: "Anton", cursive;
+        font-size: 2rem;
+        color: #d1d1d3;
+        user-select: none;
+      }
+      .card p {
+        font-size: 0.9rem;
+        text-align: left;
+        color: #8a8a8f;
+      }
+      .btn-pink {
+        background-color: var(--accent-color);
+        border: none;
+        font-family: "Luckiest Guy", cursive;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: white;
+        user-select: none;
+      }
+      .btn-pink:hover,
+      .btn-pink:focus {
+        background-color: #c54fa3;
+        color: white;
+      }
+      .card-img-top {
+        width: 100%;
+        height: auto;
+        max-height: 190px;
+        object-fit: contain;
+        margin-bottom: 1rem;
+      }
+
+      @media (max-width: 575.98px) {
+        .sidebar {
+          width: 60px;
+          padding-top: 15px;
+          gap: 35px;
+        }
+        .sidebar .nav-item {
+          font-size: 11px;
+        }
+        .sidebar .nav-item i {
+          font-size: 22px;
+          margin-bottom: 3px;
+        }
+        .main-content {
+          margin-left: 60px;
+          padding: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <div class="nav-item levels">
+        <a href="/"
+          ><img
+            src="/static/images/book-icon.png"
+            alt="webscape-logo"
+            width="50px"
+        /></a>
+        <br />
+      </div>
+      <div class="nav-item levels">
+        <i class="fas fa-bars" aria-hidden="true"></i>
+        <span>Levels</span>
+      </div>
+      <div class="nav-item badges">
+        <i class="fas fa-award" aria-hidden="true"></i>
+        <span>Badges</span>
+      </div>
+      <div class="nav-item options">
+        <i class="fas fa-paint-brush" aria-hidden="true"></i>
+        <span>Options</span>
+      </div>
+      <div class="nav-item account mt-auto mb-4" onclick="handleAccountClick()">
+        <i class="fas fa-user-circle" aria-hidden="true"></i>
+        <span>Account</span>
+      </div>
+    </nav>
+
+    <div class="main-content">
+      <div class="section-title">
+        <a href="/#game-modes"
+          ><i class="fas fa-angle-left" style="margin-right: 1rem"></i>
+          Classic</a
+        >
+      </div>
+      <h1
+        class="text-center"
+        style="font-family: 'Luckiest Guy', cursive; color: #ff69b4"
+      >
+        Choose a level
+      </h1>
+      <div class="container">
+        <div class="row mt-3 text-center g-4 justify-content-center">
+          {% for level in levels %}
+          <div class="col-12 col-md-4">
+            <div class="card p-3 h-100 d-flex flex-column align-items-center">
+              <img
+                alt="{{ level.title }} logo"
+                class="card-img-top"
+                height="200"
+                src="/static/images/{{ level.title }}-logo.png"
+                width="300"
+                style="scale: 1.5"
+              />
+              <h2>{{ level.title }}</h2>
+              <p>{{ level.description }}</p>
+              <button
+                class="btn btn-pink mt-auto w-100"
+                onclick="startLevel('{{ level.title }}')"
+              >
+                START
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function startLevel(level) {
+        // Convert level title to lowercase for URL
+        const formattedLevel = level.toLowerCase();
+        window.location.href = `/user/classic/${formattedLevel}`;
+      }
+    </script>
+  </body>
+</html>
