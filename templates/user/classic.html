@@ -309,7 +309,7 @@
                 height="200"
                 src="/static/images/{{ level.title }}-logo.png"
                 width="300"
-                style="scale: 1.5"
+                style="scale: {% if level.id == 1 %}1.5{% endif %}"
               />
               <h2>{{ level.title }}</h2>
               <p>{{ level.description }}</p>
