@@ -5,6 +5,9 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 import json
 from functools import wraps
 import bcrypt
+import requests  # Add this import at the top
+import base64
+from urllib.parse import quote
 
 def get_db_connection():
     return mysql.connector.connect(
@@ -513,6 +516,94 @@ def init_chapters_table():
 
 # Call this when the app starts
 init_chapters_table()
+
+@app.route('/api/analyze-code', methods=['POST'])
+def analyze_code():
+    try:
+        data = request.get_json()
+        if not data or 'message' not in data:
+            return jsonify({'error': 'No message provided'}), 400
+            
+        message = data.get('message')
+        print("Sending message to API:", message)  # Debug log
+        
+        # Make the request to the external API
+        api_url = 'https://hazeyyyy-rest-apis.onrender.com/api/claude'
+        print("Making request to:", api_url)  # Debug log
+        
+        response = requests.get(
+            api_url,
+            params={'message': message},
+            headers={
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            timeout=30  # Add timeout
+        )
+        
+        print("API Response Status:", response.status_code)  # Debug log
+        print("API Response:", response.text)  # Debug log
+        
+        if response.status_code != 200:
+            return jsonify({
+                'error': f'External API returned status {response.status_code}',
+                'details': response.text
+            }), 500
+            
+        try:
+            response_data = response.json()
+            return jsonify(response_data)
+        except ValueError as e:
+            print("JSON parsing error:", str(e))  # Debug log
+            return jsonify({
+                'error': 'Invalid JSON response from external API',
+                'details': response.text
+            }), 500
+            
+    except requests.exceptions.RequestException as e:
+        print("Request error:", str(e))  # Debug log
+        return jsonify({
+            'error': 'Failed to connect to external API',
+            'details': str(e)
+        }), 500
+    except Exception as e:
+        print("Unexpected error:", str(e))  # Debug log
+        return jsonify({
+            'error': 'An unexpected error occurred',
+            'details': str(e)
+        }), 500
+        
+@app.route("/proxy/4o")
+def proxy_4o():
+    try:
+        message = request.args.get("message")
+        if not message:
+            return jsonify({"error": "No message provided"}), 400
+
+        # Decode base64 message
+        try:
+            # Add padding if needed
+            padding = 4 - (len(message) % 4)
+            if padding != 4:
+                message += '=' * padding
+                
+            decoded_message = base64.b64decode(message).decode('utf-8')
+        except Exception as e:
+            return jsonify({"error": f"Invalid base64 encoding: {str(e)}"}), 400
+
+        # Make request to the API
+        response = requests.get(
+            f"https://jonell01-ccprojectsapihshs.hf.space/api/chaitext?ask={quote(decoded_message)}"
+        )
+        
+        if response.status_code != 200:
+            return jsonify({"error": f"API error: {response.text}"}), response.status_code
+
+        return jsonify({"answer": response.text})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)
