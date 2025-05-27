@@ -8,10 +8,28 @@
       href="/static/images/playground-mode.png"
       type="image/png"
     />
+    <!-- CodeMirror CSS -->
     <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css"
       rel="stylesheet"
     />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/lint/lint.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldgutter.css"
+      rel="stylesheet"
+    />
+
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -143,6 +161,7 @@
         background-color: #1e1e1e;
         border-radius: 0 0 10px 10px;
         overflow: hidden;
+        position: relative;
       }
 
       .editor,
@@ -166,60 +185,278 @@
         display: block;
       }
 
-      .code-editor-content {
-        display: flex;
+      .CodeMirror {
         height: 100%;
+        font-family: "Fira Code", monospace;
+        font-size: 14px;
+        line-height: 1.6;
       }
 
-      .line-numbers {
-        width: 40px;
-        background: #2c2c2c;
+      .CodeMirror-gutters {
+        border-right: 1px solid #3a1464;
+        background-color: #2c2c2c;
+      }
+
+      .CodeMirror-linenumber {
         color: #888;
-        text-align: right;
-        padding: 10px 5px;
-        font-family: monospace;
-        font-size: 14px;
-        line-height: 20px;
-        overflow: hidden;
-        user-select: none;
       }
 
-      .code-area {
-        flex: 1;
-        padding: 10px;
-        border: none;
-        outline: none;
-        resize: none;
-        background: #1e1e1e;
-        color: white;
-        font-family: monospace;
-        font-size: 14px;
-        line-height: 20px;
-        overflow: auto;
+      .CodeMirror-cursor {
+        border-left: 2px solid var(--accent-color);
       }
 
-      /* Scrollbars */
-      .editor::-webkit-scrollbar,
-      .live-output::-webkit-scrollbar {
-        width: 8px;
-      }
-      .editor::-webkit-scrollbar-thumb,
-      .live-output::-webkit-scrollbar-thumb {
-        background: var(--accent-color);
-        border-radius: 10px;
+      .CodeMirror-selected {
+        background-color: rgba(255, 102, 196, 0.2);
       }
 
-      /* ---------------------------------- */
+      .CodeMirror-focused .CodeMirror-selected {
+        background-color: rgba(255, 102, 196, 0.3);
+      }
+
+      .CodeMirror-matchingbracket {
+        color: var(--accent-color) !important;
+        font-weight: bold;
+      }
+
+      .CodeMirror-matchingtag {
+        background-color: rgba(255, 102, 196, 0.1);
+      }
+
+      .CodeMirror-hints {
+        background-color: #2c2c2c;
+        border: 1px solid #3a1464;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .CodeMirror-hint {
+        color: #fff;
+        padding: 4px 8px;
+      }
+
+      .CodeMirror-hint-active {
+        background-color: var(--accent-color);
+        color: #fff;
+      }
+
       .tabs-container {
         display: flex;
         justify-content: space-between;
         background-color: var(--secondary-color);
         align-items: center;
+        padding: 0 20px;
       }
       .live-output-label {
         font-size: 16px;
         color: #fff;
         padding: 10px;
+      }
+
+      /* Loading State */
+      .editor-loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--bg-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .loader {
+        width: 48px;
+        height: 48px;
+        border: 5px solid var(--accent-color);
+        border-bottom-color: transparent;
+        border-radius: 50%;
+        display: inline-block;
+        box-sizing: border-box;
+        animation: rotation 1s linear infinite;
+      }
+
+      @keyframes rotation {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* AI Code Fix Styles */
+      .ai-fix-btn {
+        background-color: transparent;
+        color: var(--accent-color);
+        border: none;
+        padding: 8px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        margin-left: 20px;
+        font-size: 12px;
+      }
+
+      .ai-fix-btn:hover {
+        color: #fff;
+        text-shadow: 0 0 5px var(--accent-color);
+      }
+
+      .ai-fix-btn i {
+        font-size: 16px;
+      }
+
+      /* Modal Styles */
+      .ai-response {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--secondary-color);
+        padding: 30px;
+        border-radius: 15px;
+        max-width: 600px;
+        width: 90%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+      }
+
+      .ai-response.show {
+        display: block;
+      }
+
+      .ai-response-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--accent-color);
+      }
+
+      .ai-response-title {
+        color: var(--accent-color);
+        font-weight: bold;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .ai-response-close {
+        background: none;
+        border: none;
+        color: #fff;
+        cursor: pointer;
+        font-size: 24px;
+        padding: 0;
+        transition: color 0.3s ease;
+      }
+
+      .ai-response-close:hover {
+        color: var(--accent-color);
+      }
+
+      .ai-response-content {
+        color: #fff;
+        line-height: 1.6;
+        font-size: 16px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
+
+      /* Markdown styles */
+      .ai-response-content h1,
+      .ai-response-content h2,
+      .ai-response-content h3 {
+        color: var(--accent-color);
+        margin: 1em 0 0.5em 0;
+      }
+
+      .ai-response-content p {
+        margin: 0.5em 0;
+        white-space: pre-wrap;
+      }
+
+      .ai-response-content ul,
+      .ai-response-content ol {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+      }
+
+      .ai-response-content li {
+        margin: 0.3em 0;
+        white-space: pre-wrap;
+      }
+
+      .ai-response-content code {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: "Fira Code", monospace;
+        font-size: 0.9em;
+      }
+
+      .ai-response-content pre {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 1em;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 1em 0;
+        white-space: pre-wrap;
+      }
+
+      .ai-response-content pre code {
+        background: none;
+        padding: 0;
+        white-space: pre-wrap;
+        font-family: "Fira Code", monospace;
+        font-size: 0.9em;
+        color: #fff;
+      }
+
+      .ai-response-content blockquote {
+        border-left: 3px solid var(--accent-color);
+        margin: 1em 0;
+        padding-left: 1em;
+        color: #ccc;
+        white-space: pre-wrap;
+      }
+
+      .ai-response.loading .ai-response-content {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        justify-content: center;
+        min-height: 100px;
+      }
+
+      .ai-response.loading .loader {
+        width: 30px;
+        height: 30px;
+        border-width: 3px;
+      }
+
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 999;
+      }
+
+      .modal-overlay.show {
+        display: block;
       }
     </style>
   </head>
@@ -267,6 +504,10 @@
           <div class="tab active" data-lang="html">HTML</div>
           <div class="tab" data-lang="css">CSS</div>
           <div class="tab" data-lang="js">JavaScript</div>
+          <button class="ai-fix-btn" id="aiFixBtn">
+            <i class="fas fa-magic"></i>
+            Analyze Your Code with AI
+          </button>
         </div>
         <div class="live-output-label">
           <span>Live Output</span>
@@ -274,38 +515,32 @@
       </div>
 
       <div class="editor-container">
+        <div class="editor-loading">
+          <span class="loader"></span>
+        </div>
         <div class="editor">
           <!-- HTML Editor -->
           <div class="code-editor active" id="html-editor">
-            <div class="code-editor-content">
-              <div class="line-numbers" id="html-lines">1</div>
-              <textarea class="code-area" id="html-code" spellcheck="false">
+            <textarea id="html-code" spellcheck="false">
 &lt;h1 id="heading"&gt;Hello, Welcome to WebScape!&lt;/h1&gt;
 &lt;button onclick="changeColor()"&gt;Click Me!&lt;/button&gt;</textarea
-              >
-            </div>
+            >
           </div>
 
           <!-- CSS Editor -->
           <div class="code-editor" id="css-editor">
-            <div class="code-editor-content">
-              <div class="line-numbers" id="css-lines">1</div>
-              <textarea class="code-area" id="css-code" spellcheck="false">
+            <textarea id="css-code" spellcheck="false">
 h1 { color: blue; }</textarea
-              >
-            </div>
+            >
           </div>
 
           <!-- JS Editor -->
           <div class="code-editor" id="js-editor">
-            <div class="code-editor-content">
-              <div class="line-numbers" id="js-lines">1</div>
-              <textarea class="code-area" id="js-code" spellcheck="false">
+            <textarea id="js-code" spellcheck="false">
 function changeColor() {
     document.getElementById("heading").style.color = "red";
 }</textarea
-              >
-            </div>
+            >
           </div>
         </div>
 
@@ -313,9 +548,31 @@ function changeColor() {
         <div class="live-output">
           <iframe
             id="output-frame"
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-same-origin"
             style="width: 100%; height: 100%; border: none"
           ></iframe>
+        </div>
+
+        <div class="modal-overlay" id="modalOverlay"></div>
+        <div class="ai-response" id="aiResponse">
+          <div class="ai-response-header">
+            <div class="ai-response-title">
+              <i class="fas fa-robot"></i>
+              AI Analysis
+              <span
+                class="beta-badge fs-7 fw-bold bg-danger text-white px-1 border-radius-5"
+                style="font-size: 0.7rem"
+                >BETA</span
+              >
+            </div>
+            <button class="ai-response-close" id="aiResponseClose">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="ai-response-content">
+            <div class="loader"></div>
+            Analyzing your code...
+          </div>
         </div>
       </div>
     </div>
@@ -326,6 +583,411 @@ function changeColor() {
       crossorigin="anonymous"
     ></script>
 
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <!-- Add marked library for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchtags.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closetag.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/xml-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/html-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/javascript-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/css-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/anyword-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/xml-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/brace-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/xml-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/markdown-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/fold/comment-fold.min.js"></script>
+
     <script src="/static/playground.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const outputFrame = document.getElementById("output-frame");
+        const baseTag = document.createElement("base");
+        baseTag.href = "about:blank";
+        outputFrame.contentDocument.head.appendChild(baseTag);
+
+        // Initialize CodeMirror editors
+        const htmlEditor = CodeMirror.fromTextArea(
+          document.getElementById("html-code"),
+          {
+            mode: "htmlmixed",
+            theme: "dracula",
+            lineNumbers: true,
+            autoCloseTags: true,
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            matchTags: true,
+            foldGutter: true,
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+            extraKeys: {
+              Tab: function (cm) {
+                if (cm.somethingSelected()) {
+                  cm.indentSelection("add");
+                } else {
+                  cm.replaceSelection("  ", "end");
+                }
+              },
+            },
+            hintOptions: {
+              completeSingle: false,
+              hint: CodeMirror.hint.auto,
+            },
+          }
+        );
+
+        htmlEditor.on("inputRead", function (cm, change) {
+          if (change.text[0] !== " ") {
+            // Avoid triggering on space
+            cm.showHint({ completeSingle: false });
+          }
+        });
+
+        const cssEditor = CodeMirror.fromTextArea(
+          document.getElementById("css-code"),
+          {
+            mode: "css",
+            theme: "dracula",
+            lineNumbers: true,
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            foldGutter: true,
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+            extraKeys: {
+              Tab: function (cm) {
+                if (cm.somethingSelected()) {
+                  cm.indentSelection("add");
+                } else {
+                  cm.replaceSelection("  ", "end");
+                }
+              },
+            },
+            hintOptions: {
+              completeSingle: false,
+              hint: CodeMirror.hint.auto,
+            },
+          }
+        );
+
+        cssEditor.on("inputRead", function (cm, change) {
+          if (change.text[0] !== " ") {
+            // Avoid triggering on space
+            cm.showHint({ completeSingle: false });
+          }
+        });
+
+        const jsEditor = CodeMirror.fromTextArea(
+          document.getElementById("js-code"),
+          {
+            mode: "javascript",
+            theme: "dracula",
+            lineNumbers: true,
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            foldGutter: true,
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+            extraKeys: {
+              Tab: function (cm) {
+                if (cm.somethingSelected()) {
+                  cm.indentSelection("add");
+                } else {
+                  cm.replaceSelection("  ", "end");
+                }
+              },
+            },
+            hintOptions: {
+              completeSingle: false,
+              hint: CodeMirror.hint.auto,
+            },
+          }
+        );
+
+        jsEditor.on("inputRead", function (cm, change) {
+          if (change.text[0] !== " ") {
+            // Avoid triggering on space
+            cm.showHint({ completeSingle: false });
+          }
+        });
+
+        // Function to sanitize HTML
+        function sanitizeHTML(html) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          return doc.body.innerHTML;
+        }
+
+        // Function to validate and fix HTML
+        function validateHTML(html) {
+          const temp = document.createElement("div");
+          temp.innerHTML = html;
+
+          const unclosedTags = [];
+          const stack = [];
+          const regex = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi;
+          let match;
+
+          while ((match = regex.exec(html)) !== null) {
+            const tag = match[1].toLowerCase();
+            if (match[0].startsWith("</")) {
+              if (stack.length > 0 && stack[stack.length - 1] === tag) {
+                stack.pop();
+              }
+            } else if (!match[0].endsWith("/>")) {
+              stack.push(tag);
+            }
+          }
+
+          let fixedHTML = html;
+          while (stack.length > 0) {
+            const tag = stack.pop();
+            fixedHTML += `</${tag}>`;
+          }
+
+          return fixedHTML;
+        }
+
+        // Update the live output with sanitized and validated HTML
+        function updateOutput() {
+          const htmlCode = htmlEditor.getValue();
+          const cssCode = cssEditor.getValue();
+          const jsCode = jsEditor.getValue();
+
+          const validatedHTML = validateHTML(htmlCode);
+          const sanitizedHTML = sanitizeHTML(validatedHTML);
+
+          const outputDoc = outputFrame.contentDocument;
+          outputDoc.open();
+          outputDoc.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <style>${cssCode}</style>
+              </head>
+              <body>
+                ${sanitizedHTML}
+                <script>${jsCode}<\/script>
+              </body>
+            </html>
+          `);
+          outputDoc.close();
+        }
+
+        // Add event listeners to all editors
+        [htmlEditor, cssEditor, jsEditor].forEach((editor) => {
+          editor.on("change", updateOutput);
+        });
+
+        // Tab switching
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.addEventListener("click", function () {
+            // Remove active class from all tabs and editors
+            document
+              .querySelectorAll(".tab")
+              .forEach((t) => t.classList.remove("active"));
+            document
+              .querySelectorAll(".code-editor")
+              .forEach((e) => e.classList.remove("active"));
+
+            // Add active class to clicked tab and corresponding editor
+            this.classList.add("active");
+            const lang = this.getAttribute("data-lang");
+            document.getElementById(`${lang}-editor`).classList.add("active");
+
+            // Refresh the active editor
+            const editor =
+              lang === "html"
+                ? htmlEditor
+                : lang === "css"
+                ? cssEditor
+                : jsEditor;
+            editor.refresh();
+          });
+        });
+
+        // AI Code Fix functionality
+        const aiFixBtn = document.getElementById("aiFixBtn");
+        const aiResponse = document.getElementById("aiResponse");
+        const aiResponseClose = document.getElementById("aiResponseClose");
+        let currentEditor = htmlEditor;
+
+        // Update current editor when switching tabs
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.addEventListener("click", function () {
+            const lang = this.getAttribute("data-lang");
+            currentEditor =
+              lang === "html"
+                ? htmlEditor
+                : lang === "css"
+                ? cssEditor
+                : jsEditor;
+          });
+        });
+
+        // Function to properly encode Unicode strings to base64
+        function encodeBase64Unicode(str) {
+          // First encode the string to handle Unicode characters
+          const encodedStr = encodeURIComponent(str);
+          // Then convert to base64
+          const base64 = btoa(encodedStr);
+          // Add padding if needed
+          const padding = 4 - (base64.length % 4);
+          return padding === 4 ? base64 : base64 + "=".repeat(padding);
+        }
+
+        async function analyzeCode() {
+          // Clear previous response and show loading state
+          aiResponse.querySelector(".ai-response-content").innerHTML =
+            '<div class="loader"></div>Analyzing your code...';
+          aiResponse.classList.add("loading", "show");
+
+          // Get code from all editors
+          const htmlCode = htmlEditor.getValue();
+          const cssCode = cssEditor.getValue();
+          const jsCode = jsEditor.getValue();
+
+          try {
+            // Construct message with all three code sections
+            const message = `[Your Role: Point out any errors in this code or confirm it's fine. Analyze all three sections (HTML, CSS, and JavaScript) together to check for any mismatches or issues.]\n\nHTML:\n${htmlCode}\n\nCSS:\n${cssCode}\n\nJavaScript:\n${jsCode} \n\n[IMPORTANT!]: Provide response in straightforward manner, focusing on actual code issues like:\n- "The function name in onclick should be changeColor() not changered()"\n- "Missing closing tag for h1 element"\n- "Incorrect attribute name: should be class not className"\n- "Missing semicolon at the end of the statement", if no errors are found, say "No issues found in the code."`;
+
+            // Encode the message
+            const encodedMessage = encodeBase64Unicode(message);
+            console.log("Encoded message length:", encodedMessage.length); // Debug log
+
+            const response = await fetch(`/proxy/4o?message=${encodedMessage}`);
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Debug log for raw AI response
+            console.log("Raw AI response:", data);
+
+            aiResponse.classList.remove("loading");
+
+            // Show loading state for cleaning process
+            aiResponse.querySelector(".ai-response-content").innerHTML =
+              '<div class="loader"></div>Making magic happen...';
+            aiResponse.classList.add("loading");
+
+            // Encode the AI response to base64
+            const base64Response = btoa(data.answer);
+
+            // Clean the AI response using the external API
+            const cleanResponse = await fetch(
+              `https://hazeyyyy-rest-apis.onrender.com/api/gemini7?message=${encodeURIComponent(
+                base64Response
+              )}`
+            );
+            const cleanData = await cleanResponse.json();
+
+            // Debug log for cleaned response
+            console.log("Cleaned response:", cleanData);
+
+            // Check if the cleaned response is valid base64
+            let responseText = "No issues found in your code.";
+            try {
+              responseText = atob(cleanData.chat);
+            } catch (e) {
+              console.error("Failed to decode base64 response:", e);
+              responseText = cleanData.chat; // Fallback to using the raw response
+            }
+
+            aiResponse.classList.remove("loading");
+
+            // Convert newlines to <br> for HTML rendering
+            responseText = responseText.replace(/\n/g, "<br>");
+
+            // Configure marked options
+            marked.setOptions({
+              breaks: true, // Convert \n to <br>
+              gfm: true, // GitHub Flavored Markdown
+              headerIds: false,
+              mangle: false,
+              pedantic: false, // Don't be too strict about markdown
+              smartLists: true, // Use smarter list behavior
+              smartypants: true, // Use "smart" typographic punctuation
+            });
+
+            // Convert to markdown and render
+            const formattedResponse = marked.parse(responseText);
+
+            aiResponse.querySelector(".ai-response-content").innerHTML =
+              formattedResponse;
+          } catch (error) {
+            console.error("Error:", error);
+            aiResponse.classList.remove("loading");
+            aiResponse.querySelector(".ai-response-content").innerHTML =
+              "Sorry, there was an error analyzing your code.";
+          }
+        }
+
+        // Update modal handling
+        const modalOverlay = document.getElementById("modalOverlay");
+
+        aiFixBtn.addEventListener("click", () => {
+          modalOverlay.classList.add("show");
+          aiResponse.classList.add("show");
+          analyzeCode();
+        });
+
+        aiResponseClose.addEventListener("click", () => {
+          modalOverlay.classList.remove("show");
+          aiResponse.classList.remove("show");
+        });
+
+        modalOverlay.addEventListener("click", () => {
+          modalOverlay.classList.remove("show");
+          aiResponse.classList.remove("show");
+        });
+
+        // Initial update and remove loading state
+        Promise.all([
+          new Promise((resolve) => {
+            // Check if editor is already initialized
+            if (htmlEditor.getValue()) {
+              resolve();
+            } else {
+              htmlEditor.on("change", resolve, { once: true });
+            }
+          }),
+          new Promise((resolve) => {
+            if (cssEditor.getValue()) {
+              resolve();
+            } else {
+              cssEditor.on("change", resolve, { once: true });
+            }
+          }),
+          new Promise((resolve) => {
+            if (jsEditor.getValue()) {
+              resolve();
+            } else {
+              jsEditor.on("change", resolve, { once: true });
+            }
+          }),
+        ])
+          .then(() => {
+            updateOutput();
+            document.querySelector(".editor-loading").style.display = "none";
+          })
+          .catch(() => {
+            // Fallback in case of any issues
+            setTimeout(() => {
+              updateOutput();
+              document.querySelector(".editor-loading").style.display = "none";
+            }, 1000);
+          });
+      });
+    </script>
   </body>
 </html>
