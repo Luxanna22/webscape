@@ -8,7 +8,7 @@ import bcrypt
 import requests  # Add this import at the top
 import base64
 from urllib.parse import quote
-
+# Conect db
 def get_db_connection():
     return mysql.connector.connect(
     host="localhost",
