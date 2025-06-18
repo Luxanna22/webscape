@@ -83,7 +83,7 @@
       /* ------- */
       .sidebar {
         background-color: #3a1464;
-        width: 80px;
+        width: 90px;
         height: 100vh;
         position: fixed;
         top: 0;
@@ -93,6 +93,7 @@
         align-items: center;
         padding-top: 20px;
         gap: 50px;
+        z-index: 200;
       }
       .sidebar .nav-item {
         text-align: center;
@@ -123,7 +124,7 @@
       }
 
       main {
-        margin-left: 80px;
+        margin-left: 90px;
         height: 100vh;
         display: flex;
         flex-direction: column;
@@ -199,8 +200,8 @@
         }
       }
       .main-content {
-        margin-left: 80px;
-        padding: 1rem;
+        margin-left: 90px;
+        padding: 20px;
       }
 
       .card h2 {
@@ -267,19 +268,22 @@
         /></a>
         <br />
       </div>
-      <div class="nav-item levels">
+      <!-- <div class="nav-item levels">
         <i class="fas fa-bars" aria-hidden="true"></i>
         <span>Levels</span>
-      </div>
+      </div> -->
       <div class="nav-item badges">
         <i class="fas fa-award" aria-hidden="true"></i>
-        <span>Badges</span>
+        <span>Ranking</span>
       </div>
       <div class="nav-item options">
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
         <span>Options</span>
       </div>
-      <div class="nav-item account mt-auto mb-4" onclick="handleAccountClick()">
+      <div
+        class="nav-item account mt-auto mb-4"
+        onclick="window.location.href='/account'"
+      >
         <i class="fas fa-user-circle" aria-hidden="true"></i>
         <span>Account</span>
       </div>
@@ -303,14 +307,10 @@
           {% for level in levels %}
           <div class="col-12 col-md-4">
             <div class="card p-3 h-100 d-flex flex-column align-items-center">
-              <img
-                alt="{{ level.title }} logo"
-                class="card-img-top"
-                height="200"
-                src="/static/images/{{ level.title }}-logo.png"
-                width="300"
-                style="scale: {% if level.id == 1 %}1.5{% endif %}"
-              />
+              <img alt="{{ level.title }} logo" class="card-img-top"
+              height="200" src="{{ level.image_url or ('/static/images/' ~
+              level.title ~ '-logo.png') }}" width="300" {% if level.id == 1
+              %}style="transform: scale(1.5);"{% endif %} />
               <h2>{{ level.title }}</h2>
               <p>{{ level.description }}</p>
               <button
