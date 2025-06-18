@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chapter Content | WebScape</title>
+    <link
+      rel="icon"
+      href="/static/images/playground-mode.png"
+      type="image/png"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
+
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #371569;
+        --accent-color: #ff66c4;
+        --purple-accent: #7e31ef;
+      }
+
+      #quiz-form {
+        margin-top: 2rem;
+      }
+      button#next-btn:disabled {
+        background-color: gray;
+        color: white;
+      }
+
+      * {
+        box-sizing: border-box;
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--bg-color);
+        color: #a9a9a9;
+        font-family: "Montserrat", sans-serif;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        background-color: #3a1464;
+        width: 90px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 50px;
+        z-index: 200;
+      }
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+      }
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+      .sidebar .nav-item.badges i {
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item.account i {
+        font-size: 32px;
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+
+      .main-content {
+        margin-left: 90px;
+        padding: 20px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .section-header,
+      .section-header a {
+        color: white;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 24px;
+        margin-bottom: 10px;
+        text-decoration: none;
+      }
+      .section-header:hover,
+      .section-header a:hover {
+        color: var(--accent-color);
+      }
+      /*  */
+      .section-title,
+      .section-title a {
+        color: white;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 24px;
+        margin-bottom: 10px;
+        text-decoration: none;
+      }
+      .section-title:hover,
+      .section-title a:hover {
+        color: var(--accent-color);
+      }
+      .section-content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        margin: auto 20%;
+        border-radius: 10px;
+      }
+      .section-footer {
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 0;
+        background-color: transparent;
+        position: fixed;
+        bottom: 0;
+        left: 80px;
+        width: calc(100% - 80px);
+        transition: background-color 0.3s ease;
+      }
+      .section-footer.has-result {
+        background-color: #4d1e91;
+      }
+      .section-footer.has-result .end-btn {
+        background-color: var(--accent-color);
+      }
+      .section-footer.has-result .end-btn:hover {
+        background-color: var(--purple-accent);
+      }
+      .dynamic-text-result {
+        padding: 20px;
+        overflow-y: auto;
+      }
+      .dynamic-text-result-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: auto 20%;
+      }
+      .end-btn {
+        background-color: var(--purple-accent);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 20px;
+        cursor: pointer;
+        font-size: 20px;
+        font-family: "Luckiest Guy", cursive;
+        transition: background-color 0.3s ease;
+      }
+      .end-btn:hover {
+        background-color: var(--accent-color);
+        color: white;
+      }
+      .end-btn:active {
+        background-color: var(--accent-color);
+        color: white;
+      }
+      .progress-bar {
+        position: fixed;
+        top: 0;
+        left: 80px;
+        width: 100%;
+        height: 4px;
+        background-color: var(--secondary-color);
+      }
+      .progress-bar .progress {
+        height: 10px;
+        background-color: var(--purple-accent);
+        transition: width 0.05s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .form-check {
+        margin-bottom: 1.3rem;
+        padding: 0;
+      }
+      .form-check-input {
+        display: none;
+      }
+      .form-check-label {
+        display: block;
+        padding: 16px 24px;
+        background-color: var(--purple-accent);
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .form-check-label:hover {
+        background-color: var(--accent-color);
+      }
+      .form-check-input:checked + .form-check-label {
+        background-color: var(--accent-color);
+        box-shadow: 0 0 10px rgba(255, 102, 196, 0.5);
+      }
+      .form-check-input:checked.incorrect + .form-check-label {
+        background-color: #dc3545;
+        box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+      }
+      .form-check-label.correct {
+        border: 2px solid #28a745;
+        box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+      }
+      /* Disable hover and interaction when quiz is answered */
+      .quiz-answered .form-check-label {
+        cursor: default;
+        opacity: 0.7;
+      }
+      .quiz-answered .form-check-label:hover {
+        background-color: var(--purple-accent);
+      }
+      .quiz-answered .form-check-input:checked + .form-check-label,
+      .quiz-answered .form-check-label.correct {
+        opacity: 1;
+      }
+
+      .loader {
+        width: 48px;
+        height: 48px;
+        border: 5px solid var(--accent-color);
+        border-bottom-color: transparent;
+        border-radius: 50%;
+        display: inline-block;
+        box-sizing: border-box;
+        animation: rotation 1s linear infinite;
+      }
+
+      @keyframes rotation {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loader-container {
+        position: fixed;
+        top: 0;
+        left: 90px;
+        width: calc(100% - 90px);
+        height: 100%;
+        background-color: var(--bg-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loader -->
+    <div class="loader-container" id="loader-container">
+      <span class="loader"></span>
+    </div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <div class="nav-item levels">
+        <a href="/"
+          ><img
+            src="/static/images/book-icon.png"
+            alt="webscape-logo"
+            width="50px"
+        /></a>
+        <br />
+      </div>
+      <div class="nav-item levels">
+        <i class="fas fa-bars" aria-hidden="true"></i>
+        <span>Levels</span>
+      </div>
+      <div class="nav-item badges">
+        <i class="fas fa-award" aria-hidden="true"></i>
+        <span>Badges</span>
+      </div>
+      <div class="nav-item options">
+        <i class="fas fa-paint-brush" aria-hidden="true"></i>
+        <span>Options</span>
+      </div>
+      <div class="nav-item account mt-auto mb-4">
+        <i class="fas fa-user-circle" aria-hidden="true"></i>
+        <span>Account</span>
+      </div>
+    </nav>
+    <!-- top-most line progress bar -->
+    <div class="progress-bar">
+      <div
+        class="progress"
+        style="width: {{ ((current_page - 1) / total_pages) * 100 }}%"
+      ></div>
+    </div>
+
+    <div class="main-content">
+      <div
+        class="section-header d-flex justify-content-between align-items-center"
+        style="margin-bottom: 20px"
+      >
+        <!-- Previous button -->
+        <div style="flex: 1; text-align: left">
+          <button
+            id="prev-btn"
+            class="btn btn-link text-white"
+            style="font-size: 1.5rem; text-decoration: none; display: none"
+            onclick="goPreviousPage()"
+          >
+            <i class="fas fa-angle-left"></i> Previous
+          </button>
+        </div>
+        <!-- Chapter title -->
+        <div
+          style="
+            flex: 2;
+            text-align: center;
+            font-family: 'Luckiest Guy', cursive;
+            font-size: 2rem;
+            color: white;
+          "
+        >
+          {{ chapter.title }}
+        </div>
+        <!-- Exit button -->
+        <div style="flex: 1; text-align: right">
+          <button
+            class="btn btn-link text-white"
+            style="font-size: 1.5rem; text-decoration: none"
+            onclick="exitLesson()"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="section-content" id="lesson-content-section">
+        {% set page = lesson_pages[current_page-1] %} {% if page.page_type ==
+        'text_image' %} {% if page.image_url %}
+        <img
+          src="{{ page.image_url }}"
+          alt="{{ page.title }}"
+          style="
+            width: auto;
+            height: 200px;
+            text-align: center;
+            display: block;
+            margin: 0 auto 20px auto;
+          "
+        />
+        {% endif %}
+        <div class="content-section">
+          <h2>{{ page.title }}</h2>
+          <div class="content">{{ page.content|safe }}</div>
+          {% if page.notes %}
+          <div
+            class="notes-section mt-3 p-3"
+            style="
+              background-color: #240e44;
+              border: 1px solid #a259ff;
+              border-radius: 8px;
+            "
+          >
+            <h5 style="color: #a259ff; margin-bottom: 10px">Notes</h5>
+            <p style="color: #d3d3d3; margin-bottom: 0">{{ page.notes }}</p>
+          </div>
+          {% endif %}
+        </div>
+        {% elif page.page_type == 'text_code' %}
+        <p>{{ page.content|safe }}</p>
+        {% if page.code_example %}
+        <pre><code class="language-html">{{ page.code_example }}</code></pre>
+        {% endif %} {% elif page.page_type == 'quiz' %}
+        <p>{{ page.content|safe }}</p>
+        <form id="quiz-form">
+          {% if page.choices %} {% for choice in page.choices %}
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="quiz_choice"
+              id="choice{{ loop.index }}"
+              value="{{ choice.id }}"
+            />
+            <label class="form-check-label" for="choice{{ loop.index }}">
+              {{ choice.choice_text }}
+            </label>
+          </div>
+          {% endfor %} {% else %}
+          <p><em>No choices available.</em></p>
+          {% endif %}
+        </form>
+        {% elif page.page_type == 'playground' %}
+        <p>{{ page.content|safe }}</p>
+        <textarea
+          id="playground-editor"
+          style="width: 100%; height: 200px; font-family: monospace"
+        ></textarea>
+        <button class="btn btn-success mt-2" onclick="runPlaygroundCode()">
+          Run
+        </button>
+        <div
+          id="playground-output"
+          class="mt-2"
+          style="background: #222; padding: 10px; color: #fff"
+        ></div>
+        {% else %}
+        <p>{{ page.content|safe }}</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="section-footer">
+      <div class="dynamic-text-result-container">
+        <div class="dynamic-text-result" id="dynamic-text-result">
+          <div id="quiz-feedback" class="mt-2"></div>
+        </div>
+      </div>
+      <button class="btn end-btn" id="next-btn" onclick="footerNextAction()">
+        {{ lesson_pages[current_page-1].next_button_text }}
+      </button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-html.min.js"></script>
+    <script>
+      let currentPage = {{ current_page }};
+      const totalPages = {{ total_pages }};
+      const chapterId = {{ chapter.id }};
+      const level = "{{ chapter.level_title }}";
+
+      // Hide loader when content is loaded with minimum 2 seconds
+      window.addEventListener('load', function() {
+        const loader = document.getElementById('loader-container');
+        const startTime = Date.now();
+        const minimumLoadTime = 2000; // 2 seconds in milliseconds
+
+        function hideLoader() {
+          const elapsedTime = Date.now() - startTime;
+          const remainingTime = Math.max(0, minimumLoadTime - elapsedTime);
+
+          setTimeout(() => {
+            if (loader) {
+              loader.style.display = 'none';
+            }
+          }, remainingTime);
+        }
+
+        hideLoader();
+      });
+
+      // Only define quizChoices if this is a quiz page with choices
+      {% if lesson_pages[current_page-1].page_type == 'quiz' and lesson_pages[current_page-1].choices %}
+      const quizChoices = {{ lesson_pages[current_page-1].choices|tojson }};
+      {% else %}
+      const quizChoices = null;
+      {% endif %}
+
+      // Animate progress bar from previous to new value
+      function animateProgressBar(from, to) {
+        const progressBar = document.querySelector('.progress');
+        let start = null;
+        const duration = 200;
+        function step(timestamp) {
+          if (!start) start = timestamp;
+          const progress = Math.min((timestamp - start) / duration, 1);
+          const value = from + (to - from) * progress;
+          progressBar.style.width = `${value}%`;
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          }
+        }
+        requestAnimationFrame(step);
+      }
+
+      // Initial progress bar animation
+      document.addEventListener('DOMContentLoaded', function() {
+        const progress = ((currentPage - 1) / totalPages) * 100;
+        animateProgressBar(0, progress);
+      });
+
+      // Show/hide Previous button based on currentPage
+      function updatePrevButton() {
+        const prevBtn = document.getElementById('prev-btn');
+        if (currentPage > 1) {
+          prevBtn.style.display = '';
+        } else {
+          prevBtn.style.display = 'none';
+        }
+      }
+      document.addEventListener('DOMContentLoaded', updatePrevButton);
+
+      // Quiz state for footer button
+      let quizAnswered = false;
+      let quizCorrect = false;
+      let quizOriginalNextText = null;
+      let quizPage = false;
+
+      function updateQuizFooterButton() {
+        const nextBtn = document.getElementById('next-btn');
+        if (quizPage) {
+          if (!quizAnswered) {
+            nextBtn.textContent = 'Check';
+            nextBtn.disabled = !document.querySelector('input[name="quiz_choice"]:checked');
+          } else {
+            nextBtn.textContent = quizOriginalNextText || 'Next';
+            nextBtn.disabled = false;
+          }
+        } else {
+          nextBtn.textContent = quizOriginalNextText || nextBtn.textContent;
+          nextBtn.disabled = false;
+        }
+      }
+
+      function footerNextAction() {
+        if (quizPage && !quizAnswered) {
+          checkQuizAnswer();
+        } else {
+          nextPage();
+        }
+      }
+
+      // Quiz answer checking (client-side only, for demo)
+      function checkQuizAnswer() {
+        const form = document.getElementById('quiz-form');
+        const selected = form.querySelector('input[name="quiz_choice"]:checked');
+        const feedback = document.getElementById('quiz-feedback');
+        const footer = document.querySelector('.section-footer');
+
+        if (!selected) {
+          feedback.textContent = 'Please select an answer.';
+          feedback.style.color = 'orange';
+          return;
+        }
+
+        // Reset previous highlights
+        form.querySelectorAll('.form-check-input').forEach(input => {
+          input.classList.remove('incorrect');
+          input.nextElementSibling.classList.remove('correct');
+        });
+
+        const selectedId = parseInt(selected.value);
+        const correct = quizChoices && quizChoices.find(c => c.id === selectedId && c.is_correct);
+
+        if (correct) {
+          // Random feedback messages for correct answers
+          const correctMessages = [
+            "Perfect!", "Excellent!", "Brilliant!", "Spot on!", "Amazing!",
+            "Fantastic!", "Outstanding!", "Superb!", "Wonderful!", "Great job!",
+            "You got it!", "That's right!", "Exactly!", "Well done!", "Impressive!"
+          ];
+          const randomMessage = correctMessages[Math.floor(Math.random() * correctMessages.length)];
+          const customMessage = "{{ page.correct_message }}";
+
+          feedback.innerHTML = `
+            <div style="color: limegreen; font-size: 1.5rem">${randomMessage}</div>
+            ${customMessage ? `<div class="mt-2" style="color: #d3d3d3">${customMessage}</div>` : ''}
+          `;
+          quizCorrect = true;
+        } else {
+          // Random feedback messages for incorrect answers
+          const incorrectMessages = [
+            "Not quite.", "Almost there.", "Try again.", "Not exactly.", "Close!",
+            "Almost!", "Keep trying.", "Not quite right.", "Give it another shot.", "Not this time.",
+            "Almost got it.", "Not quite there.", "Try once more.", "Not the one.", "Almost correct."
+          ];
+          const randomMessage = incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
+          feedback.innerHTML = `<div style="color: red; font-size: 1.5rem">${randomMessage}</div>`;
+          quizCorrect = false;
+
+          // Highlight incorrect choice
+          selected.classList.add('incorrect');
+
+          // Highlight correct answer
+          const correctChoice = quizChoices.find(c => c.is_correct);
+          if (correctChoice) {
+            const correctInput = form.querySelector(`input[value="${correctChoice.id}"]`);
+            if (correctInput) {
+              correctInput.nextElementSibling.classList.add('correct');
+            }
+          }
+        }
+
+        // Disable all choices
+        form.classList.add('quiz-answered');
+        form.querySelectorAll('input[name="quiz_choice"]').forEach(input => {
+          input.disabled = true;
+        });
+
+        quizAnswered = true;
+        footer.classList.add('has-result');
+        updateQuizFooterButton();
+      }
+
+      // Listen for quiz choice selection to enable the button
+      function setupQuizChoiceListeners() {
+        const quizChoicesInputs = document.querySelectorAll('input[name="quiz_choice"]');
+        quizChoicesInputs.forEach(input => {
+          input.addEventListener('change', function() {
+            updateQuizFooterButton();
+          });
+        });
+      }
+
+      // AJAX navigation for next/previous page
+      function loadLessonPage(pageNum) {
+        fetch(`/user/classic/${level}/${chapterId}/ajax?page=${pageNum}`)
+          .then(response => response.json())
+          .then(data => {
+            document.getElementById('lesson-content-section').innerHTML = data.html;
+            const prevProgress = ((currentPage - 1) / totalPages) * 100;
+            const newProgress = ((pageNum - 1) / totalPages) * 100;
+            animateProgressBar(prevProgress, newProgress);
+            currentPage = pageNum;
+            if (window.Prism) { Prism.highlightAll(); }
+            updatePrevButton();
+            // Quiz/next button logic
+            quizAnswered = false;
+            quizCorrect = false;
+            quizPage = false;
+            quizOriginalNextText = data.next_button_text || 'Next';
+            const nextBtn = document.getElementById('next-btn');
+            // Clear dynamic text result (quiz feedback)
+            document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
+            if (document.getElementById('quiz-form')) {
+              quizPage = true;
+              nextBtn.textContent = 'Check';
+              nextBtn.disabled = true;
+              setupQuizChoiceListeners();
+            } else {
+              nextBtn.textContent = quizOriginalNextText;
+              nextBtn.disabled = false;
+            }
+          });
+      }
+
+      // On initial load, set up quiz/next button logic
+      document.addEventListener('DOMContentLoaded', function() {
+        const nextBtn = document.getElementById('next-btn');
+        quizAnswered = false;
+        quizCorrect = false;
+        quizPage = false;
+        quizOriginalNextText = nextBtn.textContent;
+        if (document.getElementById('quiz-form')) {
+          quizPage = true;
+          nextBtn.textContent = 'Check';
+          nextBtn.disabled = !document.querySelector('input[name="quiz_choice"]:checked');
+          setupQuizChoiceListeners();
+        } else {
+          nextBtn.textContent = quizOriginalNextText;
+          nextBtn.disabled = false;
+        }
+      });
+
+      function nextPage() {
+        if (currentPage < totalPages) {
+          // Update progress
+          fetch(`/user/classic/${level}/${chapterId}/progress`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              page_num: currentPage,
+              total_pages: totalPages
+            })
+          }).then(() => {
+            // Move to next page via AJAX
+            document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
+            loadLessonPage(currentPage + 1);
+            // remove class has-result to section-footer
+            document.querySelector('.section-footer').classList.remove('has-result');
+          });
+
+        } else {
+          // Chapter completed
+          window.location.href = `/user/classic/${level}`;
+        }
+      }
+
+      function goPreviousPage() {
+        if (currentPage > 1) {
+          document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
+          loadLessonPage(currentPage - 1);
+        }
+        // remove class has-result to section-footer
+        document.querySelector('.section-footer').classList.remove('has-result');
+      }
+
+      function exitLesson() {
+        window.location.href = `/user/classic/${level}`;
+      }
+
+      // Playground code runner (HTML/JS only, for demo)
+      function runPlaygroundCode() {
+        const code = document.getElementById('playground-editor').value;
+        const output = document.getElementById('playground-output');
+        try {
+          output.innerHTML = '';
+          const iframe = document.createElement('iframe');
+          iframe.style.width = '100%';
+          iframe.style.height = '150px';
+          iframe.style.background = '#fff';
+          output.appendChild(iframe);
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          doc.open();
+          doc.write(code);
+          doc.close();
+        } catch (e) {
+          output.textContent = 'Error running code: ' + e;
+        }
+      }
+
+      function checkAnswer() {
+        const selectedChoice = document.querySelector('input[name="choice"]:checked');
+        if (!selectedChoice) {
+          alert("Please select an answer");
+          return;
+        }
+
+        const isCorrect = selectedChoice.value === "true";
+
+        // Random feedback messages
+        const correctMessages = [
+          "Perfect!", "Excellent!", "Brilliant!", "Spot on!", "Amazing!",
+          "Fantastic!", "Outstanding!", "Superb!", "Wonderful!", "Great job!",
+          "You got it!", "That's right!", "Exactly!", "Well done!", "Impressive!"
+        ];
+
+        const incorrectMessages = [
+          "Not quite.", "You'll get it next time.", "Ouch, not really.", "Not exactly.", "Close!",
+          "Nahh!", "Keep trying.", "Not quite right.", "Incorrect.", "Not this time.",
+          "Oops, that's wrong.", "Not quite there.", "Try once more.", "Not the one.", "Nice try."
+        ];
+
+        // Get random message
+        const randomMessage = isCorrect
+          ? correctMessages[Math.floor(Math.random() * correctMessages.length)]
+          : incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
+
+        // Get custom message if available
+        const customMessage = isCorrect ? "{{ page.correct_message }}" : "";
+
+        // Show feedback message
+        const feedbackDiv = document.createElement("div");
+        feedbackDiv.className = `alert ${isCorrect ? "alert-success" : "alert-danger"} mt-3`;
+        feedbackDiv.innerHTML = `
+          <div style="color: ${isCorrect ? '#28a745' : '#dc3545'}">${randomMessage}</div>
+          ${customMessage ? `<div class="mt-2" style="color: #d3d3d3">${customMessage}</div>` : ''}
+        `;
+        document.querySelector(".quiz-choices").appendChild(feedbackDiv);
+
+        // Disable all choices
+        document.querySelectorAll('input[name="choice"]').forEach((input) => {
+          input.disabled = true;
+        });
+        document.querySelector(".quiz-choices").classList.add("quiz-answered");
+
+        // Show next button if correct
+        if (isCorrect) {
+          document.getElementById("next-btn").style.display = "block";
+        }
+      }
+    </script>
+  </body>
+</html>
