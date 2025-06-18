@@ -463,6 +463,7 @@
       const totalPages = {{ total_pages }};
       const chapterId = {{ chapter.id }};
       const level = "{{ chapter.level_title }}";
+      let quizChoices = null;  // Initialize as null, will be set after AJAX load
 
       // Hide loader when content is loaded with minimum 2 seconds
       window.addEventListener('load', function() {
@@ -483,13 +484,6 @@
 
         hideLoader();
       });
-
-      // Only define quizChoices if this is a quiz page with choices
-      {% if lesson_pages[current_page-1].page_type == 'quiz' and lesson_pages[current_page-1].choices %}
-      const quizChoices = {{ lesson_pages[current_page-1].choices|tojson }};
-      {% else %}
-      const quizChoices = null;
-      {% endif %}
 
       // Animate progress bar from previous to new value
       function animateProgressBar(from, to) {
@@ -574,10 +568,20 @@
           input.nextElementSibling.classList.remove('correct');
         });
 
-        const selectedId = parseInt(selected.value);
-        const correct = quizChoices && quizChoices.find(c => c.id === selectedId && c.is_correct);
+        // Get the selected choice ID and compare with correct answer
+        const selectedId = selected.value;
+        console.log('Selected ID:', selectedId);
+        console.log('Quiz Choices:', quizChoices);
 
-        if (correct) {
+        // Find the correct choice
+        const correctChoice = quizChoices.find(c => c.is_correct);
+        console.log('Correct Choice:', correctChoice);
+
+        // Compare the selected ID with the correct choice ID
+        const isCorrect = correctChoice && selectedId === correctChoice.id.toString();
+        console.log('Is Correct:', isCorrect);
+
+        if (isCorrect) {
           // Random feedback messages for correct answers
           const correctMessages = [
             "Perfect!", "Excellent!", "Brilliant!", "Spot on!", "Amazing!",
@@ -595,9 +599,9 @@
         } else {
           // Random feedback messages for incorrect answers
           const incorrectMessages = [
-            "Not quite.", "Almost there.", "Try again.", "Not exactly.", "Close!",
-            "Almost!", "Keep trying.", "Not quite right.", "Give it another shot.", "Not this time.",
-            "Almost got it.", "Not quite there.", "Try once more.", "Not the one.", "Almost correct."
+            "Not quite.", "You'll get it next time.", "Ouch, not really.", "Not exactly.", "Close!",
+            "Nahh!", "Keep trying.", "Not quite right.", "Incorrect.", "Not this time.",
+            "Oops, that's wrong.", "Not quite there.", "Try once more.", "Not the one.", "Nice try."
           ];
           const randomMessage = incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
           feedback.innerHTML = `<div style="color: red; font-size: 1.5rem">${randomMessage}</div>`;
@@ -607,7 +611,6 @@
           selected.classList.add('incorrect');
 
           // Highlight correct answer
-          const correctChoice = quizChoices.find(c => c.is_correct);
           if (correctChoice) {
             const correctInput = form.querySelector(`input[value="${correctChoice.id}"]`);
             if (correctInput) {
@@ -637,6 +640,18 @@
         });
       }
 
+      // On initial load, set up quiz/next button logic
+      document.addEventListener('DOMContentLoaded', function() {
+        // Load initial page content via AJAX to ensure consistency
+        loadLessonPage(currentPage);
+
+        const nextBtn = document.getElementById('next-btn');
+        quizAnswered = false;
+        quizCorrect = false;
+        quizPage = false;
+        quizOriginalNextText = nextBtn.textContent;
+      });
+
       // AJAX navigation for next/previous page
       function loadLessonPage(pageNum) {
         fetch(`/user/classic/${level}/${chapterId}/ajax?page=${pageNum}`)
@@ -662,30 +677,14 @@
               nextBtn.textContent = 'Check';
               nextBtn.disabled = true;
               setupQuizChoiceListeners();
+              // Initialize quiz choices after the form is loaded
+              initializeQuizChoices();
             } else {
               nextBtn.textContent = quizOriginalNextText;
               nextBtn.disabled = false;
             }
           });
       }
-
-      // On initial load, set up quiz/next button logic
-      document.addEventListener('DOMContentLoaded', function() {
-        const nextBtn = document.getElementById('next-btn');
-        quizAnswered = false;
-        quizCorrect = false;
-        quizPage = false;
-        quizOriginalNextText = nextBtn.textContent;
-        if (document.getElementById('quiz-form')) {
-          quizPage = true;
-          nextBtn.textContent = 'Check';
-          nextBtn.disabled = !document.querySelector('input[name="quiz_choice"]:checked');
-          setupQuizChoiceListeners();
-        } else {
-          nextBtn.textContent = quizOriginalNextText;
-          nextBtn.disabled = false;
-        }
-      });
 
       function nextPage() {
         if (currentPage < totalPages) {
@@ -794,6 +793,22 @@
         // Show next button if correct
         if (isCorrect) {
           document.getElementById("next-btn").style.display = "block";
+        }
+      }
+
+      // Add this function to properly initialize quiz choices
+      function initializeQuizChoices() {
+        const quizForm = document.getElementById('quiz-form');
+        if (quizForm) {
+          quizChoices = [];  // Reset quizChoices array
+          quizForm.querySelectorAll('input[name="quiz_choice"]').forEach(input => {
+            const choiceId = input.value;
+            // Convert the data-is-correct attribute to a boolean
+            const isCorrect = input.getAttribute('data-is-correct') === '1';
+            quizChoices.push({ id: choiceId, is_correct: isCorrect });
+            console.log('Added choice:', { id: choiceId, is_correct: isCorrect });
+          });
+          console.log('Quiz choices initialized:', quizChoices);  // Debug log
         }
       }
     </script>
