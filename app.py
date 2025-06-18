@@ -5,9 +5,23 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 import json
 from functools import wraps
 import bcrypt
-import requests  # Add this import at the top
+import requests 
 import base64
-from urllib.parse import quote
+from urllib.parse import quote, unquote
+from werkzeug.utils import secure_filename
+import os
+import math
+import time
+
+# Google Analytics Measurement ID
+GA_MEASUREMENT_ID = 'G-8N1JFLPGQ0'  # Measurement ID
+
+# Configure upload settings
+UPLOAD_FOLDER = 'static/uploads/lesson_images'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_db_connection():
     return mysql.connector.connect(
@@ -20,6 +34,23 @@ def get_db_connection():
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Add Google Analytics context processor
+@app.context_processor
+def inject_ga():
+    return {
+        'ga_measurement_id': GA_MEASUREMENT_ID,
+        'ga_script': f'''
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id={GA_MEASUREMENT_ID}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){{dataLayer.push(arguments);}}
+            gtag('js', new Date());
+            gtag('config', '{GA_MEASUREMENT_ID}');
+        </script>
+        '''
+    }
 
 # Store active queues and matches
 code_queue = []  # Will store tuples of (socket_id, user_id)
@@ -141,6 +172,10 @@ def logout():
 def playground():
     return render_template('playground.html')
 
+@app.route('/rankings')
+def rankings():
+    return render_template('rankings.html')
+
 # -------------------------------------------------------USER--------------------------------------------------------------------#
 @app.route('/user/classic')
 @login_required
@@ -149,8 +184,8 @@ def user_classic():
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor(dictionary=True)
         
-        # Fetch all levels with their titles and descriptions
-        query = "SELECT id, title, description FROM levels"
+        # Fetch all levels with their titles, descriptions, and image URLs
+        query = "SELECT id, title, description, image_url FROM levels"
         db_cursor.execute(query)
         levels = db_cursor.fetchall()
         
@@ -167,6 +202,7 @@ def user_classic():
 @app.route('/user/classic/<level>')
 @login_required
 def user_chapter_list(level):
+    level = unquote(level)
     try:
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor(dictionary=True)
@@ -205,6 +241,7 @@ def user_chapter_list(level):
 @app.route('/user/classic/<level>/<int:chapter_id>')
 @login_required
 def user_lesson_content(level, chapter_id):
+    level = unquote(level)
     try:
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor(dictionary=True)
@@ -230,7 +267,13 @@ def user_lesson_content(level, chapter_id):
         """
         db_cursor.execute(content_query, (chapter_id,))
         lesson_pages = db_cursor.fetchall()
-        
+
+        # For quiz pages, fetch choices from lesson_choices
+        for page in lesson_pages:
+            if page.get('page_type') == 'quiz':
+                db_cursor.execute("SELECT id, choice_text, is_correct FROM lesson_choices WHERE lesson_content_id = %s", (page['id'],))
+                page['choices'] = db_cursor.fetchall()
+
         if not lesson_pages:
             return redirect(url_for('user_chapter_list', level=level))
         
@@ -242,14 +285,37 @@ def user_lesson_content(level, chapter_id):
         db_cursor.execute(progress_query, (session['user_id'], chapter_id))
         progress = db_cursor.fetchone()
         
-        current_page = 1
-        if progress:
-            current_page = min(progress['progress'] + 1, len(lesson_pages))
+        # Get the requested page number from URL parameter
+        requested_page = request.args.get('page', type=int)
+        
+        # Calculate current page
+        if requested_page is not None:
+            # If a specific page was requested, use it (but validate it)
+            current_page = min(max(1, requested_page), len(lesson_pages))
+        else:
+            # Otherwise use progress or default to 1
+            current_page = 1
+            if progress:
+                # Calculate the page number based on progress percentage
+                if progress['progress'] <= 0:
+                    current_page = 1
+                elif progress['progress'] >= 100:
+                    current_page = len(lesson_pages)
+                else:
+                    progress_page = math.ceil((progress['progress'] / 100) * len(lesson_pages))
+                    current_page = min(max(1, progress_page + 1), len(lesson_pages))
+        
+        # Get the current page content
+        current_page_content = next((page for page in lesson_pages if page['page_num'] == current_page), None)
+        
+        if not current_page_content:
+            return redirect(url_for('user_chapter_list', level=level))
         
         return render_template('user/lesson-content.html',
                              chapter=chapter,
                              lesson_pages=lesson_pages,
                              current_page=current_page,
+                             current_page_content=current_page_content,
                              total_pages=len(lesson_pages))
     except Exception as e:
         print("Database error:", str(e))
@@ -270,6 +336,18 @@ def update_lesson_progress(level, chapter_id):
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor()
         
+        # Get total number of pages for this chapter
+        db_cursor.execute("""
+            SELECT COUNT(*) 
+            FROM lesson_content 
+            WHERE chapter_id = %s
+        """, (chapter_id,))
+        total_pages = db_cursor.fetchone()[0]
+        
+        # Calculate progress percentage based on current page and total pages
+        progress = (page_num / total_pages) * 100 if total_pages > 0 else 0
+        completed = page_num >= total_pages
+        
         # Update or insert progress
         upsert_query = """
         INSERT INTO user_progress (user_id, chapter_id, progress, completed)
@@ -279,14 +357,15 @@ def update_lesson_progress(level, chapter_id):
         completed = VALUES(completed)
         """
         
-        # Calculate progress percentage and completion
-        progress = (page_num / data.get('total_pages', 1)) * 100
-        completed = page_num >= data.get('total_pages', 1)
-        
         db_cursor.execute(upsert_query, (session['user_id'], chapter_id, progress, completed))
         db_connection.commit()
         
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'progress': progress,
+            'completed': completed,
+            'total_pages': total_pages
+        })
     except Exception as e:
         print("Database error:", str(e))
         return jsonify({'success': False, 'error': str(e)})
@@ -320,8 +399,282 @@ def user_competitive_quiz():
 # -------------------------------------------------------ADMIN------------------------------------------------------------------- #
 # admin>dashboard.html
 @app.route('/admin/dashboard')
+@login_required
 def admin_dashboard():
+    if session.get('role') != 'admin':
+        return redirect(url_for('home'))
     return render_template('admin/dashboard.html')
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    if session.get('role') != 'admin':
+        return redirect(url_for('home'))
+    return render_template('admin/users.html')
+
+@app.route('/admin/levels')
+@login_required
+def admin_levels():
+    if session.get('role') != 'admin':
+        return redirect(url_for('home'))
+    
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Fetch all levels with their chapter counts
+        query = """
+            SELECT l.*, COUNT(c.id) as chapter_count 
+            FROM levels l 
+            LEFT JOIN chapters c ON l.id = c.level_id 
+            GROUP BY l.id, l.title, l.description, l.difficulty
+        """
+        db_cursor.execute(query)
+        levels = db_cursor.fetchall()
+        
+        return render_template('admin/levels.html', levels=levels)
+    except Exception as e:
+        print("Database error:", str(e))
+        return render_template('admin/levels.html', levels=[])
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/levels/add', methods=['POST'])
+@login_required
+def add_level():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        title = request.form.get('title')
+        description = request.form.get('description')
+        image_url = None
+        # Handle image upload
+        if 'image_url' in request.files:
+            image_file = request.files['image_url']
+            if image_file and image_file.filename:
+                filename = secure_filename(image_file.filename)
+                # Save to static/images
+                image_path = os.path.join('static', 'images', filename)
+                image_file.save(image_path)
+                image_url = f'/static/images/{filename}'
+        
+        if not title or not description:
+            return jsonify({'success': False, 'message': 'Title and description are required'})
+        
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        
+        query = "INSERT INTO levels (title, description, image_url) VALUES (%s, %s, %s)"
+        db_cursor.execute(query, (title, description, image_url))
+        db_connection.commit()
+        
+        return jsonify({'success': True, 'message': 'Level added successfully'})
+    except Exception as e:
+        print("Database error:", str(e))
+        if 'db_connection' in locals():
+            db_connection.rollback()
+        return jsonify({'success': False, 'message': 'Failed to add level'})
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/levels/<int:level_id>', methods=['DELETE'])
+@login_required
+def delete_level(level_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        
+        # Delete the level (chapters will be automatically deleted due to CASCADE)
+        query = "DELETE FROM levels WHERE id = %s"
+        db_cursor.execute(query, (level_id,))
+        db_connection.commit()
+        
+        return jsonify({'success': True, 'message': 'Level deleted successfully'})
+    except Exception as e:
+        print("Database error:", str(e))
+        if 'db_connection' in locals():
+            db_connection.rollback()
+        return jsonify({'success': False, 'message': 'Failed to delete level'})
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/chapters/<int:level_id>')
+@login_required
+def get_chapters(level_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        query = "SELECT * FROM chapters WHERE level_id = %s ORDER BY order_num"
+        db_cursor.execute(query, (level_id,))
+        chapters = db_cursor.fetchall()
+        
+        return jsonify(chapters)
+    except Exception as e:
+        print("Database error:", str(e))
+        return jsonify([])
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/chapters/add', methods=['POST'])
+@login_required
+def add_chapter():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        level_id = request.form.get('level_id')
+        name = request.form.get('name')
+        title = request.form.get('title')
+        description = request.form.get('description')
+        xp_reward = request.form.get('xp_reward')
+        points_reward = request.form.get('points_reward')
+        order_num = request.form.get('order_num')
+        
+        if not all([level_id, name, title, description, xp_reward, points_reward, order_num]):
+            return jsonify({'success': False, 'message': 'All fields are required'})
+        
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        
+        query = """
+            INSERT INTO chapters (level_id, name, title, description, xp_reward, points_reward, order_num)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        db_cursor.execute(query, (level_id, name, title, description, xp_reward, points_reward, order_num))
+        db_connection.commit()
+        
+        return jsonify({'success': True, 'message': 'Chapter added successfully'})
+    except Exception as e:
+        print("Database error:", str(e))
+        if 'db_connection' in locals():
+            db_connection.rollback()
+        return jsonify({'success': False, 'message': 'Failed to add chapter'})
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/chapters/<int:chapter_id>', methods=['DELETE'])
+@login_required
+def delete_chapter(chapter_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        
+        query = "DELETE FROM chapters WHERE id = %s"
+        db_cursor.execute(query, (chapter_id,))
+        db_connection.commit()
+        
+        return jsonify({'success': True, 'message': 'Chapter deleted successfully'})
+    except Exception as e:
+        print("Database error:", str(e))
+        if 'db_connection' in locals():
+            db_connection.rollback()
+        return jsonify({'success': False, 'message': 'Failed to delete chapter'})
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/chapters/<int:chapter_id>/edit')
+@login_required
+def get_chapter_for_edit(chapter_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        query = "SELECT * FROM chapters WHERE id = %s"
+        db_cursor.execute(query, (chapter_id,))
+        chapter = db_cursor.fetchone()
+        
+        if not chapter:
+            return jsonify({'success': False, 'message': 'Chapter not found'}), 404
+        
+        return jsonify(chapter)
+    except Exception as e:
+        print("Database error:", str(e))
+        return jsonify({'success': False, 'message': 'Failed to fetch chapter details'}), 500
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/chapters/<int:chapter_id>', methods=['PUT'])
+@login_required
+def update_chapter(chapter_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        name = request.form.get('name')
+        title = request.form.get('title')
+        description = request.form.get('description')
+        xp_reward = request.form.get('xp_reward')
+        points_reward = request.form.get('points_reward')
+        order_num = request.form.get('order_num')
+        
+        if not all([name, title, description, xp_reward, points_reward, order_num]):
+            return jsonify({'success': False, 'message': 'All fields are required'})
+        
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        
+        query = """
+            UPDATE chapters 
+            SET name = %s, title = %s, description = %s, 
+                xp_reward = %s, points_reward = %s, order_num = %s
+            WHERE id = %s
+        """
+        db_cursor.execute(query, (name, title, description, xp_reward, points_reward, order_num, chapter_id))
+        db_connection.commit()
+        
+        return jsonify({'success': True, 'message': 'Chapter updated successfully'})
+    except Exception as e:
+        print("Database error:", str(e))
+        if 'db_connection' in locals():
+            db_connection.rollback()
+        return jsonify({'success': False, 'message': 'Failed to update chapter'})
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/rankings')
+@login_required
+def admin_rankings():
+    if session.get('role') != 'admin':
+        return redirect(url_for('home'))
+    return render_template('admin/rankings.html')
 
 @socketio.on('connect')
 def handle_connect():
@@ -505,6 +858,26 @@ def init_chapters_table():
         
         db_cursor.execute(create_user_progress_table)
         db_connection.commit()
+
+        # Add page_type to lesson_content table if it doesn't exist
+        try:
+            db_cursor.execute("ALTER TABLE lesson_content ADD COLUMN page_type ENUM('text_image', 'text_code', 'question_choices', 'text_playground') DEFAULT 'text_image'")
+            db_connection.commit()
+        except Exception as e:
+            print("Page type column might already exist:", str(e))
+
+        # Create lesson_choices table for multiple choice questions
+        create_lesson_choices_table = """
+        CREATE TABLE IF NOT EXISTS lesson_choices (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            lesson_content_id INT NOT NULL,
+            choice_text TEXT NOT NULL,
+            is_correct BOOLEAN DEFAULT FALSE,
+            FOREIGN KEY (lesson_content_id) REFERENCES lesson_content(id) ON DELETE CASCADE
+        )
+        """
+        db_cursor.execute(create_lesson_choices_table)
+        db_connection.commit()
         
     except Exception as e:
         print("Error initializing tables:", str(e))
@@ -604,6 +977,475 @@ def proxy_4o():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/admin/lesson-content/<int:chapter_id>')
+@login_required
+def get_lesson_content(chapter_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get lesson content for the chapter, ordered by page number
+        cursor.execute("""
+            SELECT * FROM lesson_content 
+            WHERE chapter_id = %s 
+            ORDER BY page_num
+        """, (chapter_id,))
+        
+        pages = cursor.fetchall()
+        return jsonify(pages)
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/lesson-content/<int:page_id>/edit')
+@login_required
+def get_lesson_content_for_edit(page_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        # Get lesson content details
+        cursor.execute("""
+            SELECT * FROM lesson_content 
+            WHERE id = %s
+        """, (page_id,))
+        page = cursor.fetchone()
+        if not page:
+            return jsonify({"success": False, "message": "Page not found"}), 404
+        # If quiz, get choices
+        if page.get('page_type') == 'quiz':
+            cursor.execute("SELECT id, choice_text, is_correct FROM lesson_choices WHERE lesson_content_id = %s", (page_id,))
+            page['choices'] = cursor.fetchall()
+        return jsonify(page)
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/lesson-content/add', methods=['POST'])
+@login_required
+def add_lesson_content():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get form data
+        chapter_id = request.form.get('chapter_id')
+        title = request.form.get('title', '')  # Make title optional
+        content = request.form.get('content')
+        code_example = request.form.get('code_example')
+        next_button_text = request.form.get('next_button_text', 'Next')
+        page_type = request.form.get('page_type', 'text_image')  # Default to text_image
+        correct_message = request.form.get('correct_message', '')
+        notes = request.form.get('notes', '')
+        
+        if not content:  # Only content is required
+            return jsonify({"success": False, "message": "Content is required"}), 400
+        
+        # Handle image upload
+        image_url = None
+        if page_type == 'text_image' and 'image_file' in request.files:
+            file = request.files['image_file']
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                # Add timestamp to filename to make it unique
+                filename = f"{int(time.time())}_{filename}"
+                file_path = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(file_path)
+                image_url = f"/{file_path}"  # Store relative path
+        
+        # Get the next page number for this chapter
+        cursor.execute("""
+            SELECT COALESCE(MAX(page_num), 0) + 1 
+            FROM lesson_content 
+            WHERE chapter_id = %s
+        """, (chapter_id,))
+        page_num = cursor.fetchone()[0]
+        
+        # Insert new lesson content
+        cursor.execute("""
+            INSERT INTO lesson_content 
+            (chapter_id, page_num, title, content, code_example, image_url, next_button_text, page_type, correct_message, notes) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (chapter_id, page_num, title, content, code_example, image_url, next_button_text, page_type, correct_message, notes))
+        lesson_content_id = cursor.lastrowid
+
+        # If quiz, insert choices
+        if page_type == 'quiz':
+            # Find all choice_text_X fields
+            choices = []
+            for key in request.form:
+                if key.startswith('choice_text_'):
+                    idx = key.split('_')[-1]
+                    text = request.form.get(key)
+                    choices.append((idx, text))
+            # Find which is correct
+            correct_idx = request.form.get('correct_choice')
+            for idx, text in choices:
+                is_correct = (str(idx) == str(correct_idx))
+                cursor.execute("""
+                    INSERT INTO lesson_choices (lesson_content_id, choice_text, is_correct)
+                    VALUES (%s, %s, %s)
+                """, (lesson_content_id, text, is_correct))
+
+        conn.commit()
+        return jsonify({"success": True, "message": "Lesson page added successfully"})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/lesson-content/<int:page_id>', methods=['PUT'])
+@login_required
+def update_lesson_content(page_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Get form data
+        title = request.form.get('title', '')  # Make title optional
+        content = request.form.get('content')
+        code_example = request.form.get('code_example')
+        next_button_text = request.form.get('next_button_text', 'Next')
+        new_page_num = int(request.form.get('page_num', 1))
+        page_type = request.form.get('page_type', 'text_image')  # Default to text_image
+        correct_message = request.form.get('correct_message', '')
+        notes = request.form.get('notes', '')
+        if not content:  # Only content is required
+            return jsonify({"success": False, "message": "Content is required"}), 400
+
+        # Get current page info
+        cursor.execute("""
+            SELECT chapter_id, page_num, image_url 
+            FROM lesson_content 
+            WHERE id = %s
+        """, (page_id,))
+        current_page = cursor.fetchone()
+        if not current_page:
+            return jsonify({"success": False, "message": "Page not found"}), 404
+        chapter_id, old_page_num, current_image_url = current_page
+
+        # Handle image upload
+        image_url = current_image_url  # Keep current image by default
+        if page_type == 'text_image' and 'image_file' in request.files:
+            file = request.files['image_file']
+            if file and file.filename and allowed_file(file.filename):
+                # Delete old image if exists
+                if current_image_url:
+                    old_file_path = os.path.join('static', current_image_url.lstrip('/'))
+                    if os.path.exists(old_file_path):
+                        os.remove(old_file_path)
+                
+                # Save new image
+                filename = secure_filename(file.filename)
+                filename = f"{int(time.time())}_{filename}"
+                file_path = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(file_path)
+                image_url = f"/{file_path}"  # Store relative path
+
+        # If page number is changing, we need to reorder
+        if new_page_num != old_page_num:
+            # Get total pages in chapter
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM lesson_content 
+                WHERE chapter_id = %s
+            """, (chapter_id,))
+            total_pages = cursor.fetchone()[0]
+            # Validate new page number
+            if new_page_num < 1 or new_page_num > total_pages:
+                return jsonify({"success": False, "message": "Invalid page number"}), 400
+            try:
+                # First, update the current page to a temporary number to avoid conflicts
+                cursor.execute("""
+                    UPDATE lesson_content 
+                    SET page_num = 0 
+                    WHERE id = %s
+                """, (page_id,))
+                # If moving to a lower number (e.g., page 4 to page 2)
+                if new_page_num < old_page_num:
+                    cursor.execute("""
+                        UPDATE lesson_content 
+                        SET page_num = page_num + 1 
+                        WHERE chapter_id = %s 
+                        AND page_num >= %s 
+                        AND page_num < %s
+                    """, (chapter_id, new_page_num, old_page_num))
+                # If moving to a higher number (e.g., page 2 to page 4)
+                else:
+                    cursor.execute("""
+                        UPDATE lesson_content 
+                        SET page_num = page_num - 1 
+                        WHERE chapter_id = %s 
+                        AND page_num > %s 
+                        AND page_num <= %s
+                    """, (chapter_id, old_page_num, new_page_num))
+                # Finally, update the current page with its new number
+                cursor.execute("""
+                    UPDATE lesson_content 
+                    SET title = %s, content = %s, code_example = %s, 
+                        image_url = %s, next_button_text = %s, page_num = %s, page_type = %s, correct_message = %s, notes = %s
+                    WHERE id = %s
+                """, (title, content, code_example, image_url, next_button_text, new_page_num, page_type, correct_message, notes, page_id))
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                raise e
+        else:
+            # Just update the content without reordering
+            cursor.execute("""
+                UPDATE lesson_content 
+                SET title = %s, content = %s, code_example = %s, 
+                    image_url = %s, next_button_text = %s, page_type = %s, correct_message = %s, notes = %s
+                WHERE id = %s
+            """, (title, content, code_example, image_url, next_button_text, page_type, correct_message, notes, page_id))
+            conn.commit()
+
+        # If quiz, update choices
+        if page_type == 'quiz':
+            # Delete old choices
+            cursor.execute("DELETE FROM lesson_choices WHERE lesson_content_id = %s", (page_id,))
+            # Add new choices
+            choices = []
+            for key in request.form:
+                if key.startswith('choice_text_'):
+                    idx = key.split('_')[-1]
+                    text = request.form.get(key)
+                    choices.append((idx, text))
+            correct_idx = request.form.get('correct_choice')
+            for idx, text in choices:
+                is_correct = (str(idx) == str(correct_idx))
+                cursor.execute("""
+                    INSERT INTO lesson_choices (lesson_content_id, choice_text, is_correct)
+                    VALUES (%s, %s, %s)
+                """, (page_id, text, is_correct))
+            conn.commit()
+        return jsonify({"success": True, "message": "Lesson page updated successfully"})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/lesson-content/<int:page_id>', methods=['DELETE'])
+@login_required
+def delete_lesson_content(page_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Get the chapter_id before deleting
+        cursor.execute("SELECT chapter_id FROM lesson_content WHERE id = %s", (page_id,))
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({"success": False, "message": "Page not found"}), 404
+        chapter_id = result[0]
+        # Delete the page
+        cursor.execute("DELETE FROM lesson_content WHERE id = %s", (page_id,))
+        # Reorder remaining pages (split into two statements)
+        cursor.execute("SET @row_number = 0;")
+        cursor.execute("""
+            UPDATE lesson_content 
+            SET page_num = (@row_number:=@row_number + 1) 
+            WHERE chapter_id = %s 
+            ORDER BY page_num;
+        """, (chapter_id,))
+        # Recalculate progress for all users who have started this chapter
+        cursor.execute("""
+            UPDATE user_progress up
+            JOIN (
+                SELECT user_id, chapter_id, progress
+                FROM user_progress
+                WHERE chapter_id = %s
+            ) current_progress ON up.user_id = current_progress.user_id AND up.chapter_id = current_progress.chapter_id
+            SET up.progress = (current_progress.progress * (SELECT COUNT(*) FROM lesson_content WHERE chapter_id = %s)) / 
+                            (SELECT COUNT(*) FROM lesson_content WHERE chapter_id = %s AND page_num <= 
+                                (SELECT FLOOR(current_progress.progress * (SELECT COUNT(*) FROM lesson_content WHERE chapter_id = %s) / 100))
+                            )
+            WHERE up.chapter_id = %s
+        """, (chapter_id, chapter_id, chapter_id, chapter_id, chapter_id))
+        conn.commit()
+        return jsonify({"success": True, "message": "Lesson page deleted successfully"})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/user/classic/<level>/<int:chapter_id>/ajax')
+@login_required
+def user_lesson_content_ajax(level, chapter_id):
+    level = unquote(level)
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+
+        # Get lesson content for this chapter
+        content_query = """
+        SELECT * FROM lesson_content 
+        WHERE chapter_id = %s 
+        ORDER BY page_num
+        """
+        db_cursor.execute(content_query, (chapter_id,))
+        lesson_pages = db_cursor.fetchall()
+
+        # For quiz pages, fetch choices from lesson_choices
+        for page in lesson_pages:
+            if page.get('page_type') == 'quiz':
+                db_cursor.execute("SELECT id, choice_text, is_correct FROM lesson_choices WHERE lesson_content_id = %s", (page['id'],))
+                page['choices'] = db_cursor.fetchall()
+
+        # Get requested page number
+        requested_page = request.args.get('page', type=int)
+        if not requested_page or requested_page < 1 or requested_page > len(lesson_pages):
+            requested_page = 1
+        page = lesson_pages[requested_page - 1]
+
+        # Render only the inner HTML for the lesson page
+        from flask import render_template_string
+        # Use a template string for just the per-page content
+        html = render_template_string('''
+{% if page.page_type == 'text_image' %}
+  {% if page.image_url %}
+  <img src="{{ page.image_url }}" alt="{{ page.title }}" style="width: auto; height: 200px; text-align: center; display: block; margin: 0 auto 20px auto;" />
+  {% endif %}
+  <p>{{ page.content|safe }}</p>
+{% elif page.page_type == 'text_code' %}
+  <p>{{ page.content|safe }}</p>
+  {% if page.code_example %}
+  <pre><code class="language-html">{{ page.code_example|e }}</code></pre>
+  {% endif %}
+{% elif page.page_type == 'quiz' %}
+  <p>{{ page.content|safe }}</p>
+  <form id="quiz-form">
+    {% if page.choices %}
+      {% for choice in page.choices %}
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="quiz_choice" id="choice{{ loop.index }}" value="{{ choice.id }}">
+          <label class="form-check-label" for="choice{{ loop.index }}">
+            {{ choice.choice_text }}
+          </label>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p><em>No choices available.</em></p>
+    {% endif %}
+  </form>
+{% elif page.page_type == 'playground' %}
+  <p>{{ page.content|safe }}</p>
+  <textarea id="playground-editor" style="width:100%;height:200px;font-family:monospace;"></textarea>
+  <button class="btn btn-success mt-2" onclick="runPlaygroundCode()">Run</button>
+  <div id="playground-output" class="mt-2" style="background:#222;padding:10px;color:#fff;"></div>
+{% else %}
+  <p>{{ page.content|safe }}</p>
+{% endif %}
+<script>if(window.Prism){Prism.highlightAll();}</script>
+''', page=page)
+        is_quiz_page = page.get('page_type') == 'quiz'
+        return jsonify({
+            'html': html,
+            'next_button_text': page.get('next_button_text', 'Next'),
+            'is_quiz_page': is_quiz_page
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/proxy/gpt4o')
+def proxy_gpt4o():
+    ask = request.args.get('ask')
+    uid = request.args.get('uid')
+    roleplay = request.args.get('roleplay')
+    if not ask:
+        return jsonify({'error': 'Missing ask parameter'}), 400
+    try:
+        api_url = 'https://www.haji-mix-api.gleeze.com/api/gpt4o'
+        params = {'ask': ask}
+        if uid:
+            params['uid'] = uid
+        if roleplay:
+            params['roleplay'] = roleplay
+        resp = requests.get(api_url, params=params, timeout=30)
+        return (resp.text, resp.status_code, {'Content-Type': resp.headers.get('Content-Type', 'application/json')})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/account')
+@login_required
+def account():
+    user_id = session['user_id']
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+
+        # Fetch user info
+        db_cursor.execute("SELECT id, username, email FROM users WHERE id = %s", (user_id,))
+        user = db_cursor.fetchone()
+
+        # Fetch user badges (join to get badge name and icon)
+        db_cursor.execute('''
+            SELECT b.id, b.name, b.description, b.icon
+            FROM user_badges ub
+            JOIN badges b ON ub.badge_id = b.id
+            WHERE ub.user_id = %s
+            ORDER BY ub.earned_at ASC
+        ''', (user_id,))
+        badges = db_cursor.fetchall()
+
+        # Fetch user rank (by points, from leaderboards)
+        db_cursor.execute('''
+            SELECT user_id, total_score FROM leaderboards ORDER BY total_score DESC
+        ''')
+        leaderboard = db_cursor.fetchall()
+        user_rank = None
+        user_points = 0
+        for idx, entry in enumerate(leaderboard, 1):
+            if entry['user_id'] == user_id:
+                user_rank = idx
+                user_points = entry['total_score']
+                break
+
+        return render_template('account.html', user=user, badges=badges, user_rank=user_rank, user_points=user_points)
+    except Exception as e:
+        print("Account page error:", str(e))
+        return render_template('account.html', user=None, badges=[], user_rank=None, user_points=0)
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/delete_account', methods=['POST'])
+@login_required
+def delete_account():
+    user_id = session['user_id']
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        # Delete user (CASCADE will remove related user_badges, progress, etc.)
+        db_cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        db_connection.commit()
+        session.clear()
+        return jsonify({'success': True, 'redirect': url_for('home')})
+    except Exception as e:
+        print("Delete account error:", str(e))
+        if 'db_connection' in locals():
+            db_connection.rollback()
+        return jsonify({'success': False, 'message': 'Failed to delete account'})
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)
