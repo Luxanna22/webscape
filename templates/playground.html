@@ -877,22 +877,32 @@ function changeColor() {
               '<div class="loader"></div>Making magic happen...';
             aiResponse.classList.add("loading");
 
-            // Clean the AI response using the external API
+            // Clean the AI response using the backend proxy to avoid CORS
             const cleanResponse = await fetch(
-              `https://www.haji-mix-api.gleeze.com/api/gpt4o?ask=${encodeURIComponent(
+              `/proxy/gpt4o?ask=${encodeURIComponent(
                 data.answer
               )}&uid=8192&roleplay=Code%20Cleaner`
             );
-            const cleanData = await cleanResponse.json();
-
-            // Debug log for cleaned response
-            console.log("Cleaned response:", cleanData);
-
-            // Use the plain text answer from the API
-            let responseText =
-              cleanData.answer || "No issues found in your code.";
+            let responseText = "";
+            try {
+              const cleanData = await cleanResponse.json();
+              // Debug log for cleaned response
+              console.log("Cleaned response:", cleanData);
+              // Use the plain text answer from the API if present
+              if (cleanData && typeof cleanData.answer === "string") {
+                responseText = cleanData.answer.trim();
+              }
+            } catch (err) {
+              // If JSON parsing fails, fallback to a generic message
+              responseText = "";
+            }
 
             aiResponse.classList.remove("loading");
+
+            // If no answer, show a fallback message
+            if (!responseText) {
+              responseText = "No issues found in your code.";
+            }
 
             // Convert newlines to <br> for HTML rendering
             responseText = responseText.replace(/\n/g, "<br>");
