@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Admin | WebScape</title>
+    <title>Admin Dashboard | WebScape</title>
     <link
       rel="icon"
       href="/static/images/playground-mode.png"
@@ -136,6 +136,16 @@
       .sidebar .nav-item a:hover {
         color: #ff69b4;
       }
+      /* active */
+      .sidebar .nav-item.active {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item.active i {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item.active a {
+        color: #ff69b4;
+      }
 
       main {
         margin-left: 80px;
@@ -213,7 +223,7 @@
       }
       .dashboard-title {
         font-family: "Luckiest Guy", cursive;
-        font-size: 3.5vw;
+        font-size: 2.5vw;
         color: var(--accent-color);
         margin-bottom: 40px;
         text-align: left;
@@ -359,9 +369,11 @@
         /></a>
         <br />
       </div>
-      <div class="nav-item levels">
-        <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
-        <span>Dashboard</span>
+      <div class="nav-item levels active">
+        <a href="#">
+          <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
+          <span>Dashboard</span>
+        </a>
       </div>
       <div class="nav-item badges">
         <a href="/admin/users">
@@ -370,12 +382,16 @@
         </a>
       </div>
       <div class="nav-item options">
-        <i class="fas fa-paint-brush" aria-hidden="true"></i>
-        <span>Levels</span>
+        <a href="/admin/levels">
+          <i class="fas fa-paint-brush" aria-hidden="true"></i>
+          <span>Levels</span>
+        </a>
       </div>
       <div class="nav-item options">
-        <i class="fas fa-medal" aria-hidden="true"></i>
-        <span>Rankings</span>
+        <a href="/admin/rankings">
+          <i class="fas fa-medal" aria-hidden="true"></i>
+          <span>Rankings</span>
+        </a>
       </div>
       <div class="nav-item account mt-auto mb-4">
         <a href="/logout">
