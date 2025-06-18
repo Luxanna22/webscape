@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rankings | WebScape</title>
+    <link
+      rel="icon"
+      href="/static/images/playground-mode.png"
+      type="image/png"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
+
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #2d2c2f;
+        --accent-color: #ff66c4;
+      }
+
+      * {
+        list-style-type: none;
+        text-decoration: none;
+      }
+      body,
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent-color) var(--secondary-color);
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--bg-color);
+        color: #a9a9a9;
+        font-family: "Montserrat", sans-serif;
+      }
+
+      .login-input {
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid #fff;
+        border-radius: 0;
+        color: #fff;
+      }
+
+      .login-input::placeholder {
+        color: #aaa;
+      }
+
+      .btn-pink {
+        background-color: #ff5fc5;
+        color: white;
+        font-weight: bold;
+        letter-spacing: 1px;
+        border-radius: 8px;
+      }
+
+      .btn-pink:hover {
+        background-color: #ff40b5;
+      }
+
+      .text-pink {
+        color: #ff5fc5;
+        cursor: pointer;
+      }
+
+      .text-pink:hover {
+        color: #ff40b5;
+        text-decoration: underline;
+      }
+      /* ------- */
+      .sidebar {
+        background-color: #3a1464;
+        width: 90px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 35px;
+      }
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+        cursor: pointer;
+      }
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+      .sidebar .nav-item.badges i {
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item.account i {
+        font-size: 32px;
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item a {
+        text-decoration: none;
+        color: #a9a9a9;
+      }
+      .sidebar .nav-item a:hover {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item.active {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item.active i {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item.active a {
+        color: #ff69b4;
+      }
+
+      main {
+        margin-left: 80px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 15px;
+      }
+      .section {
+        margin-left: 80px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 15px;
+      }
+      .section h1 {
+        font-family: "Luckiest Guy", sans-serif;
+        font-size: 4vw;
+        color: #ff69b4;
+        margin-bottom: 0;
+        user-select: none;
+      }
+      h1 {
+        font-family: "Luckiest Guy", sans-serif;
+        font-size: 9.5vw;
+        color: #ff69b4;
+        margin-bottom: 0;
+        user-select: none;
+      }
+      h2 {
+        font-family: "Anton", sans-serif;
+        font-weight: 700;
+        font-size: 2.3vw;
+        color: #6f2dbd;
+        margin-top: 0;
+        margin-bottom: 40px;
+        user-select: none;
+      }
+      .book-icon {
+        color: #b3b3b3;
+        font-size: 18vw;
+        width: 300px;
+        user-select: none;
+        margin-bottom: 50px;
+      }
+
+      @media (max-width: 575.98px) {
+        .sidebar {
+          width: 60px;
+          padding-top: 15px;
+          gap: 35px;
+        }
+        .sidebar .nav-item {
+          font-size: 11px;
+        }
+        .sidebar .nav-item i {
+          font-size: 22px;
+          margin-bottom: 3px;
+        }
+        .sidebar .nav-item.account i {
+          font-size: 26px;
+        }
+      }
+      /* dashboard style */
+      .main-content {
+        margin-left: 90px;
+        padding: 2rem 0 2rem 0;
+        min-height: 100vh;
+      }
+      .dashboard-title {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 2.5vw;
+        color: var(--accent-color);
+        margin-bottom: 40px;
+        text-align: left;
+        letter-spacing: 2px;
+      }
+      .dashboard-cards {
+        display: flex;
+        gap: 24px;
+        justify-content: flex-start;
+        margin-bottom: 40px;
+        flex-wrap: wrap;
+      }
+      .dashboard-card {
+        position: relative;
+        background: #2d145c;
+        border: 2px solid #a259ff;
+        /* border-radius: 14px; */
+        padding: 20px 5px 18px 40px;
+        display: flex;
+        align-items: center;
+        min-width: 180px;
+        max-width: 100%;
+        box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        gap: 3rem;
+        flex: 1 1 220px;
+      }
+      .dashboard-icon {
+        font-size: 75px;
+        color: #d3d3d3;
+        margin-right: 8px;
+      }
+      .dashboard-card-content {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .dashboard-card-number {
+        font-size: 1.7rem;
+        font-family: "Luckiest Guy", cursive;
+        color: var(--accent-color);
+        font-weight: bold;
+        margin-bottom: 0.1em;
+      }
+      .dashboard-card-label {
+        font-size: 1.1rem;
+        color: #d3d3d3;
+        font-family: "Montserrat", sans-serif;
+        font-weight: 7 00;
+        text-align: left;
+      }
+      .web-traffic-section {
+        margin-top: 60px;
+        text-align: left;
+      }
+      .web-traffic-title {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 2.2vw;
+        color: var(--accent-color);
+        margin-bottom: 18px;
+        letter-spacing: 1px;
+      }
+      .web-traffic-chart-container {
+        background: #2d145c;
+        /* border-radius: 18px; */
+        padding: 30px;
+        box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.1);
+        max-width: 98vw;
+        margin-bottom: 20px;
+      }
+      .web-traffic-legend {
+        margin-top: 10px;
+        font-size: 1.1rem;
+        color: #fff;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+      .legend-last-year {
+        display: inline-block;
+        width: 18px;
+        height: 10px;
+        background: #5eeaff;
+        border-radius: 3px;
+        margin-right: 6px;
+      }
+      .legend-current-year {
+        display: inline-block;
+        width: 18px;
+        height: 10px;
+        background: #ff66c4;
+        border-radius: 3px;
+        margin-right: 6px;
+      }
+      @media (max-width: 900px) {
+        .dashboard-cards {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 18px;
+        }
+        .dashboard-card {
+          min-width: 0;
+          width: 100%;
+          padding: 16px 12px 14px 12px;
+        }
+      }
+      @media (max-width: 576px) {
+        .dashboard-title {
+          font-size: 8vw;
+        }
+        .dashboard-cards {
+          gap: 12px;
+        }
+        .dashboard-card {
+          flex-direction: row;
+          padding: 10px 6px 10px 6px;
+        }
+        .dashboard-icon {
+          font-size: 24px;
+          margin-right: 6px;
+        }
+        .dashboard-card-number {
+          font-size: 1.1rem;
+        }
+        .dashboard-card-label {
+          font-size: 0.9rem;
+        }
+        .web-traffic-chart-container {
+          padding: 10px 2px 2px 2px;
+          width: 100vw;
+        }
+      }
+
+      .top-three-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .top-three-container img {
+        width: 80%;
+        object-fit: cover;
+      }
+      /* center the content  of tops*/
+      .top-two,
+      .top-one,
+      .top-three {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+        margin: 0;
+        flex-direction: column;
+      }
+      .top-three-container h4 {
+        font-size: 1.1rem;
+        color: #d3d3d3;
+        font-family: "Anton", sans-serif;
+      }
+      .top-three-container h3 {
+        font-size: 2rem;
+        color: #d3d3d3;
+        font-family: "Anton", sans-serif;
+        color: #ff69b4;
+      }
+
+      .top-one {
+        margin-bottom: 2rem;
+        scale: 1.1;
+      }
+
+      /* table */
+      table {
+        border-radius: 4px;
+        border: 3px solid #7e31ef;
+        border-collapse: collapse;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+      }
+      th {
+        font-size: 1.2rem;
+        font-weight: 700;
+      }
+      th,
+      td {
+        text-align: center;
+      }
+      td {
+        font-family: "Montserrat", sans-serif;
+        /* not bold */
+        font-weight: 400 !important;
+        color: #a1a1a1;
+      }
+
+      .custom-user-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: #2d145c;
+        color: #fff;
+        font-size: 1.25rem;
+        /* border-radius: 12px; */
+        overflow: hidden;
+        margin-top: 2rem;
+      }
+
+      .table-header {
+        background: #7e31ef;
+        color: #d4d4d4;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 2.2rem;
+        padding: 0.5rem 1rem;
+      }
+
+      .header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .table-title {
+        font-size: 1.5rem;
+        font-family: "Anton", cursive;
+        color: #d4d4d4;
+      }
+
+      .search-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        width: 260px;
+      }
+
+      .search-bar input {
+        width: 100%;
+        padding: 0.7rem 2.5rem 0.7rem 1rem;
+        border-radius: 25px;
+        border: 2px solid white;
+        background: #7e31ef;
+        color: #fff;
+        font-size: 0.8rem;
+        outline: none;
+      }
+
+      .search-bar input::placeholder {
+        color: #fff;
+        font-family: "Montserrat", sans-serif;
+      }
+
+      .search-bar .search-icon {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #fff;
+        font-size: 1.2rem;
+      }
+
+      .column-header th {
+        background: #2d145c;
+        color: #d4d4d4;
+        border-bottom: 3px solid #7e31ef !important;
+        font-family: "Anton", sans-serif;
+        font-size: 1.3rem;
+        font-weight: 700;
+        border: none;
+        padding: 1rem 0.5rem;
+      }
+
+      .custom-user-table tbody tr {
+        background: #2d145c;
+        border-bottom: 1px solid #7e31ef;
+      }
+
+      .custom-user-table tbody tr:nth-child(even) {
+        background: #3a1464;
+      }
+
+      .custom-user-table td {
+        padding: 1.1rem 0.5rem;
+        font-size: 1.1rem;
+        vertical-align: middle;
+        border: none;
+      }
+
+      .status.active {
+        color: #ff66c4;
+        font-weight: bold;
+      }
+
+      .status.inactive {
+        color: #fff;
+        font-weight: bold;
+      }
+
+      .btn-manage {
+        background: #ff66c4;
+        color: #fff;
+        font-weight: bold;
+        border: none;
+        border-radius: 10px;
+        padding: 0.5rem 1.5rem;
+        font-size: 1.1rem;
+        transition: background 0.2s;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .btn-manage:hover {
+        background: #ff40b5;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <div class="nav-item levels">
+        <a href="/"
+          ><img
+            src="/static/images/book-icon.png"
+            alt="webscape-logo"
+            width="60px"
+        /></a>
+        <br />
+      </div>
+      <div class="nav-item levels">
+        <a href="/admin/dashboard">
+          <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
+          <span>Dashboard</span>
+        </a>
+      </div>
+      <div class="nav-item badges">
+        <a href="/admin/users">
+          <i class="fas fa-users" aria-hidden="true"></i>
+          <span>Users</span>
+        </a>
+      </div>
+      <div class="nav-item options">
+        <a href="/admin/levels">
+          <i class="fas fa-paint-brush" aria-hidden="true"></i>
+          <span>Levels</span>
+        </a>
+      </div>
+      <div class="nav-item options active">
+        <a href="#">
+          <i class="fas fa-medal" aria-hidden="true"></i>
+          <span>Rankings</span>
+        </a>
+      </div>
+      <div class="nav-item account mt-auto mb-4">
+        <a href="/logout">
+          <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+          <span>Logout</span>
+        </a>
+      </div>
+    </nav>
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="container">
+        <h1 class="dashboard-title">Rankings</h1>
+
+        <div
+          class="top-three-container d-flex justify-content-center align-items-end mb-4"
+        >
+          <div class="top-two">
+            <img
+              src="/static/images/badges/top-two.png"
+              alt="top-three-item"
+              class="img-fluid"
+            />
+            <h3>LeBlancakes</h3>
+            <h4>Speed Runner</h4>
+          </div>
+          <div class="top-one">
+            <img
+              src="/static/images/badges/top-one.png"
+              alt="top-three-item"
+              class="img-fluid"
+            />
+            <h3>Luxinnamon</h3>
+            <h4>Top Conqueror</h4>
+          </div>
+          <div class="top-three">
+            <img
+              src="/static/images/badges/top-three.png"
+              alt="top-three-item"
+              class="img-fluid"
+            />
+            <h3>KittyKatarina</h3>
+            <h4>Skilled Master</h4>
+          </div>
+        </div>
+
+        <!-- table top 100 users  -->
+        <div class="table-responsive">
+          <table class="custom-user-table">
+            <thead>
+              <tr>
+                <th colspan="5" class="table-header">
+                  <div class="header-flex">
+                    <span class="table-title">Top 100</span>
+                    <div class="search-bar">
+                      <input type="text" placeholder="Search User" />
+                      <span class="search-icon"
+                        ><i class="fas fa-search"></i
+                      ></span>
+                    </div>
+                  </div>
+                </th>
+              </tr>
+              <tr class="column-header">
+                <th>Top</th>
+                <th>Username</th>
+                <th>Date Joined</th>
+                <th>Total Badges</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Example row, replace with your backend loop -->
+
+              <tr>
+                <td>1</td>
+                <td>Luxinnamon</td>
+                <td>11-7-2024</td>
+                <td>18</td>
+                <td><a href="#" class="btn-manage">Manage</a></td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>LeBlancakes</td>
+                <td>5-17-2024</td>
+                <td>10</td>
+                <td><a href="#" class="btn-manage">Manage</a></td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>KittyKatarina</td>
+                <td>12-2-2025</td>
+                <td>6</td>
+                <td><a href="#" class="btn-manage">Manage</a></td>
+              </tr>
+              <!-- More rows... -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
