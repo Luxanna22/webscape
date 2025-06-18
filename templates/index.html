@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {{ ga_script|safe }}
     <link
       rel="icon"
       href="/static/images/playground-mode.png"
@@ -34,6 +35,9 @@
         --bg-color: #240e44;
         --secondary-color: #2d2c2f;
         --accent-color: #ff66c4;
+      }
+      * {
+        text-decoration: none;
       }
       body,
       html {
@@ -113,7 +117,7 @@
       /* ------- */
       .sidebar {
         background-color: #3a1464;
-        width: 80px;
+        width: 90px;
         height: 100vh;
         position: fixed;
         top: 0;
@@ -138,6 +142,10 @@
         margin-bottom: 6px;
         color: #a9a9a9;
       }
+      .sidebar .nav-item a {
+        color: #a9a9a9;
+        text-decoration: none;
+      }
       .sidebar .nav-item.badges i {
         color: #bfbfbf;
       }
@@ -151,9 +159,12 @@
       .sidebar .nav-item:hover i {
         color: #ff69b4;
       }
+      .sidebar .nav-item:hover a {
+        color: #ff69b4;
+      }
 
       main {
-        margin-left: 80px;
+        margin-left: 90px;
         height: 100vh;
         display: flex;
         flex-direction: column;
@@ -343,8 +354,10 @@
         <span>Levels</span>
       </div> -->
       <div class="nav-item badges">
-        <i class="fas fa-award" aria-hidden="true"></i>
-        <span>Ranking</span>
+        <a href="{{ url_for('rankings') }}">
+          <i class="fas fa-award" aria-hidden="true"></i>
+          <span>Rankings</span>
+        </a>
       </div>
       <div class="nav-item options">
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
@@ -748,6 +761,7 @@
             if (data.logged_in) {
               // TODO: Show account details or profile page
               console.log("User is logged in");
+              window.location.href = "/account";
             } else {
               const loginModal = new bootstrap.Modal(
                 document.getElementById("loginModal")
