@@ -1326,7 +1326,7 @@ def user_lesson_content_ajax(level, chapter_id):
     {% if page.choices %}
       {% for choice in page.choices %}
         <div class="form-check">
-          <input class="form-check-input" type="radio" name="quiz_choice" id="choice{{ loop.index }}" value="{{ choice.id }}">
+          <input class="form-check-input" type="radio" name="quiz_choice" id="choice{{ loop.index }}" value="{{ choice.id }}" data-is-correct="{{ choice.is_correct|int }}">
           <label class="form-check-label" for="choice{{ loop.index }}">
             {{ choice.choice_text }}
           </label>
