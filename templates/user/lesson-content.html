@@ -595,8 +595,8 @@
             <div style="color: limegreen; font-size: 1.5rem">${randomMessage}</div>
             ${customMessage ? `<div class="mt-2" style="color: #d3d3d3">${customMessage}</div>` : ''}
           `;
-          quizCorrect = true;
-        } else {
+            quizCorrect = true;
+          } else {
           // Random feedback messages for incorrect answers
           const incorrectMessages = [
             "Not quite.", "You'll get it next time.", "Ouch, not really.", "Not exactly.", "Close!",
@@ -605,7 +605,7 @@
           ];
           const randomMessage = incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
           feedback.innerHTML = `<div style="color: red; font-size: 1.5rem">${randomMessage}</div>`;
-          quizCorrect = false;
+            quizCorrect = false;
 
           // Highlight incorrect choice
           selected.classList.add('incorrect');
