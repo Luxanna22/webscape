@@ -1,0 +1,35 @@
+/* CodeMirror custom styles for playground */
+.CodeMirror {
+    font-size: 1.1rem;
+    border-radius: 8px;
+    background: #1a1a2e;
+    color: #fff;
+    box-shadow: 0 4px 24px 0 rgba(126, 49, 239, 0.15);
+    border: 1.5px solid #7e31ef;
+    margin-bottom: 10px;
+    min-height: 250px;
+    max-height: 350px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.CodeMirror-focused {
+    border-color: #ff66c4;
+    box-shadow: 0 0 0 2px #ff66c4;
+}
+
+.CodeMirror-gutters {
+    background: #2d145c;
+    border-right: 1.5px solid #7e31ef;
+}
+
+.CodeMirror-linenumber {
+    color: #b3b3b3;
+}
+
+.CodeMirror-cursor {
+    border-left: 2px solid #ff66c4;
+}
+
+.CodeMirror-selected {
+    background: #7e31ef44 !important;
+}
