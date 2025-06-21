@@ -245,7 +245,6 @@ def user_lesson_content(level, chapter_id):
     try:
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor(dictionary=True)
-        
         # Get chapter info
         chapter_query = """
         SELECT c.*, l.title as level_title 
@@ -255,10 +254,8 @@ def user_lesson_content(level, chapter_id):
         """
         db_cursor.execute(chapter_query, (chapter_id,))
         chapter = db_cursor.fetchone()
-        
         if not chapter:
             return redirect(url_for('user_chapter_list', level=level))
-        
         # Get lesson content for this chapter
         content_query = """
         SELECT * FROM lesson_content 
@@ -267,16 +264,13 @@ def user_lesson_content(level, chapter_id):
         """
         db_cursor.execute(content_query, (chapter_id,))
         lesson_pages = db_cursor.fetchall()
-
         # For quiz pages, fetch choices from lesson_choices
         for page in lesson_pages:
             if page.get('page_type') == 'quiz':
                 db_cursor.execute("SELECT id, choice_text, is_correct FROM lesson_choices WHERE lesson_content_id = %s", (page['id'],))
                 page['choices'] = db_cursor.fetchall()
-
         if not lesson_pages:
             return redirect(url_for('user_chapter_list', level=level))
-        
         # Get user progress for this chapter
         progress_query = """
         SELECT progress FROM user_progress 
@@ -284,33 +278,28 @@ def user_lesson_content(level, chapter_id):
         """
         db_cursor.execute(progress_query, (session['user_id'], chapter_id))
         progress = db_cursor.fetchone()
-        
         # Get the requested page number from URL parameter
         requested_page = request.args.get('page', type=int)
-        
         # Calculate current page
         if requested_page is not None:
             # If a specific page was requested, use it (but validate it)
             current_page = min(max(1, requested_page), len(lesson_pages))
         else:
-            # Otherwise use progress or default to 1
+            # Always start at page 1 if progress is 100
             current_page = 1
-            if progress:
-                # Calculate the page number based on progress percentage
-                if progress['progress'] <= 0:
+            if progress and progress.get('progress') is not None:
+                prog_val = progress['progress']
+                if prog_val is None or prog_val <= 0:
                     current_page = 1
-                elif progress['progress'] >= 100:
-                    current_page = len(lesson_pages)
+                elif prog_val >= 100:
+                    current_page = 1
                 else:
-                    progress_page = math.ceil((progress['progress'] / 100) * len(lesson_pages))
+                    progress_page = math.ceil((prog_val / 100) * len(lesson_pages))
                     current_page = min(max(1, progress_page + 1), len(lesson_pages))
-        
         # Get the current page content
         current_page_content = next((page for page in lesson_pages if page['page_num'] == current_page), None)
-        
         if not current_page_content:
             return redirect(url_for('user_chapter_list', level=level))
-        
         return render_template('user/lesson-content.html',
                              chapter=chapter,
                              lesson_pages=lesson_pages,
@@ -332,10 +321,9 @@ def update_lesson_progress(level, chapter_id):
     try:
         data = request.get_json()
         page_num = data.get('page_num', 1)
-        
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor()
-        
+
         # Get total number of pages for this chapter
         db_cursor.execute("""
             SELECT COUNT(*) 
@@ -343,27 +331,37 @@ def update_lesson_progress(level, chapter_id):
             WHERE chapter_id = %s
         """, (chapter_id,))
         total_pages = db_cursor.fetchone()[0]
-        
+
         # Calculate progress percentage based on current page and total pages
         progress = (page_num / total_pages) * 100 if total_pages > 0 else 0
         completed = page_num >= total_pages
-        
-        # Update or insert progress
-        upsert_query = """
-        INSERT INTO user_progress (user_id, chapter_id, progress, completed)
-        VALUES (%s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE 
-        progress = VALUES(progress),
-        completed = VALUES(completed)
-        """
-        
-        db_cursor.execute(upsert_query, (session['user_id'], chapter_id, progress, completed))
-        db_connection.commit()
-        
+
+        # Fetch current progress
+        db_cursor.execute("SELECT progress FROM user_progress WHERE user_id = %s AND chapter_id = %s", (session['user_id'], chapter_id))
+        current = db_cursor.fetchone()
+        current_progress = current[0] if current else 0
+
+        # Only update if new progress is greater
+        if progress > current_progress:
+            upsert_query = """
+            INSERT INTO user_progress (user_id, chapter_id, progress, completed)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE 
+            progress = VALUES(progress),
+            completed = VALUES(completed)
+            """
+            db_cursor.execute(upsert_query, (session['user_id'], chapter_id, progress, completed))
+            db_connection.commit()
+            updated_progress = progress
+            updated_completed = completed
+        else:
+            updated_progress = current_progress
+            updated_completed = current[1] if current and len(current) > 1 else False
+
         return jsonify({
             'success': True,
-            'progress': progress,
-            'completed': completed,
+            'progress': updated_progress,
+            'completed': updated_completed,
             'total_pages': total_pages
         })
     except Exception as e:
@@ -379,6 +377,24 @@ def update_lesson_progress(level, chapter_id):
 @app.route('/user/classic/<level>/<int:chapter_id>/start')
 @login_required
 def start_chapter(level, chapter_id):
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        # Insert user_progress if not exists
+        upsert_query = """
+        INSERT INTO user_progress (user_id, chapter_id, progress, completed)
+        VALUES (%s, %s, 0, 0)
+        ON DUPLICATE KEY UPDATE progress = progress
+        """
+        db_cursor.execute(upsert_query, (session['user_id'], chapter_id))
+        db_connection.commit()
+    except Exception as e:
+        print("Database error (start_chapter):", str(e))
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
     return redirect(url_for('user_lesson_content', level=level, chapter_id=chapter_id))
 
 @app.route('/user/competitive')
@@ -861,10 +877,17 @@ def init_chapters_table():
 
         # Add page_type to lesson_content table if it doesn't exist
         try:
-            db_cursor.execute("ALTER TABLE lesson_content ADD COLUMN page_type ENUM('text_image', 'text_code', 'question_choices', 'text_playground') DEFAULT 'text_image'")
+            db_cursor.execute("ALTER TABLE lesson_content ADD COLUMN page_type ENUM('text_image', 'text_code', 'quiz', 'playground') DEFAULT 'text_image'")
             db_connection.commit()
         except Exception as e:
             print("Page type column might already exist:", str(e))
+            # Try to modify the existing ENUM if it exists but has wrong values
+            try:
+                db_cursor.execute("ALTER TABLE lesson_content MODIFY COLUMN page_type ENUM('text_image', 'text_code', 'quiz', 'playground') DEFAULT 'text_image'")
+                db_connection.commit()
+                print("Updated page_type ENUM values")
+            except Exception as e2:
+                print("Could not update page_type ENUM:", str(e2))
 
         # Create lesson_choices table for multiple choice questions
         create_lesson_choices_table = """
@@ -1293,6 +1316,7 @@ def user_lesson_content_ajax(level, chapter_id):
         """
         db_cursor.execute(content_query, (chapter_id,))
         lesson_pages = db_cursor.fetchall()
+        total_pages = len(lesson_pages)
 
         # For quiz pages, fetch choices from lesson_choices
         for page in lesson_pages:
@@ -1302,27 +1326,57 @@ def user_lesson_content_ajax(level, chapter_id):
 
         # Get requested page number
         requested_page = request.args.get('page', type=int)
-        if not requested_page or requested_page < 1 or requested_page > len(lesson_pages):
+        if not requested_page or requested_page < 1:
             requested_page = 1
-        page = lesson_pages[requested_page - 1]
 
-        # Render only the inner HTML for the lesson page
+        # If requested page is after the last page, show congratulation/summary
+        if requested_page > total_pages:
+            # Fetch chapter XP and points
+            db_cursor.execute("SELECT xp_reward, points_reward, title FROM chapters WHERE id = %s", (chapter_id,))
+            chapter = db_cursor.fetchone()
+            xp = chapter['xp_reward'] if chapter else 0
+            points = chapter['points_reward'] if chapter else 0
+            chapter_title = chapter['title'] if chapter else ''
+            from flask import render_template_string
+            html = render_template_string('''
+<div class="congrats-summary text-center">
+  <dotlottie-player src="https://lottie.host/1aaf6a28-e236-4b85-80a9-36d4f5fdcc54/YzZgsLVQjc.lottie" background="transparent" speed="1" style="width: 200px; height: 200px; margin: 0 auto; scale: 1.5;" autoplay></dotlottie-player>
+  <h2 class="congrats-title" style="color: #ff69b4; font-family: 'Luckiest Guy', cursive; font-size: 3.5rem; text-shadow: 3px 3px 0px #7e31ef;">Congratulations!</h2>
+  <p class="congrats-subtitle" style="font-size: 1.5rem; color: #fff; margin-top: 10px;">You've completed <b>{{ chapter_title }}</b>!</p>
+  <div class="rewards d-flex justify-content-center gap-4 my-4">
+    <span style="font-size: 1.8rem; color: gold; background: rgba(0,0,0,0.2); padding: 10px 20px; border-radius: 10px;"><i class="fas fa-star"></i> <b>{{ xp }}</b> XP</span>
+    <span style="font-size: 1.8rem; color: #ff69b4; background: rgba(0,0,0,0.2); padding: 10px 20px; border-radius: 10px;"><i class="fas fa-trophy"></i> <b>{{ points }}</b> Points</span>
+  </div>
+  <div class="cta mt-4">
+    <button class="btn btn-lg end-btn" style="font-size: 1.5rem; padding: 12px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);" onclick="window.location.href='/user/classic/{{ level }}'">Back to Chapters</button>
+  </div>
+</div>
+''', xp=xp, points=points, chapter_title=chapter_title, level=level)
+            return jsonify({
+                'html': html,
+                'next_button_text': None,
+                'is_quiz_page': False,
+                'is_congrats': True
+            })
+
+        # Otherwise, normal lesson page
+        page = lesson_pages[requested_page - 1]
         from flask import render_template_string
-        # Use a template string for just the per-page content
         html = render_template_string('''
 {% if page.page_type == 'text_image' %}
   {% if page.image_url %}
   <img src="{{ page.image_url }}" alt="{{ page.title }}" style="width: auto; height: 200px; text-align: center; display: block; margin: 0 auto 20px auto;" />
   {% endif %}
-  <p>{{ page.content|safe }}</p>
+  <div>{{ page.content|safe }}</div>
 {% elif page.page_type == 'text_code' %}
-  <p>{{ page.content|safe }}</p>
+  <div>{{ page.content|safe }}</div>
   {% if page.code_example %}
   <pre><code class="language-html">{{ page.code_example|e }}</code></pre>
   {% endif %}
 {% elif page.page_type == 'quiz' %}
-  <p>{{ page.content|safe }}</p>
+  <div>{{ page.content|safe }}</div>
   <form id="quiz-form">
+    <input type="hidden" id="correct-message" value="{{ page.correct_message|e }}" />
     {% if page.choices %}
       {% for choice in page.choices %}
         <div class="form-check">
@@ -1337,12 +1391,175 @@ def user_lesson_content_ajax(level, chapter_id):
     {% endif %}
   </form>
 {% elif page.page_type == 'playground' %}
-  <p>{{ page.content|safe }}</p>
-  <textarea id="playground-editor" style="width:100%;height:200px;font-family:monospace;"></textarea>
-  <button class="btn btn-success mt-2" onclick="runPlaygroundCode()">Run</button>
-  <div id="playground-output" class="mt-2" style="background:#222;padding:10px;color:#fff;"></div>
+  <div>{{ page.content|safe }}</div>
+  <div id="playground-fullscreen-wrapper" class="playground-fullscreen-wrapper">
+    <div id="playground-editor-outer" class="playground-outer position-relative">
+      <div class="playground-toolbar">
+        <span class="playground-title"><i class="fas fa-code"></i> Code Playground</span>
+        <div class="playground-actions">
+          <select id="playground-language" class="playground-lang-select" onchange="changePlaygroundMode(this.value)">
+            <option value="htmlmixed">HTML/CSS/JS</option>
+            <option value="xml">XML</option>
+            <option value="javascript">JavaScript</option>
+            <option value="css">CSS</option>
+          </select>
+          <button class="btn btn-success playground-run-btn" onclick="runPlaygroundCode()">
+            <i class="fas fa-play"></i> Run
+          </button>
+        </div>
+      </div>
+      <div id="playground-editor-container">
+        <textarea id="playground-editor">{{ page.code_example|default('', true) }}</textarea>
+      </div>
+      <button id="playground-fullscreen-btn" class="playground-fullscreen-btn" title="Fullscreen" type="button">
+        <i class="fas fa-expand"></i>
+      </button>
+    </div>
+    <div id="playground-output" class="playground-output" style="display: none;">
+      <div class="playground-output-header" style="display:none;">Output</div>
+      <div id="playground-output-content"><span class="playground-output-placeholder">No output yet</span></div>
+    </div>
+  </div>
+  <style>
+    .playground-fullscreen-wrapper.fullscreen .playground-outer {
+      flex: 1 1 0;
+      min-width: 0;
+      border-right: 2px solid #2d145c;
+      background: #19182c;
+      display: flex;
+      flex-direction: column;
+      height: 100% !important;
+      max-height: 100% !important;
+    }
+    .playground-fullscreen-wrapper.fullscreen #playground-editor-container,
+    .playground-fullscreen-wrapper.fullscreen .CodeMirror {
+      flex: 1 1 0;
+      height: 100% !important;
+      min-height: 0 !important;
+      max-height: 100% !important;
+    }
+    .playground-fullscreen-wrapper.fullscreen .playground-toolbar {
+      border-radius: 0;
+    }
+    .playground-fullscreen-wrapper.fullscreen .playground-output {
+      display: flex !important;
+      flex-direction: column;
+      flex: 1 1 0;
+      min-width: 0;
+      height: 100% !important;
+      max-height: 100% !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      font-size: 1.1rem;
+      overflow: auto;
+      border-left: 2px solid #2d145c;
+      background: #23223a;
+    }
+    .playground-fullscreen-wrapper.fullscreen .playground-output-header {
+      display: block !important;
+    }
+    .playground-fullscreen-wrapper.fullscreen #playground-output-content {
+      flex: 1 1 0;
+      height: 100%;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    @media (max-width: 900px) {
+      .playground-fullscreen-wrapper.fullscreen {
+        flex-direction: column;
+      }
+      .playground-fullscreen-wrapper.fullscreen .playground-outer,
+      .playground-fullscreen-wrapper.fullscreen .playground-output {
+        height: 50% !important;
+        max-height: 50% !important;
+      }
+      .playground-fullscreen-wrapper.fullscreen .playground-outer {
+        border-right: none;
+        border-bottom: 2px solid #2d145c;
+      }
+      .playground-fullscreen-wrapper.fullscreen .playground-output {
+        border-left: none;
+        border-top: 2px solid #2d145c;
+      }
+    }
+  </style>
+  <script>
+    function runPlaygroundCode() {
+      var code = window.codeMirrorInstance ? window.codeMirrorInstance.getValue() : document.getElementById('playground-editor').value;
+      var output = document.getElementById('playground-output');
+      var outputContent = document.getElementById('playground-output-content');
+      // Show loader
+      output.style.display = '';
+      outputContent.innerHTML = '<div class="playground-loader" style="display: flex; align-items: center; justify-content: center; height: 60px;"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+      setTimeout(function() {
+        try {
+          outputContent.innerHTML = '';
+          var iframe = document.createElement('iframe');
+          iframe.style.width = '100%';
+          iframe.style.height = '150px';
+          iframe.style.background = '#fff';
+          if (document.querySelector('.playground-fullscreen-wrapper.fullscreen')) {
+            iframe.style.height = '100%';
+          }
+          outputContent.appendChild(iframe);
+        } catch (e) {
+          outputContent.textContent = 'Error running code: ' + e;
+        }
+      }, 700); // Simulate processing delay
+    }
+    function setupPlaygroundFullscreen() {
+      var wrapper = document.getElementById('playground-fullscreen-wrapper');
+      var outer = document.getElementById('playground-editor-outer');
+      var output = document.getElementById('playground-output');
+      var btn = document.getElementById('playground-fullscreen-btn');
+      var outputHeader = output.querySelector('.playground-output-header');
+      var outputContent = document.getElementById('playground-output-content');
+      if (!wrapper || !btn) return;
+      btn.onclick = function() {
+        var isFullscreen = wrapper.classList.toggle('fullscreen');
+        if (isFullscreen) {
+          btn.innerHTML = '<i class="fas fa-compress"></i>';
+          output.style.display = 'flex';
+          wrapper.style.position = 'absolute';
+          wrapper.style.top = '0';
+          wrapper.style.left = '0';
+          wrapper.style.width = '100%';
+          wrapper.style.height = '100%';
+          if (outputHeader) outputHeader.style.display = 'block';
+          if (outputContent && !outputContent.innerHTML.trim()) {
+            outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
+          }
+          // Resize CodeMirror
+          if (window.codeMirrorInstance) {
+            setTimeout(function() { window.codeMirrorInstance.refresh(); }, 200);
+          }
+        } else {
+          btn.innerHTML = '<i class="fas fa-expand"></i>';
+          output.style.display = 'none';
+          wrapper.style.position = '';
+          wrapper.style.top = '';
+          wrapper.style.left = '';
+          wrapper.style.width = '';
+          wrapper.style.height = '';
+          if (outputHeader) outputHeader.style.display = 'none';
+          if (outputContent) outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
+          // Resize CodeMirror
+          if (window.codeMirrorInstance) {
+            setTimeout(function() { window.codeMirrorInstance.refresh(); }, 200);
+          }
+        }
+      };
+      // On initial fullscreen, show placeholder if no output
+      if (wrapper.classList.contains('fullscreen') && outputContent && !outputContent.innerHTML.trim()) {
+        outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', setupPlaygroundFullscreen);
+  </script>
 {% else %}
-  <p>{{ page.content|safe }}</p>
+  <div>{{ page.content|safe }}</div>
 {% endif %}
 <script>if(window.Prism){Prism.highlightAll();}</script>
 ''', page=page)
@@ -1350,7 +1567,8 @@ def user_lesson_content_ajax(level, chapter_id):
         return jsonify({
             'html': html,
             'next_button_text': page.get('next_button_text', 'Next'),
-            'is_quiz_page': is_quiz_page
+            'is_quiz_page': is_quiz_page,
+            'is_congrats': False
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
