@@ -29,6 +29,14 @@
       href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-darker.min.css"
+    />
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
       @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
@@ -368,6 +376,13 @@
         color: #ff69b4;
       }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closetag.min.js"></script>
   </head>
   <body>
     <!-- Sidebar -->
@@ -1054,9 +1069,7 @@
                   <option value="text_image">Text and Image Only</option>
                   <option value="text_code">Text and Code Sample</option>
                   <option value="quiz">Question and Multiple Choices</option>
-                  <option value="text_playground">
-                    Text and Code Playground
-                  </option>
+                  <option value="playground">Text and Code Playground</option>
                 </select>
               </div>
               <div class="mb-3">
@@ -1135,17 +1148,14 @@
                   style="color: #d3d3d3"
                   >Code Example</label
                 >
-                <textarea
-                  class="form-control"
-                  id="code_example"
-                  name="code_example"
-                  rows="4"
-                  style="
-                    background: #240e44;
-                    border: 1px solid #a259ff;
-                    color: #fff;
-                  "
-                ></textarea>
+                <div id="admin-code-editor-container">
+                  <textarea
+                    class="form-control"
+                    id="code_example"
+                    name="code_example"
+                    rows="4"
+                  ></textarea>
+                </div>
               </div>
               <!-- Multiple Choice Section (for quiz type) -->
               <div id="choices_section" class="mb-3" style="display: none">
@@ -1269,9 +1279,7 @@
                   <option value="text_image">Text and Image Only</option>
                   <option value="text_code">Text and Code Sample</option>
                   <option value="quiz">Question and Multiple Choices</option>
-                  <option value="text_playground">
-                    Text and Code Playground
-                  </option>
+                  <option value="playground">Text and Code Playground</option>
                 </select>
               </div>
 
@@ -1387,17 +1395,14 @@
                   style="color: #d3d3d3"
                   >Code Example</label
                 >
-                <textarea
-                  class="form-control"
-                  id="edit_code_example"
-                  name="code_example"
-                  rows="4"
-                  style="
-                    background: #240e44;
-                    border: 1px solid #a259ff;
-                    color: #fff;
-                  "
-                ></textarea>
+                <div id="admin-code-editor-container">
+                  <textarea
+                    class="form-control"
+                    id="edit_code_example"
+                    name="code_example"
+                    rows="4"
+                  ></textarea>
+                </div>
               </div>
 
               <!-- Multiple Choice Section (for quiz type) -->
@@ -1692,7 +1697,7 @@
                   text_image: "Text & Image",
                   text_code: "Text & Code",
                   quiz: "Question & Choices",
-                  text_playground: "Text & Playground",
+                  playground: "Text & Code Playground",
                 };
                 const pageType = pageTypeMap[page.page_type] || page.page_type;
 
@@ -1705,9 +1710,9 @@
                     </td>
                     <td>${page.title || "No Title"}</td>
                     <td><span class="badge bg-secondary">${pageType}</span></td>
-                    <td>${page.content.substring(0, 100)}${
-                  page.content.length > 100 ? "..." : ""
-                }</td>
+                    <td><span class="lesson-content-plain">${escapeHtml(
+                      page.content.substring(0, 100)
+                    )}${page.content.length > 100 ? "..." : ""}</span></td>
                     <td>${page.code_example ? "Yes" : "No"}</td>
                     <td>${page.image_url ? "Yes" : "No"}</td>
                     <td>
@@ -1766,6 +1771,12 @@
         .getElementById("addLessonContentForm")
         .addEventListener("submit", function (e) {
           e.preventDefault();
+
+          // Sync CodeMirror value before creating FormData
+          if (adminCodeMirrorInstance) {
+            document.getElementById("code_example").value =
+              adminCodeMirrorInstance.getValue();
+          }
 
           const formData = new FormData(this);
           const chapterId = formData.get("chapter_id");
@@ -1866,6 +1877,12 @@
         .getElementById("editLessonContentForm")
         .addEventListener("submit", function (e) {
           e.preventDefault();
+
+          // Sync CodeMirror value before creating FormData
+          if (adminEditCodeMirrorInstance) {
+            document.getElementById("edit_code_example").value =
+              adminEditCodeMirrorInstance.getValue();
+          }
 
           const formData = new FormData(this);
           const pageId = formData.get("id");
@@ -2115,7 +2132,7 @@
             choicesSection.style.display = "block";
             quizFeedbackSection.style.display = "block";
             break;
-          case "text_playground":
+          case "playground":
             codeSection.style.display = "block";
             break;
         }
@@ -2181,7 +2198,7 @@
             choicesSection.style.display = "block";
             quizFeedbackSection.style.display = "block";
             break;
-          case "text_playground":
+          case "playground":
             codeSection.style.display = "block";
             break;
         }
@@ -2210,6 +2227,155 @@
         `;
         choicesList.appendChild(choiceDiv);
       }
+
+      // Add CodeMirror for both add and edit modals
+      let adminCodeMirrorInstance = null;
+      let adminEditCodeMirrorInstance = null;
+
+      function initializeAdminCodeEditor() {
+        const textarea = document.getElementById("code_example");
+        if (textarea && !adminCodeMirrorInstance) {
+          adminCodeMirrorInstance = CodeMirror.fromTextArea(textarea, {
+            mode: "htmlmixed",
+            theme: "material-darker",
+            lineNumbers: true,
+            autoCloseBrackets: true,
+            autoCloseTags: true,
+            matchBrackets: true,
+            styleActiveLine: true,
+            lineWrapping: true,
+            tabSize: 2,
+            indentWithTabs: false,
+            extraKeys: {
+              "Ctrl-Space": "autocomplete",
+              Tab: function (cm) {
+                if (cm.somethingSelected()) {
+                  cm.indentSelection("add");
+                } else {
+                  cm.replaceSelection("  ", "end");
+                }
+              },
+              Enter: "newlineAndIndent",
+            },
+          });
+          adminCodeMirrorInstance.setSize("100%", "180px");
+        }
+      }
+
+      function initializeAdminEditCodeEditor() {
+        const textarea = document.getElementById("edit_code_example");
+        if (textarea && !adminEditCodeMirrorInstance) {
+          adminEditCodeMirrorInstance = CodeMirror.fromTextArea(textarea, {
+            mode: "htmlmixed",
+            theme: "material-darker",
+            lineNumbers: true,
+            autoCloseBrackets: true,
+            autoCloseTags: true,
+            matchBrackets: true,
+            styleActiveLine: true,
+            lineWrapping: true,
+            tabSize: 2,
+            indentWithTabs: false,
+            extraKeys: {
+              "Ctrl-Space": "autocomplete",
+              Tab: function (cm) {
+                if (cm.somethingSelected()) {
+                  cm.indentSelection("add");
+                } else {
+                  cm.replaceSelection("  ", "end");
+                }
+              },
+              Enter: "newlineAndIndent",
+            },
+          });
+          adminEditCodeMirrorInstance.setSize("100%", "180px");
+        }
+      }
+
+      // Show CodeMirror when code section is visible (add modal)
+      function showCodeSectionIfNeeded() {
+        const codeSection = document.getElementById("code_section");
+        if (codeSection && codeSection.style.display !== "none") {
+          initializeAdminCodeEditor();
+        }
+      }
+      // Show CodeMirror when edit code section is visible (edit modal)
+      function showEditCodeSectionIfNeeded() {
+        const codeSection = document.getElementById("edit_code_section");
+        if (codeSection && codeSection.style.display !== "none") {
+          initializeAdminEditCodeEditor();
+        }
+      }
+      window.addEventListener("DOMContentLoaded", showCodeSectionIfNeeded);
+      document
+        .getElementById("page_type")
+        .addEventListener("change", showCodeSectionIfNeeded);
+      // For edit modal, listen for modal show event and page type change
+      const editLessonContentModal = document.getElementById(
+        "editLessonContentModal"
+      );
+      if (editLessonContentModal) {
+        editLessonContentModal.addEventListener(
+          "shown.bs.modal",
+          showEditCodeSectionIfNeeded
+        );
+        document
+          .getElementById("edit_page_type")
+          .addEventListener("change", showEditCodeSectionIfNeeded);
+      }
+      // On form submit, sync CodeMirror content to textarea
+      const addLessonContentForm = document.getElementById(
+        "addLessonContentForm"
+      );
+      if (addLessonContentForm) {
+        addLessonContentForm.addEventListener("submit", function (e) {
+          if (adminCodeMirrorInstance) {
+            document.getElementById("code_example").value =
+              adminCodeMirrorInstance.getValue();
+          }
+        });
+      }
+      const editLessonContentForm = document.getElementById(
+        "editLessonContentForm"
+      );
+      if (editLessonContentForm) {
+        editLessonContentForm.addEventListener("submit", function (e) {
+          if (adminEditCodeMirrorInstance) {
+            document.getElementById("edit_code_example").value =
+              adminEditCodeMirrorInstance.getValue();
+          }
+        });
+      }
+
+      // Add this helper function at the top of the script block if not present:
+      function escapeHtml(text) {
+        if (!text) return "";
+        return text.replace(/[&<>"']/g, function (c) {
+          return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          }[c];
+        });
+      }
     </script>
+    <style>
+      #admin-code-editor-container .CodeMirror {
+        font-size: 1rem;
+        border-radius: 6px;
+        background: #19182c;
+        color: #fff;
+        border: 1px solid #39386b;
+        margin-bottom: 6px;
+        min-height: 120px;
+        max-height: 200px;
+      }
+      #admin-code-editor-container .CodeMirror-focused {
+        border-color: #7e31ef;
+        box-shadow: 0 0 0 1.5px #7e31ef;
+      }
+    </style>
   </body>
 </html>
