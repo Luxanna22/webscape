@@ -13,7 +13,6 @@
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
       rel="stylesheet"
-      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
       crossorigin="anonymous"
     />
 
@@ -27,32 +26,311 @@
       href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
       rel="stylesheet"
     />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
-      @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
-
       :root {
         --bg-color: #240e44;
-        --secondary-color: #2d2c2f;
+        --secondary-color: #371569;
         --accent-color: #ff66c4;
+        --sidebar-bg: #371569;
+        --card-bg: #371569;
+        --accent: #ff66c4;
+        --accent-hover: #c54fa3;
+        --text-main: #eaeaea;
+        --text-muted: #b3b3b3;
+        --border-radius: 8px;
+        --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        --bright-purple: #7e31ef;
+      }
+      a[href="https://confettipage.com"]
+      {
+        display: none !important;
       }
       * {
-        text-decoration: none;
-      }
-      body,
-      html {
-        scrollbar-width: thin;
-        scrollbar-color: var(--accent-color) var(--secondary-color);
+        text-decoration: none !important;
+        box-sizing: border-box;
         margin: 0;
         padding: 0;
-        height: 100%;
-        background-color: var(--bg-color);
-        color: #a9a9a9;
-        font-family: "Montserrat", sans-serif;
       }
-      /* modal content */
-      .modal-body {
-        padding: 0 2.5rem !important;
+      a {
+        color: var(--text-mute);
+
+        &:hover {
+          color: var(--accent);
+        }
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: var(--bg-color);
+        color: var(--text-main);
+        font-family: "Montserrat", sans-serif;
+        min-height: 100vh;
+      }
+      body {
+        display: flex;
+        min-height: 100vh;
+      }
+      .sidebar {
+        background: var(--sidebar-bg);
+        width: 90px;
+        min-width: 90px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 0 16px 0;
+        z-index: 1000;
+        transition: width var(--transition);
+      }
+      .sidebar.collapsed {
+        width: 0;
+        min-width: 0;
+        overflow: hidden;
+        padding: 0;
+      }
+      .sidebar .nav-item {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 36px;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: color var(--transition);
+        position: relative;
+      }
+      .sidebar .nav-item:last-child {
+        margin-top: auto;
+        margin-bottom: 0;
+      }
+      .sidebar .nav-item i {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 4px;
+        transition: color var(--transition);
+      }
+      .sidebar .nav-item span {
+        font-size: 0.9rem;
+        display: block;
+        letter-spacing: 0.03em;
+      }
+      .sidebar .nav-item:hover,
+      .sidebar .nav-item:focus {
+        color: var(--accent);
+      }
+      .sidebar .nav-item:hover i,
+      .sidebar .nav-item:focus i {
+        color: var(--accent);
+      }
+      .sidebar-toggle {
+        display: none;
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        right: 18px;
+        z-index: 1100;
+        background: transparent;
+        border: none;
+        color: var(--accent);
+        font-size: 2rem;
+        border-radius: var(--border-radius);
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        transition: background var(--transition);
+      }
+      .sidebar-toggle:focus {
+        outline: 2px solid var(--accent);
+      }
+      main {
+        flex: 1;
+        margin-left: 90px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 100vh;
+        padding: 0 0 48px 0;
+        transition: margin-left var(--transition);
+      }
+      .hero {
+        width: 100%;
+        max-width: 900px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        padding: 0 16px;
+        text-align: center;
+      }
+      .hero-title {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 7.5rem;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.04em;
+        text-shadow: 0 2px 12px #0002;
+      }
+      .hero-tagline {
+        font-family: "Anton", sans-serif;
+        font-size: 2rem;
+        color: var(--text-muted);
+        margin-bottom: 2.5rem;
+        font-weight: 700;
+      }
+      .hero-logo {
+        width: 40%;
+        margin-bottom: 2.5rem;
+        filter: drop-shadow(0 2px 12px #0003);
+      }
+      .hero-actions {
+        border-radius: var(--border-radius);
+        display: flex;
+        gap: 18px;
+        justify-content: center;
+        margin-bottom: 0;
+      }
+      .btn-login,
+      .btn-getstarted {
+        width: 100%;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 1.15rem;
+        padding: 0.9rem 2.2rem;
+        border: none;
+        transition: background var(--transition), color var(--transition);
+        box-shadow: 0 2px 8px #0001;
+      }
+      .btn-login {
+        background: transparent;
+        color: var(--accent);
+        border: 2px solid var(--accent);
+      }
+      .btn-login:hover,
+      .btn-login:focus {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-getstarted {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-getstarted:hover,
+      .btn-getstarted:focus {
+        background: var(--accent-hover);
+        color: #fff;
+      }
+      .section {
+        width: 100%;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 0px;
+      }
+      .section-title {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 2.5rem;
+        color: var(--accent);
+        /* margin-bottom: 2.5rem; */
+        text-align: center;
+        letter-spacing: 0.03em;
+        padding: 2rem;
+      }
+      .game-modes-row {
+        display: flex;
+        gap: 2rem;
+        justify-content: center;
+        padding-bottom: 2rem;
+      }
+      .game-mode-card {
+        background: var(--card-bg);
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 24px #0002;
+        border: 3px solid var(--bright-purple);
+        width: 350px;
+        min-width: 260px;
+        max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 32px 24px 24px 24px;
+        transition: transform var(--transition), box-shadow var(--transition),
+          border-color var(--transition);
+        position: relative;
+      }
+      .game-mode-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 8px 32px #0003;
+        background-color: #481c89;
+      }
+      .game-mode-card img {
+        width: 100%;
+        height: 250px;
+        object-fit: contain;
+        margin-bottom: 1.2rem;
+      }
+      .game-mode-card h2 {
+        font-family: "Anton", sans-serif;
+        font-size: 1.5rem;
+        color: #fff;
+        margin-bottom: 0.7rem;
+        font-weight: 700;
+      }
+      .game-mode-card p {
+        color: var(--text-muted);
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        min-height: 56px;
+      }
+      .game-mode-card .btn-pink {
+        width: 100%;
+        background: var(--accent);
+        color: #fff;
+        font-family: "Luckiest Guy", cursive;
+        font-size: 1.1rem;
+        border-radius: var(--border-radius);
+        border: none;
+        transition: background var(--transition);
+      }
+      .game-mode-card .btn-pink:hover,
+      .game-mode-card .btn-pink:focus {
+        background: var(--accent-hover);
+      }
+      /* Modal tweaks for consistency */
+      .modal-content.login-modal-content {
+        background-color: #371569;
+        border: 2px solid #a64eff;
+        margin: 5rem auto;
+        padding: 12px 12px 24px 12px;
+      }
+      .modal-content {
+        background-color: #32124b;
+        border-radius: var(--border-radius);
+        width: 400px;
+      }
+      .modal-header .modal-title {
+        color: inherit;
+        font-family: inherit;
+        font-size: inherit;
+      }
+      .login-input {
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid #fff;
+        border-radius: 0;
+        color: #fff;
       }
       .login-input:focus,
       .login-input:not(:placeholder-shown) {
@@ -61,7 +339,6 @@
         outline: none;
         box-shadow: none;
       }
-
       .login-input:focus + label,
       .login-input:not(:placeholder-shown) + label {
         background-color: transparent;
@@ -69,639 +346,516 @@
       #modalLabel::after {
         background-color: transparent;
       }
-      .login-modal-content {
-        background-color: #371569;
-        border: 2px solid #a64eff;
-        margin: 5rem auto;
-      }
-      .modal-content {
-        background-color: #32124b;
-        border-radius: 12px;
-        height: 480px;
-        width: 400px;
-      }
-
-      .login-input {
-        background-color: transparent;
-        border: none;
-        border-bottom: 2px solid #fff;
-        border-radius: 0;
-        color: #fff;
-      }
-
-      .login-input::placeholder {
-        color: #aaa;
-      }
-
       .btn-pink {
         background-color: #ff5fc5;
         color: white;
         font-weight: bold;
         letter-spacing: 1px;
-        border-radius: 8px;
+        border-radius: var(--border-radius);
       }
-
       .btn-pink:hover {
         background-color: #ff40b5;
       }
-
-      .text-pink {
-        color: #ff5fc5;
-        cursor: pointer;
-      }
-
-      .text-pink:hover {
-        color: #ff40b5;
-        text-decoration: underline;
-      }
-      /* ------- */
-      .sidebar {
-        background-color: #3a1464;
-        width: 90px;
-        height: 100vh;
-        position: fixed;
-        top: 0;
-        left: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 20px;
-        gap: 50px;
-      }
-      .sidebar .nav-item {
-        text-align: center;
-        font-weight: 500;
-        font-size: 14px;
-        color: #a9a9a9;
-        user-select: none;
-        cursor: pointer;
-      }
-      .sidebar .nav-item i {
-        font-size: 28px;
-        display: block;
-        margin-bottom: 6px;
-        color: #a9a9a9;
-      }
-      .sidebar .nav-item a {
-        color: #a9a9a9;
-        text-decoration: none;
-      }
-      .sidebar .nav-item.badges i {
-        color: #bfbfbf;
-      }
-      .sidebar .nav-item.account i {
-        font-size: 32px;
-        color: #bfbfbf;
-      }
-      .sidebar .nav-item:hover {
-        color: #ff69b4;
-      }
-      .sidebar .nav-item:hover i {
-        color: #ff69b4;
-      }
-      .sidebar .nav-item:hover a {
-        color: #ff69b4;
-      }
-
-      main {
-        margin-left: 90px;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 0 15px;
-      }
-      .section {
-        margin-left: 80px;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 0 15px;
-      }
-      .section h1 {
-        font-family: "Luckiest Guy", sans-serif;
-        font-size: 4vw;
-        color: #ff69b4;
-        margin-bottom: 0;
-        user-select: none;
-      }
-      h1 {
-        font-family: "Luckiest Guy", sans-serif;
-        font-size: 9.5vw;
-        color: #ff69b4;
-        margin-bottom: 0;
-        user-select: none;
-      }
-      h2 {
-        font-family: "Anton", sans-serif;
-        font-weight: 700;
-        font-size: 2.3vw;
-        color: #6f2dbd;
-        margin-top: 0;
-        margin-bottom: 40px;
-        user-select: none;
-      }
-      .book-icon {
-        color: #b3b3b3;
-        font-size: 18vw;
-        width: 300px;
-        user-select: none;
-        margin-bottom: 50px;
-      }
-      .btn-login {
-        border: 2px solid #ff69b4;
-        color: #ff69b4;
-        font-family: "Luckiest Guy", cursive;
-        font-size: 1.25rem;
-        width: 180px;
-        height: 70px;
-        margin-right: 20px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-      .btn-login {
-        position: relative;
-        overflow: hidden;
-        z-index: 1;
-
-        &:hover {
-          color: #ffffff;
-          background-color: var(--accent-color);
+      /* Responsive styles */
+      @media (max-width: 991.98px) {
+        .hero-title {
+          font-size: 6rem;
+        }
+        .hero-tagline {
+          font-size: 1.5rem;
+        }
+        .section-title {
+          font-size: 2rem;
+        }
+        .game-modes-row {
+          gap: 18px;
+        }
+        .hero-logo {
+          width: 50%;
+        }
+        /* .game-mode-card {
+          width: 80vw;
+          max-width: 80vw;
+        } */
+        .game-mode-card img {
+          height: 200px;
+        }
+        .game-modes-row {
+          align-items: center;
+          gap: 2rem;
+          flex-wrap: wrap;
         }
       }
-      .btn-getstarted,
-      #btn {
-        background-color: var(--accent-color);
-        /* background-image: linear-gradient(
-            315deg,
-            var(--accent-color) 0%,
-            var(--secondary-color) 74%
-          ); */
-        border: none;
-        color: white;
-        font-family: "Luckiest Guy", cursive;
-        font-size: 1.25rem;
-        width: 180px;
-        height: 70px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-      .btn-getstarted:hover {
-        background-color: #c54fa3;
-        color: white;
-      }
-
-      @media (max-width: 575.98px) {
+      @media (max-width: 767.98px) {
         .sidebar {
-          width: 60px;
-          padding-top: 15px;
-          gap: 35px;
+          min-width: 0;
+          max-width: 80vw;
+          height: 100vh;
+          left: 0;
+          top: 0;
+          position: fixed;
+          z-index: 1200;
+          transform: translateX(-100%);
+          transition: transform var(--transition);
+          box-shadow: 2px 0 16px #0003;
+          background: var(--sidebar-bg);
+          padding-top: 32px;
         }
-        .sidebar .nav-item {
-          font-size: 11px;
+        .sidebar.open {
+          transform: translateX(0);
         }
-        .sidebar .nav-item i {
-          font-size: 22px;
-          margin-bottom: 3px;
+        .sidebar-toggle {
+          display: flex;
         }
-        .sidebar .nav-item.account i {
-          font-size: 26px;
+        .sidebar-backdrop {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.4);
+          z-index: 1199;
+        }
+        .sidebar-backdrop.active {
+          display: block;
         }
         main {
-          margin-left: 60px;
-          padding: 0 10px;
+          margin-left: 0;
         }
-        h1 {
-          font-size: 12vw;
+        .hero {
+          padding: 0 8px;
         }
-        h2 {
-          font-size: 3vw;
-          margin-bottom: 30px;
+        .hero-tagline {
+          font-size: 1.2rem;
         }
-        .book-icon {
-          font-size: 25vw;
-          margin-bottom: 40px;
+        .hero-actions {
+          width: 60%;
+        }
+        .section {
+          padding: 24px 8px 0 8px;
+        }
+        .game-mode-card {
+          width: 80vw;
+          min-width: 0;
+        }
+        .game-mode-card img {
+          height: 150px;
+        }
+        .modal-content {
+          width: 80vw;
+        }
+        a {
+          display: flex;
+          gap: 1rem;
+          justify-content: flex-start;
+          align-items: center;
+          text-decoration: none;
+          color: var(--text-mute);
+          text-align: left;
+          margin: 0 2rem;
+          color: var(--text-mute);
+        }
+        .sidebar {
+          width: 80vw;
+        }
+        .sidebar .nav-item:last-child {
+          margin-bottom: 2rem;
+          display: flex;
+          gap: 1rem;
+          /* margin: 0 2rem !important; */
+          align-items: center;
+          margin-left: 4rem;
+        }
+        p {
+          font-size: 0.6rem;
+        }
+      }
+      @media (max-width: 575.98px) {
+        .hero-title {
+          font-size: 4rem;
+        }
+        .section-title {
+          font-size: 1.3rem;
+        }
+        .hero-logo {
+          width: 60%;
         }
         .btn-login,
         .btn-getstarted {
-          width: 140px;
-          height: 55px;
+          padding: 0.7rem 1.2rem;
           font-size: 1rem;
         }
-        .btn-login {
-          margin-right: 10px;
-        }
-      }
-
-      .card {
-        background-color: #371569;
-        border: 3px solid #7e31ef;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-
-        &:hover {
-          /* up slightly */
-          transform: translateY(-15px);
-          transition: transform 0.2s ease-in-out;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-          background-color: #481c89;
-        }
-      }
-
-      .card h2 {
-        font-family: "Anton", cursive;
-        font-size: 2rem;
-        color: #d1d1d3;
-        user-select: none;
-      }
-      .card p {
-        font-size: 0.9rem;
-        text-align: left;
-        color: #8a8a8f;
-      }
-      .btn-pink {
-        background-color: var(--accent-color);
-        border: none;
-        font-family: "Luckiest Guy", cursive;
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: white;
-        user-select: none;
-      }
-      .btn-pink:hover,
-      .btn-pink:focus {
-        background-color: #c54fa3;
-        color: white;
-      }
-      .card-img-top {
-        width: 100%;
-        height: auto;
-        max-height: 190px;
-        object-fit: contain;
-        margin-bottom: 1rem;
       }
     </style>
   </head>
   <body>
-    <nav class="sidebar d-flex flex-column align-items-center">
-      <!-- <div class="nav-item levels">
-        <i class="fas fa-bars" aria-hidden="true"></i>
-        <span>Levels</span>
-      </div> -->
-      <div class="nav-item badges">
+    <button
+      class="sidebar-toggle"
+      aria-label="Open navigation"
+      id="sidebarToggle"
+      type="button"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <nav class="sidebar d-flex flex-column align-items-center" id="sidebarNav">
+      <div
+        class="nav-item badges"
+        tabindex="0"
+        title="Rankings"
+        onclick="closeSidebarOnMobile()"
+      >
         <a href="{{ url_for('rankings') }}">
           <i class="fas fa-award" aria-hidden="true"></i>
           <span>Rankings</span>
         </a>
       </div>
-      <div class="nav-item options">
-        <i class="fas fa-paint-brush" aria-hidden="true"></i>
-        <span>Options</span>
+      <div
+        class="nav-item options"
+        tabindex="0"
+        title="Options"
+        onclick="closeSidebarOnMobile()"
+      >
+        <a href="#">
+          <i class="fas fa-paint-brush" aria-hidden="true"></i>
+          <span>Options</span>
+        </a>
       </div>
-      <div class="nav-item account mt-auto mb-4" onclick="handleAccountClick()">
+      <div
+        class="nav-item account mt-auto mb-4"
+        tabindex="0"
+        title="Account"
+        onclick="handleAccountClick(); closeSidebarOnMobile()"
+      >
         <i class="fas fa-user-circle" aria-hidden="true"></i>
         <span>Account</span>
       </div>
     </nav>
     <main>
-      <h1>WEBSCAPE</h1>
-      <h2>Escape The Struggles for Learning Web Fundamentals</h2>
-      <img
-        src="/static/images/book-icon.png"
-        alt="webscape-logo"
-        class="book-icon"
-      />
-      <div class="d-flex justify-content-center">
-        <button
-          type="button"
-          class="btn btn-login"
-          data-bs-target="#loginModal"
-          data-bs-toggle="modal"
-          id="loginButton"
-          style="display: none"
-        >
-          Login
-        </button>
-        <button
-          class="btn btn-getstarted"
-          onclick="location.href='#game-modes'"
-        >
-          Get Started
-        </button>
-      </div>
-    </main>
-    <!-- LOGIN MODAL -->
-    <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content login-modal-content">
-          <div class="modal-header border-0">
-            <h5 class="modal-title w-100 text-center ms-3">
-              <img
-                src="/static/images/book-icon.png"
-                alt="Book Icon"
-                style="width: 120px"
-              />
-              <div
-                style="
-                  color: var(--accent-color);
-                  font-size: 24px;
-                  margin-top: 10px;
-                  font-family: 'Luckiest Guy', cursive;
-                "
-              >
-                LOGIN
-              </div>
-            </h5>
+      <section class="hero">
+        <h1 class="hero-title">WEBSCAPE</h1>
+        <div class="hero-tagline">
+          Escape The Struggles for Learning Web Fundamentals
+        </div>
+        <img
+          src="/static/images/book-icon.png"
+          alt="WebScape Logo"
+          class="hero-logo"
+        />
+        <div class="hero-actions">
+          <button
+            type="button"
+            class="btn btn-login"
+            data-bs-target="#loginModal"
+            data-bs-toggle="modal"
+            id="loginButton"
+            style="display: none"
+          >
+            Login
+          </button>
+          <button
+            class="btn btn-getstarted"
+            onclick="location.href='#game-modes'"
+          >
+            Get Started
+          </button>
+        </div>
+      </section>
+      <section class="section">
+        <h2 class="section-title" id="game-modes">GAME MODES</h2>
+        <div class="game-modes-row">
+          <div class="game-mode-card">
+            <img src="/static/images/classic-mode.png" alt="Classic Mode" />
+            <h2>Classic</h2>
+            <p>
+              Learn step-by-step with gamified levels covering HTML and CSS
+              fundamentals. Unlock new genres as you advance!
+            </p>
             <button
-              type="button"
-              class="btn-close btn-close-white"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-              style="margin-bottom: 5rem"
-            ></button>
+              class="btn btn-pink mt-auto w-100"
+              onclick="checkLoginAndRedirect('classic')"
+            >
+              START
+            </button>
           </div>
-          <div class="modal-body">
-            <form id="loginForm" onsubmit="handleLogin(event)">
-              <div class="mb-3">
-                <div class="form-floating flex-grow-1 position-relative">
-                  <input
-                    type="text"
-                    class="form-control login-input ps-5"
-                    id="usernameInput"
-                    name="username"
-                    placeholder="Username"
-                    required
-                  />
-                  <label
-                    style="margin-left: 2.2rem; color: var(--accent-color)"
-                    for="usernameInput"
-                    id="modalLabel"
-                    >Username</label
-                  >
-                  <i
-                    class="fas fa-user position-absolute text-white"
-                    style="top: 50%; left: 10px; transform: translateY(-50%)"
-                  ></i>
-                </div>
-              </div>
-              <div class="mb-3">
-                <div class="form-floating flex-grow-1 position-relative">
-                  <input
-                    type="password"
-                    class="form-control login-input ps-5"
-                    id="passwordInput"
-                    name="password"
-                    placeholder="Password"
-                    required
-                  />
-                  <label
-                    style="margin-left: 2.2rem; color: var(--accent-color)"
-                    id="modalLabel"
-                    for="passwordInput"
-                    >Password</label
-                  >
-                  <i
-                    class="fas fa-lock position-absolute text-white"
-                    style="top: 50%; left: 10px; transform: translateY(-50%)"
-                  ></i>
-                </div>
-              </div>
-              <div class="form-check mb-3 ms-2 fs-6">
-                <input
-                  type="checkbox"
-                  class="form-check-input"
-                  id="rememberMe"
+          <div class="game-mode-card">
+            <img
+              src="/static/images/competitive-mode.png"
+              alt="Competitive Mode"
+            />
+            <h2>Competitive</h2>
+            <p>
+              Competitive enough? Go head-to-head against other players in
+              time-based coding duels and quizzes.
+            </p>
+            <button
+              class="btn btn-pink mt-auto w-100"
+              onclick="checkLoginAndRedirect('competitive')"
+            >
+              START
+            </button>
+          </div>
+          <div class="game-mode-card">
+            <img
+              src="/static/images/playground-mode.png"
+              alt="Playground Mode"
+            />
+            <h2>Playground</h2>
+            <p>
+              Write and test your HTML, CSS, and JS code freely in a live coding
+              environment.
+            </p>
+            <button
+              class="btn btn-pink mt-auto w-100"
+              onclick="window.location.href='/playground'"
+            >
+              START
+            </button>
+          </div>
+        </div>
+      </section>
+      <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content login-modal-content">
+            <div class="modal-header border-0">
+              <h5 class="modal-title w-100 text-center ms-3">
+                <img
+                  src="/static/images/book-icon.png"
+                  alt="Book Icon"
+                  style="width: 120px"
                 />
-                <label
-                  class="form-check-label text-gray small"
-                  for="rememberMe"
-                  id="rememberMeLabel"
-                  >Remember me</label
+                <div
+                  style="
+                    color: var(--accent-color);
+                    font-size: 24px;
+                    margin-top: 10px;
+                    font-family: 'Luckiest Guy', cursive;
+                  "
                 >
-              </div>
-              <button type="submit" class="btn btn-pink w-100 mb-3">
-                SUBMIT
-              </button>
+                  LOGIN
+                </div>
+              </h5>
+              <button
+                type="button"
+                class="btn-close btn-close-white"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+                style="margin-bottom: 5rem"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="mb-3">
+                  <div class="form-floating flex-grow-1 position-relative">
+                    <input
+                      type="text"
+                      class="form-control login-input ps-5"
+                      id="usernameInput"
+                      name="username"
+                      placeholder="Username"
+                      required
+                    />
+                    <label
+                      style="margin-left: 2.2rem; color: var(--accent-color)"
+                      for="usernameInput"
+                      id="modalLabel"
+                      >Username</label
+                    >
+                    <i
+                      class="fas fa-user position-absolute text-white"
+                      style="top: 50%; left: 10px; transform: translateY(-50%)"
+                    ></i>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="form-floating flex-grow-1 position-relative">
+                    <input
+                      type="password"
+                      class="form-control login-input ps-5"
+                      id="passwordInput"
+                      name="password"
+                      placeholder="Password"
+                      required
+                    />
+                    <label
+                      style="margin-left: 2.2rem; color: var(--accent-color)"
+                      id="modalLabel"
+                      for="passwordInput"
+                      >Password</label
+                    >
+                    <i
+                      class="fas fa-lock position-absolute text-white"
+                      style="top: 50%; left: 10px; transform: translateY(-50%)"
+                    ></i>
+                  </div>
+                </div>
+                <div class="form-check mb-3 ms-2 fs-6">
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    id="rememberMe"
+                  />
+                  <label
+                    class="form-check-label text-gray small"
+                    for="rememberMe"
+                    id="rememberMeLabel"
+                    >Remember me</label
+                  >
+                </div>
+                <button type="submit" class="btn btn-pink w-100 mb-3">
+                  SUBMIT
+                </button>
+                <p class="text-center text-gray mb-0 small">
+                  Don't have an account?
+                  <a
+                    href="#"
+                    class="text-pink"
+                    data-bs-toggle="modal"
+                    data-bs-target="#registerModal"
+                    style="
+                      text-decoration: underline !important;
+                      color: var(--accent);
+                    "
+                    >Register here</a
+                  >
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="modal fade"
+        id="registerModal"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog">
+          <div class="modal-content login-modal-content">
+            <div class="modal-header border-0">
+              <h5 class="modal-title w-100 text-center ms-3">
+                <img
+                  src="/static/images/book-icon.png"
+                  alt="Book Icon"
+                  style="width: 120px"
+                />
+                <div
+                  style="
+                    color: var(--accent-color);
+                    font-size: 24px;
+                    margin-top: 10px;
+                    font-family: 'Luckiest Guy', cursive;
+                  "
+                >
+                  REGISTER
+                </div>
+              </h5>
+              <button
+                type="button"
+                class="btn-close btn-close-white"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+                style="margin-bottom: 5rem"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <form id="registerForm" onsubmit="handleRegister(event)">
+                <div class="mb-3">
+                  <div class="form-floating flex-grow-1 position-relative">
+                    <input
+                      type="text"
+                      class="form-control login-input ps-5"
+                      id="registerUsernameInput"
+                      name="username"
+                      placeholder="Username"
+                      required
+                    />
+                    <label
+                      style="margin-left: 2.2rem; color: var(--accent-color)"
+                      for="registerUsernameInput"
+                      id="modalLabel"
+                      >Username</label
+                    >
+                    <i
+                      class="fas fa-user position-absolute text-white"
+                      style="top: 50%; left: 10px; transform: translateY(-50%)"
+                    ></i>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="form-floating flex-grow-1 position-relative">
+                    <input
+                      type="email"
+                      class="form-control login-input ps-5"
+                      id="registerEmailInput"
+                      name="email"
+                      placeholder="Email"
+                      required
+                    />
+                    <label
+                      style="margin-left: 2.2rem; color: var(--accent-color)"
+                      for="registerEmailInput"
+                      id="modalLabel"
+                      >Email</label
+                    >
+                    <i
+                      class="fas fa-envelope position-absolute text-white"
+                      style="top: 50%; left: 10px; transform: translateY(-50%)"
+                    ></i>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <div class="form-floating flex-grow-1 position-relative">
+                    <input
+                      type="password"
+                      class="form-control login-input ps-5"
+                      id="registerPasswordInput"
+                      name="password"
+                      placeholder="Password"
+                      required
+                    />
+                    <label
+                      style="margin-left: 2.2rem; color: var(--accent-color)"
+                      id="modalLabel"
+                      for="registerPasswordInput"
+                      >Password</label
+                    >
+                    <i
+                      class="fas fa-lock position-absolute text-white"
+                      style="top: 50%; left: 10px; transform: translateY(-50%)"
+                    ></i>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-pink w-100 mb-3">
+                  SUBMIT
+                </button>
+              </form>
               <p class="text-center text-gray mb-0 small">
-                Don't have an account?
+                Already have an account?
                 <a
                   href="#"
                   class="text-pink"
                   data-bs-toggle="modal"
-                  data-bs-target="#registerModal"
-                  >Register here</a
+                  data-bs-target="#loginModal"
+                  style="
+                    text-decoration: underline !important;
+                    color: var(--accent);
+                  "
+                  >Login here</a
                 >
               </p>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- register modal when register here is clicked -->
-    <div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content login-modal-content">
-          <div class="modal-header border-0">
-            <h5 class="modal-title w-100 text-center ms-3">
-              <img
-                src="/static/images/book-icon.png"
-                alt="Book Icon"
-                style="width: 120px"
-              />
-              <div
-                style="
-                  color: var(--accent-color);
-                  font-size: 24px;
-                  margin-top: 10px;
-                  font-family: 'Luckiest Guy', cursive;
-                "
-              >
-                REGISTER
-              </div>
-            </h5>
-            <button
-              type="button"
-              class="btn-close btn-close-white"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-              style="margin-bottom: 5rem"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <form id="registerForm" onsubmit="handleRegister(event)">
-              <div class="mb-3">
-                <div class="form-floating flex-grow-1 position-relative">
-                  <input
-                    type="text"
-                    class="form-control login-input ps-5"
-                    id="registerUsernameInput"
-                    name="username"
-                    placeholder="Username"
-                    required
-                  />
-                  <label
-                    style="margin-left: 2.2rem; color: var(--accent-color)"
-                    for="registerUsernameInput"
-                    id="modalLabel"
-                    >Username</label
-                  >
-                  <i
-                    class="fas fa-user position-absolute text-white"
-                    style="top: 50%; left: 10px; transform: translateY(-50%)"
-                  ></i>
-                </div>
-              </div>
-              <div class="mb-3">
-                <div class="form-floating flex-grow-1 position-relative">
-                  <input
-                    type="email"
-                    class="form-control login-input ps-5"
-                    id="registerEmailInput"
-                    name="email"
-                    placeholder="Email"
-                    required
-                  />
-                  <label
-                    style="margin-left: 2.2rem; color: var(--accent-color)"
-                    for="registerEmailInput"
-                    id="modalLabel"
-                    >Email</label
-                  >
-                  <i
-                    class="fas fa-envelope position-absolute text-white"
-                    style="top: 50%; left: 10px; transform: translateY(-50%)"
-                  ></i>
-                </div>
-              </div>
-              <div class="mb-3">
-                <div class="form-floating flex-grow-1 position-relative">
-                  <input
-                    type="password"
-                    class="form-control login-input ps-5"
-                    id="registerPasswordInput"
-                    name="password"
-                    placeholder="Password"
-                    required
-                  />
-                  <label
-                    style="margin-left: 2.2rem; color: var(--accent-color)"
-                    id="modalLabel"
-                    for="registerPasswordInput"
-                    >Password</label
-                  >
-                  <i
-                    class="fas fa-lock position-absolute text-white"
-                    style="top: 50%; left: 10px; transform: translateY(-50%)"
-                  ></i>
-                </div>
-              </div>
-              <button type="submit" class="btn btn-pink w-100 mb-3">
-                SUBMIT
-              </button>
-            </form>
-            <p class="text-center text-gray mb-0 small">
-              Already have an account?
-              <a
-                href="#"
-                class="text-pink"
-                data-bs-toggle="modal"
-                data-bs-target="#loginModal"
-                >Login here</a
-              >
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!--  -->
-    <div class="section">
-      <h1 id="game-modes">GAME MODES</h1>
-      <div class="container">
-        <div class="row mt-3 text-center g-4">
-          <div class="col-12 col-md-4">
-            <div class="card p-3 h-100 d-flex flex-column align-items-center">
-              <img
-                alt="Illustration of orange and purple stairs with a pink star on top"
-                class="card-img-top"
-                height="180"
-                src="/static/images/classic-mode.png"
-                width="300"
-              />
-              <h2>Classic</h2>
-              <p>
-                Learn step-by-step with gamified levels covering HTML and CSS
-                fundamentals. Unlock new genres as you advance!
-              </p>
-              <button
-                class="btn btn-pink mt-auto w-100"
-                onclick="checkLoginAndRedirect('classic')"
-              >
-                START
-              </button>
-            </div>
-          </div>
-          <div class="col-12 col-md-4">
-            <div class="card p-3 h-100 d-flex flex-column align-items-center">
-              <img
-                alt="Illustration of a boy coding on a laptop with colorful code blocks floating around"
-                class="card-img-top"
-                height="180"
-                src="/static/images/competitive-mode.png"
-                width="300"
-              />
-              <h2>Competitive</h2>
-              <p>
-                Competitive enough? <br />
-                Go head-to-head against other players in time-based coding duels
-                and quizzes.
-              </p>
-              <button
-                class="btn btn-pink mt-auto w-100"
-                onclick="checkLoginAndRedirect('competitive')"
-              >
-                START
-              </button>
-            </div>
-          </div>
-          <div class="col-12 col-md-4">
-            <div class="card p-3 h-100 d-flex flex-column align-items-center">
-              <img
-                alt="Pink terminal icon with a command prompt symbol inside a rounded rectangle"
-                class="card-img-top"
-                height="180"
-                src="/static/images/playground-mode.png"
-                width="300"
-              />
-              <h2>Playground</h2>
-              <p>
-                Write and test your HTML, CSS, and JS code freely in a live
-                coding environment.
-              </p>
-              <button
-                class="btn btn-pink mt-auto w-100"
-                onclick="window.location.href='/playground'"
-              >
-                START
-              </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
     <script
       src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-      integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
       crossorigin="anonymous"
     ></script>
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
-      integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
       crossorigin="anonymous"
     ></script>
     <script>
@@ -710,11 +864,7 @@
         event.preventDefault();
         const form = event.target;
         const formData = new FormData(form);
-
-        fetch("/login", {
-          method: "POST",
-          body: formData,
-        })
+        fetch("/login", { method: "POST", body: formData })
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
@@ -728,17 +878,12 @@
             alert("An error occurred during login");
           });
       }
-
       // Add registration handling function
       function handleRegister(event) {
         event.preventDefault();
         const form = event.target;
         const formData = new FormData(form);
-
-        fetch("/register", {
-          method: "POST",
-          body: formData,
-        })
+        fetch("/register", { method: "POST", body: formData })
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
@@ -752,15 +897,12 @@
             alert("An error occurred during registration");
           });
       }
-
       // Handle account click in sidebar
       function handleAccountClick() {
         fetch("/check_login")
           .then((response) => response.json())
           .then((data) => {
             if (data.logged_in) {
-              // TODO: Show account details or profile page
-              console.log("User is logged in");
               window.location.href = "/account";
             } else {
               const loginModal = new bootstrap.Modal(
@@ -770,7 +912,6 @@
             }
           });
       }
-
       // Check login status and update UI
       function checkLoginStatus() {
         fetch("/check_login")
@@ -784,11 +925,7 @@
             }
           });
       }
-
-      // Check login status when page loads
       document.addEventListener("DOMContentLoaded", checkLoginStatus);
-
-      // Existing checkLoginAndRedirect function
       function checkLoginAndRedirect(mode) {
         fetch("/check_login")
           .then((response) => response.json())
@@ -807,6 +944,38 @@
             }
           });
       }
+      // Sidebar mobile drawer logic
+      const sidebar = document.getElementById("sidebarNav");
+      const sidebarToggle = document.getElementById("sidebarToggle");
+      const sidebarBackdrop = document.getElementById("sidebarBackdrop");
+      function openSidebarOnMobile() {
+        if (window.innerWidth <= 767) {
+          sidebar.classList.add("open");
+          sidebarBackdrop.classList.add("active");
+          document.body.style.overflow = "hidden";
+        }
+      }
+      function closeSidebarOnMobile() {
+        if (window.innerWidth <= 767) {
+          sidebar.classList.remove("open");
+          sidebarBackdrop.classList.remove("active");
+          document.body.style.overflow = "";
+        }
+      }
+      sidebarToggle.addEventListener("click", openSidebarOnMobile);
+      sidebarBackdrop.addEventListener("click", closeSidebarOnMobile);
+      // Close sidebar on ESC
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeSidebarOnMobile();
+      });
+      // Close sidebar on resize to desktop
+      window.addEventListener("resize", function () {
+        if (window.innerWidth > 767) closeSidebarOnMobile();
+      });
     </script>
+    <!-- <script
+      src="https://run.confettipage.com/here.js"
+      data-confetticode="U2FsdGVkX1+nYz+H/kWOfHv3kjzg/+2AGyRBF7rTQDU0DZSB6Z1MMvOQ9Qz7PF1USOdIc0K2c2xa5XnayuJOiVvFkIPb8+tsxrqZiQj+lDhb67hlbGzZ64HoVrGt/Mf5SP5azO3Z2paXLPHHiMvAeG/Lr0xK7GQAmXnEndVnOWN23mqA/PFd7L+lkcBkLsQdbfuYANLjyLgNogu/8lyi7g4BrDiLLShJE0387OYmBq3CaG9JGvipunaU3JOwkdrt4a1cRdIGv35NR8ydMHeqNH+gqotRdeey5nG8XABIo40lvoYtD2YHY5C5g5UUoLYS0ShVJ8clsYrOlAg6xi/vbBQ6mBaqPYq2kwpdF7uBuLsShGiZB4ra2JzwnZterA4XBUvje+tth1u9ihMusYMGWDQ9LFrngpq5MRo5CchpgGAL0BFNt21QhnnCsNikcpVCqCW6py6YBm0XL5YMhbb94h4beflumTmrW6mD8kFYW4Ur6TvZsBHgzZShcpTNxEWnhjA3cEPg5YkxnFAJb45UcIfSFxYVzXwZ39iHO4MDTGbIvCWxJkCsdoncGB9YLwSczLTRL+/ItXeZ7eVhOtf9rILGISgCBoZRhQ1FJHhSlXZ9Um6WfIqAlt3c+XIJXLj1hBdMJNtuLWCf2rNHQ4m0mJOn3jhYcNu6GfDIqx7xTlZStyeNIevXpEi//+NzAyzA4IpJVUtbJnPSFr5K6fboAw=="
+    ></script> -->
   </body>
 </html>
