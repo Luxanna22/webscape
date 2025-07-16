@@ -71,6 +71,7 @@
         list-style-type: none;
         padding: 0;
         margin: 0;
+        text-decoration: none !important;
       }
 
       body,
@@ -467,6 +468,15 @@
       .modal-overlay.show {
         display: block;
       }
+
+      .nav-item a {
+        color: var(--text-main) !important;
+      }
+
+      .nav-item a:hover {
+        color: var(--accent-color) !important;
+        text-decoration: none !important;
+      }
     </style>
   </head>
   <body>
@@ -483,12 +493,16 @@
       </div>
 
       <div class="nav-item badges">
-        <i class="fas fa-award" aria-hidden="true"></i>
-        <span>Badges</span>
+        <a href="/rankings">
+          <i class="fas fa-award" aria-hidden="true"></i>
+          <span>Rankings</span>
+        </a>
       </div>
       <div class="nav-item options">
-        <i class="fas fa-paint-brush" aria-hidden="true"></i>
-        <span>Options</span>
+        <a href="/options">
+          <i class="fas fa-paint-brush" aria-hidden="true"></i>
+          <span>Options</span>
+        </a>
       </div>
       <div class="nav-item account mt-auto mb-4">
         <i class="fas fa-user-circle" aria-hidden="true"></i>
