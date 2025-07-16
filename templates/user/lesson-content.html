@@ -499,6 +499,7 @@
         border: 1px solid #39386b;
         border-top: none;
         min-height: 40px;
+        height: 100vh;
         color: #e0e0e0;
         font-family: "Fira Mono", "Consolas", "Menlo", monospace;
         font-size: 1rem;
@@ -671,6 +672,9 @@
       }
       .playground-fullscreen-wrapper.fullscreen .playground-output-header {
         display: block !important;
+      }
+      #playground-output-content {
+        height: 100%;
       }
       .playground-fullscreen-wrapper.fullscreen #playground-output-content {
         flex: 1 1 0;
@@ -1308,7 +1312,7 @@
             outputContent.innerHTML = '';
             var iframe = document.createElement('iframe');
             iframe.style.width = '100%';
-            iframe.style.height = '150px';
+            iframe.style.height = '100%';
             iframe.style.background = '#fff';
             if (document.querySelector('.playground-fullscreen-wrapper.fullscreen')) {
               iframe.style.height = '100%';
@@ -1493,6 +1497,155 @@
       }
 
       document.addEventListener('DOMContentLoaded', setupPlaygroundFullscreen);
+    </script>
+    <script>
+      // --- Analytics Tracking ---
+      let pageStartTime = Date.now();
+      let analyticsIncorrectAttempts = 0;
+      let analyticsPageNum =
+        typeof currentPage !== "undefined" ? currentPage : 1;
+
+      // Get current user ID from the page (you may need to add this to your template)
+      const currentUserId = {{ session.get('user_id', 0) }};
+
+      // Clear analytics session storage for current user
+      function clearAnalyticsSession() {
+        sessionStorage.removeItem(`visitedPages_${currentUserId}`);
+        sessionStorage.removeItem(`analyticsSent_${currentUserId}`);
+        console.log('Analytics session storage cleared for user:', currentUserId);
+      }
+
+      // Check if user has any existing analytics data and clear session if not
+      function checkAndClearAnalyticsSession() {
+        // Clear session storage on page load to ensure fresh analytics
+        clearAnalyticsSession();
+      }
+
+      // Track visited pages to determine if this is a new visit (user-specific)
+      function getVisitedPages() {
+        const visited = sessionStorage.getItem(`visitedPages_${currentUserId}`);
+        return visited ? JSON.parse(visited) : {};
+      }
+
+      function markPageAsVisited(chapterId, pageNum) {
+        const visited = getVisitedPages();
+        const key = `${chapterId}_${pageNum}`;
+        visited[key] = true;
+        sessionStorage.setItem(`visitedPages_${currentUserId}`, JSON.stringify(visited));
+        return key;
+      }
+
+      function isNewVisit(chapterId, pageNum) {
+        const visited = getVisitedPages();
+        const key = `${chapterId}_${pageNum}`;
+        return !visited[key];
+      }
+
+      // Track which pages have already had analytics sent (user-specific)
+      function getAnalyticsSent() {
+        const sent = sessionStorage.getItem(`analyticsSent_${currentUserId}`);
+        return sent ? JSON.parse(sent) : {};
+      }
+
+      function markAnalyticsSent(chapterId, pageNum) {
+        const sent = getAnalyticsSent();
+        const key = `${chapterId}_${pageNum}`;
+        sent[key] = true;
+        sessionStorage.setItem(`analyticsSent_${currentUserId}`, JSON.stringify(sent));
+      }
+
+      function hasAnalyticsBeenSent(chapterId, pageNum) {
+        const sent = getAnalyticsSent();
+        const key = `${chapterId}_${pageNum}`;
+        return sent[key] || false;
+      }
+
+      // Send analytics to backend
+      function sendPageAnalytics(pageNum, timeSpent, incorrectAttempts, isNewVisit) {
+        // Only send analytics if it hasn't been sent for this page in this session
+        if (!hasAnalyticsBeenSent(chapterId, pageNum)) {
+          fetch(`/user/classic/${level}/${chapterId}/${pageNum}/analytics`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              time_spent: timeSpent,
+              incorrect_attempts: incorrectAttempts,
+              is_new_visit: isNewVisit
+            }),
+          });
+          // Mark analytics as sent for this page
+          markAnalyticsSent(chapterId, pageNum);
+        }
+      }
+
+      // Call this before navigating away from a page
+      function logPageAnalytics() {
+        const timeSpent = Math.floor((Date.now() - pageStartTime) / 1000);
+        const newVisit = isNewVisit(chapterId, analyticsPageNum);
+        sendPageAnalytics(
+          analyticsPageNum,
+          timeSpent,
+          analyticsIncorrectAttempts,
+          newVisit
+        );
+        // Mark this page as visited
+        markPageAsVisited(chapterId, analyticsPageNum);
+        // Reset for next page
+        analyticsIncorrectAttempts = 0;
+        pageStartTime = Date.now();
+      }
+
+      // Hook into next/prev page navigation
+      const origNextPage = nextPage;
+      nextPage = function () {
+        logPageAnalytics();
+        analyticsPageNum = currentPage + 1;
+        origNextPage.apply(this, arguments);
+      };
+      const origGoPreviousPage = goPreviousPage;
+      goPreviousPage = function () {
+        logPageAnalytics();
+        analyticsPageNum = currentPage - 1;
+        origGoPreviousPage.apply(this, arguments);
+      };
+
+      // Also log analytics on page unload (refresh/close)
+      window.addEventListener("beforeunload", function () {
+        logPageAnalytics();
+      });
+
+      // For quiz pages, increment incorrect attempts
+      const origCheckQuizAnswer = checkQuizAnswer;
+      checkQuizAnswer = function () {
+        const form = document.getElementById("quiz-form");
+        const selected = form
+          ? form.querySelector('input[name="quiz_choice"]:checked')
+          : null;
+        // Only increment if answer is incorrect
+        if (form && selected) {
+          const correctChoice = quizChoices.find((c) => c.is_correct);
+          const isCorrect =
+            correctChoice && selected.value === correctChoice.id.toString();
+          if (!isCorrect) {
+            analyticsIncorrectAttempts += 1;
+          }
+        }
+        origCheckQuizAnswer.apply(this, arguments);
+      };
+
+      // When loading a new lesson page via AJAX, reset timer and page number
+      const origLoadLessonPage = loadLessonPage;
+      loadLessonPage = function (pageNum) {
+        pageStartTime = Date.now();
+        analyticsPageNum = pageNum;
+        analyticsIncorrectAttempts = 0;
+        origLoadLessonPage.apply(this, arguments);
+      };
+
+      // Clear analytics session on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        checkAndClearAnalyticsSession();
+      });
     </script>
   </body>
 </html>
