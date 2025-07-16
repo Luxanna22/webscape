@@ -29,6 +29,13 @@
       @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
       @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
 
+      * {
+        text-decoration: none !important;
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
       :root {
         --bg-color: #240e44;
         --secondary-color: #2d2c2f;
@@ -233,6 +240,14 @@
           padding: 1rem;
         }
       }
+      .nav-item a {
+        color: var(--text-main) !important;
+      }
+
+      .nav-item a:hover {
+        color: var(--accent-color) !important;
+        text-decoration: none !important;
+      }
     </style>
   </head>
   <body>
@@ -251,15 +266,18 @@
         <i class="fas fa-bars" aria-hidden="true"></i>
         <span>Levels</span>
       </div> -->
-      <div class="nav-item badges">
+      <div class="nav-item badges" onclick="window.location.href='/rankings'">
         <i class="fas fa-award" aria-hidden="true"></i>
         <span>Ranking</span>
       </div>
-      <div class="nav-item options">
+      <div class="nav-item options" onclick="window.location.href='/options'">
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
         <span>Options</span>
       </div>
-      <div class="nav-item account mt-auto mb-4">
+      <div
+        class="nav-item account mt-auto mb-4"
+        onclick="window.location.href='/account'"
+      >
         <i
           class="fas fa-user-circle"
           style="font-size: 32px"
