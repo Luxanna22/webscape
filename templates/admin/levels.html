@@ -536,7 +536,7 @@
             <div>
               <button
                 class="btn btn-pink me-2"
-                onclick="showAddChapterModal(document.getElementById('level_id').value)"
+                onclick="showAddChapterModal(currentLevelId)"
               >
                 <i class="fas fa-plus me-2"></i>Add Chapter
               </button>
@@ -550,11 +550,12 @@
               <thead>
                 <tr>
                   <th style="width: 10%">Order</th>
-                  <th style="width: 15%">Name</th>
                   <th style="width: 20%">Title</th>
                   <th style="width: 35%">Description</th>
                   <th style="width: 10%">XP</th>
                   <th style="width: 10%">Points</th>
+                  <th style="width: 10%">Visit Count</th>
+                  <th style="width: 10%">Win Rate</th>
                   <th style="width: 10%">Actions</th>
                 </tr>
               </thead>
@@ -591,8 +592,8 @@
                     <th style="width: 15%">Title</th>
                     <th style="width: 10%">Type</th>
                     <th style="width: 30%">Content</th>
-                    <th style="width: 15%">Code Example</th>
-                    <th style="width: 10%">Image</th>
+                    <th style="width: 10%">Visit Count</th>
+                    <th style="width: 10%">Win Rate</th>
                     <th style="width: 15%">Actions</th>
                   </tr>
                 </thead>
@@ -1048,7 +1049,11 @@
           </div>
           <div class="modal-body">
             <form id="addLessonContentForm">
-              <input type="hidden" id="lesson_chapter_id" name="chapter_id" />
+              <input
+                type="hidden"
+                id="add_lesson_chapter_id"
+                name="chapter_id"
+              />
               <!-- Page Type Selection -->
               <div class="mb-3">
                 <label for="page_type" class="form-label" style="color: #d3d3d3"
@@ -1543,6 +1548,12 @@
 
           const formData = new FormData(this);
 
+          // Debug: Log all form data to console
+          console.log("Form data being submitted:");
+          for (let [key, value] of formData.entries()) {
+            console.log(key + ": " + value);
+          }
+
           fetch("/admin/chapters/add", {
             method: "POST",
             body: formData,
@@ -1566,193 +1577,149 @@
         });
 
       function showAddChapterModal(levelId) {
-        document.getElementById("level_id").value = levelId;
+        // Ensure level_id is properly set in the hidden input
+        const levelIdInput = document.getElementById("level_id");
+        levelIdInput.value = levelId;
+        console.log("Setting level_id to:", levelId); // Debug log
         new bootstrap.Modal(document.getElementById("addChapterModal")).show();
       }
 
+      // Store analytics data globally for current level
+      let currentLevelAnalytics = [];
+      let currentLevelId = null; // Store current level ID
+
       function showChaptersList(levelId) {
-        // Store the level ID for later use
-        document.getElementById("level_id").value = levelId;
+        currentLevelId = levelId; // Store the current level ID
+        // Fetch chapters and analytics in parallel
+        Promise.all([
+          fetch(`/admin/chapters/${levelId}`).then((r) => r.json()),
+          fetch(`/admin/levels/${levelId}/analytics`).then((r) => r.json()),
+        ]).then(([chapters, analyticsResp]) => {
+          if (!analyticsResp.success) {
+            alert("Failed to load analytics: " + analyticsResp.message);
+            return;
+          }
+          currentLevelAnalytics = analyticsResp.analytics || [];
+          const chapterSummary = analyticsResp.chapter_summary || {};
 
-        // Show loading state
-        const tbody = document.getElementById("chaptersList");
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="7" class="text-center">
-              <div class="spinner-border text-light" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-            </td>
-          </tr>
-        `;
+          // Group analytics by page for lesson content
+          const analyticsByPage = {};
+          for (const row of currentLevelAnalytics) {
+            const pageKey = `${row.chapter_id}_${row.page_num}`;
+            analyticsByPage[pageKey] = row;
+          }
 
-        // Show the chapters section
-        document.getElementById("chaptersSection").style.display = "block";
+          // Render chapters table
+          const tbody = document.getElementById("chaptersList");
+          tbody.innerHTML = "";
+          chapters.forEach((chapter) => {
+            const chapterData = chapterSummary[chapter.id] || {};
+            const uniqueUsers = chapterData.unique_users || 0;
+            const totalPageVisits = chapterData.total_page_visits || 0;
+            const totalIncorrect = chapterData.total_incorrect || 0;
 
-        // Fetch chapters for this level
-        fetch(`/admin/chapters/${levelId}`)
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok");
-            }
-            return response.json();
-          })
-          .then((chapters) => {
-            tbody.innerHTML = "";
-
-            if (chapters.length === 0) {
-              tbody.innerHTML = `
-                <tr>
-                  <td colspan="7" class="text-center">No chapters found</td>
-                </tr>
-              `;
-            } else {
-              chapters.forEach((chapter) => {
-                tbody.innerHTML += `
-                  <tr>
-                    <td>${chapter.order_num}</td>
-                    <td>${chapter.name}</td>
-                    <td>${chapter.title}</td>
-                    <td>${chapter.description}</td>
-                    <td>${chapter.xp_reward}</td>
-                    <td>${chapter.points_reward}</td>
-                    <td>
-                      <div class="btn-group">
-                        <button class="btn btn-sm btn-pink" onclick="editChapter(${chapter.id})">
-                          <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-pink" onclick="showLessonContent(${chapter.id})">
-                          <i class="fas fa-book"></i>
-                        </button>
-                        <button class="btn btn-sm btn-pink" onclick="deleteChapter(${chapter.id})">
-                          <i class="fas fa-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                `;
-              });
+            // Win rate: 1 - (total incorrect / total visits)
+            let winRate = "-";
+            if (totalPageVisits > 0) {
+              winRate =
+                ((1 - totalIncorrect / totalPageVisits) * 100).toFixed(1) + "%";
             }
 
-            // Scroll to the chapters section
-            document
-              .getElementById("chaptersSection")
-              .scrollIntoView({ behavior: "smooth" });
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-            tbody.innerHTML = `
-              <tr>
-                <td colspan="7" class="text-center text-danger">
-                  <i class="fas fa-exclamation-circle me-2"></i>
-                  Failed to load chapters. Please try again.
-                </td>
-              </tr>
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${chapter.order_num}</td>
+              <td>${chapter.title}</td>
+              <td>${chapter.description}</td>
+              <td>${chapter.xp_reward}</td>
+              <td>${chapter.points_reward}</td>
+              <td>${uniqueUsers}</td>
+              <td>${winRate}</td>
+              <td>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-pink" onclick="editChapter(${chapter.id})">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-pink" onclick="showLessonContentSection(${chapter.id})">
+                    <i class="fas fa-book"></i>
+                  </button>
+                  <button class="btn btn-sm btn-pink" onclick="deleteChapter(${chapter.id})">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
             `;
-            showToast("An error occurred while fetching chapters", "error");
+            tbody.appendChild(tr);
           });
+          // Show chapters section
+          document.getElementById("chaptersSection").style.display = "";
+          // Hide lesson content section
+          document.getElementById("lessonContentSection").style.display =
+            "none";
+          // Store analytics for use in lesson content
+          window._analyticsByPage = analyticsByPage;
+        });
       }
 
-      function showLessonContent(chapterId) {
-        // Store the chapter ID for later use
-        document.getElementById("lesson_chapter_id").value = chapterId;
-        document.getElementById("edit_lesson_chapter_id").value = chapterId;
+      function stripHtml(html) {
+        let div = document.createElement("div");
+        div.innerHTML = html;
+        return div.textContent || div.innerText || "";
+      }
 
-        // Show loading state
-        const tbody = document.getElementById("lessonContentList");
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="7" class="text-center">
-              <div class="spinner-border text-light" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-            </td>
-          </tr>
-        `;
+      // Track the current chapter for adding/deleting lesson content
+      let currentLessonChapterId = null;
 
-        // Show the lesson content section
-        document.getElementById("lessonContentSection").style.display = "block";
-
-        // Fetch lesson content for this chapter
+      function showLessonContentSection(chapterId) {
+        currentLessonChapterId = chapterId;
+        // Set the chapter_id for the Add Page modal
+        document.getElementById("add_lesson_chapter_id").value = chapterId;
+        // Fetch lesson content for chapter
         fetch(`/admin/lesson-content/${chapterId}`)
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok");
-            }
-            return response.json();
-          })
+          .then((r) => r.json())
           .then((pages) => {
+            const tbody = document.getElementById("lessonContentList");
             tbody.innerHTML = "";
-
-            if (pages.length === 0) {
-              tbody.innerHTML = `
-                <tr>
-                  <td colspan="7" class="text-center">No lesson pages found</td>
-                </tr>
-              `;
-            } else {
-              pages.forEach((page) => {
-                // Format page type for display
-                const pageTypeMap = {
-                  text_image: "Text & Image",
-                  text_code: "Text & Code",
-                  quiz: "Question & Choices",
-                  playground: "Text & Code Playground",
-                };
-                const pageType = pageTypeMap[page.page_type] || page.page_type;
-
-                tbody.innerHTML += `
-                  <tr>
-                    <td>
-                      <span class="badge bg-pink" style="background: #ff69b4">
-                        Page ${page.page_num}
-                      </span>
-                    </td>
-                    <td>${page.title || "No Title"}</td>
-                    <td><span class="badge bg-secondary">${pageType}</span></td>
-                    <td><span class="lesson-content-plain">${escapeHtml(
-                      page.content.substring(0, 100)
-                    )}${page.content.length > 100 ? "..." : ""}</span></td>
-                    <td>${page.code_example ? "Yes" : "No"}</td>
-                    <td>${page.image_url ? "Yes" : "No"}</td>
-                    <td>
-                      <div class="btn-group">
-                        <button class="btn btn-sm btn-pink" onclick="editLessonContent(${
-                          page.id
-                        })">
-                          <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-pink" onclick="deleteLessonContent(${
-                          page.id
-                        })">
-                          <i class="fas fa-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                `;
-              });
-            }
-
-            // Scroll to the lesson content section
-            document
-              .getElementById("lessonContentSection")
-              .scrollIntoView({ behavior: "smooth" });
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-            tbody.innerHTML = `
-              <tr>
-                <td colspan="7" class="text-center text-danger">
-                  <i class="fas fa-exclamation-circle me-2"></i>
-                  Failed to load lesson content. Please try again.
+            // Use analyticsByPage from global
+            const analyticsByPage = window._analyticsByPage || {};
+            pages.forEach((page) => {
+              const analytics =
+                analyticsByPage[`${chapterId}_${page.page_num}`] || {};
+              const visitCount = analytics.total_visits || 0;
+              let winRate = "-";
+              if (visitCount > 0) {
+                winRate =
+                  (
+                    (1 - Number(analytics.total_incorrect || 0) / visitCount) *
+                    100
+                  ).toFixed(1) + "%";
+              }
+              const contentPreview =
+                stripHtml(page.content || "").slice(0, 60) +
+                (page.content && stripHtml(page.content).length > 60
+                  ? "..."
+                  : "");
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td>${page.page_num}</td>
+                <td>${page.title || ""}</td>
+                <td>${page.page_type || ""}</td>
+                <td>${contentPreview}</td>
+                <td>${visitCount}</td>
+                <td>${winRate}</td>
+                <td>
+                  <div class="btn-group">
+                    <button class="btn btn-sm btn-pink" onclick="editLessonContent(${
+                      page.id
+                    })"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteLessonContent(${
+                      page.id
+                    }, ${chapterId})"><i class="fas fa-trash"></i></button>
+                  </div>
                 </td>
-              </tr>
-            `;
-            showToast(
-              "An error occurred while fetching lesson content",
-              "error"
-            );
+              `;
+              tbody.appendChild(tr);
+            });
+            document.getElementById("lessonContentSection").style.display = "";
           });
       }
 
@@ -1761,6 +1728,11 @@
       }
 
       function showAddLessonContentModal() {
+        // Ensure the chapter_id is set before showing the modal
+        if (currentLessonChapterId) {
+          document.getElementById("add_lesson_chapter_id").value =
+            currentLessonChapterId;
+        }
         new bootstrap.Modal(
           document.getElementById("addLessonContentModal")
         ).show();
@@ -1919,10 +1891,8 @@
             });
         });
 
-      function deleteLessonContent(pageId) {
+      function deleteLessonContent(pageId, chapterId) {
         if (confirm("Are you sure you want to delete this lesson page?")) {
-          const chapterId = document.getElementById("lesson_chapter_id").value;
-
           fetch(`/admin/lesson-content/${pageId}`, {
             method: "DELETE",
           })
@@ -1930,7 +1900,7 @@
             .then((data) => {
               if (data.success) {
                 showToast("Lesson page deleted successfully");
-                showLessonContent(chapterId);
+                showLessonContentSection(chapterId);
               } else {
                 showToast(
                   data.message || "Failed to delete lesson page",
@@ -2139,6 +2109,19 @@
       }
 
       // Add/Remove choice fields for multiple choice
+      function renumberChoiceFields(listId, inputPrefix = "choice_text_") {
+        const choicesList = document.getElementById(listId);
+        const choiceDivs = Array.from(choicesList.children);
+        choiceDivs.forEach((div, idx) => {
+          // Update radio value and name
+          const radio = div.querySelector('input[type="radio"]');
+          if (radio) radio.value = idx;
+          // Update text input name
+          const textInput = div.querySelector('input[type="text"]');
+          if (textInput) textInput.name = inputPrefix + idx;
+        });
+      }
+      // Update addChoiceField to call renumber after delete
       function addChoiceField(value = "", isCorrect = false) {
         const choicesList = document.getElementById("choices_list");
         const idx = choicesList.children.length;
@@ -2151,7 +2134,7 @@
         } title="Mark as correct" />
           </div>
           <input type="text" class="form-control" name="choice_text_${idx}" value="${value}" placeholder="Choice text" required />
-          <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
+          <button type="button" class="btn btn-danger" onclick="this.parentElement.remove(); renumberChoiceFields('choices_list');"><i class="fas fa-trash"></i></button>
         `;
         choicesList.appendChild(choiceDiv);
       }
@@ -2211,6 +2194,7 @@
           updateEditFormFields();
         });
 
+      // Update addEditChoiceField to call renumber after delete
       function addEditChoiceField(value = "", isCorrect = false) {
         const choicesList = document.getElementById("edit_choices_list");
         const idx = choicesList.children.length;
@@ -2223,7 +2207,7 @@
         } title="Mark as correct" />
           </div>
           <input type="text" class="form-control" name="choice_text_${idx}" value="${value}" placeholder="Choice text" required />
-          <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
+          <button type="button" class="btn btn-danger" onclick="this.parentElement.remove(); renumberChoiceFields('edit_choices_list');"><i class="fas fa-trash"></i></button>
         `;
         choicesList.appendChild(choiceDiv);
       }
@@ -2359,6 +2343,11 @@
             "'": "&#39;",
           }[c];
         });
+      }
+
+      // Restore showLessonContent for refresh after edit
+      function showLessonContent(chapterId) {
+        showLessonContentSection(chapterId);
       }
     </script>
     <style>
