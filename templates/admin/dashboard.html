@@ -54,6 +54,9 @@
         color: #a9a9a9;
         font-family: "Montserrat", sans-serif;
       }
+      b {
+        color: white;
+      }
 
       .login-input {
         background-color: transparent;
@@ -410,7 +413,12 @@
               <i class="fas fa-users"></i>
             </div>
             <div class="dashboard-card-content">
-              <span class="dashboard-card-number">1.8K</span>
+              <span class="dashboard-card-number" id="total-users-value"
+                ><span
+                  class="spinner-border spinner-border-sm text-pink"
+                  id="total-users-loading"
+                ></span
+              ></span>
               <span class="dashboard-card-label">Total Users</span>
             </div>
           </div>
@@ -419,8 +427,16 @@
               <i class="fas fa-user-check"></i>
             </div>
             <div class="dashboard-card-content">
-              <span class="dashboard-card-number">1.1K</span>
-              <span class="dashboard-card-label">Active Users/<br />Week</span>
+              <span class="dashboard-card-number" id="active-users-value"
+                ><span
+                  class="spinner-border spinner-border-sm text-pink"
+                  id="active-users-loading"
+                ></span
+              ></span>
+              <span class="dashboard-card-label"
+                >Active Users <br />
+                (Weekly)</span
+              >
             </div>
           </div>
           <div class="dashboard-card">
@@ -428,10 +444,73 @@
               <i class="fas fa-trophy"></i>
             </div>
             <div class="dashboard-card-content">
-              <span class="dashboard-card-number">3.5K</span>
+              <span class="dashboard-card-number" id="levels-completed-value"
+                ><span
+                  class="spinner-border spinner-border-sm text-pink"
+                  id="levels-completed-loading"
+                ></span
+              ></span>
               <span class="dashboard-card-label"
                 >Total Levels<br />Completed</span
               >
+            </div>
+          </div>
+        </div>
+        <div class="row mt-4">
+          <div class="col-12 col-md-6">
+            <div class="card" style="background: #2d145c">
+              <div class="card-body">
+                <h5
+                  class="card-title"
+                  style="color: #ff69b4; font-family: 'Luckiest Guy', cursive"
+                >
+                  Recent Signups
+                </h5>
+                <div
+                  id="recent-signups-loading"
+                  style="text-align: center; color: #ff69b4"
+                >
+                  <span class="spinner-border spinner-border-sm"></span>
+                  Loading...
+                </div>
+                <div
+                  id="recent-signups-error"
+                  style="display: none; color: #ff4b5c; text-align: center"
+                ></div>
+                <ul
+                  class="list-group list-group-flush"
+                  id="recent-signups-list"
+                  style="background: transparent"
+                ></ul>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="card" style="background: #2d145c">
+              <div class="card-body">
+                <h5
+                  class="card-title"
+                  style="color: #ff69b4; font-family: 'Luckiest Guy', cursive"
+                >
+                  Top Users
+                </h5>
+                <div
+                  id="top-users-loading"
+                  style="text-align: center; color: #ff69b4"
+                >
+                  <span class="spinner-border spinner-border-sm"></span>
+                  Loading...
+                </div>
+                <div
+                  id="top-users-error"
+                  style="display: none; color: #ff4b5c; text-align: center"
+                ></div>
+                <ul
+                  class="list-group list-group-flush"
+                  id="top-users-list"
+                  style="background: transparent"
+                ></ul>
+              </div>
             </div>
           </div>
         </div>
@@ -446,6 +525,29 @@
               <span class="legend-current-year"></span> Current Year
             </div>
             <canvas id="webTrafficChart" width="900" height="350"></canvas>
+            <div
+              id="chart-loading"
+              style="
+                text-align: center;
+                margin-top: 10px;
+                display: none;
+                color: #ff69b4;
+                font-size: 1.2rem;
+              "
+            >
+              <span class="spinner-border spinner-border-sm"></span> Loading
+              analytics...
+            </div>
+            <div
+              id="chart-error"
+              style="
+                text-align: center;
+                margin-top: 10px;
+                display: none;
+                color: #ff4b5c;
+                font-size: 1.1rem;
+              "
+            ></div>
           </div>
         </div>
       </div>
@@ -453,48 +555,197 @@
     <!-- Chart.js for the chart placeholder -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-      // Example chart data (replace with real data as needed)
       const ctx = document.getElementById("webTrafficChart").getContext("2d");
-      new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
-          datasets: [
-            {
-              label: "Last Year",
-              data: [400, 600, 900, 700, 800, 950, 1100],
-              backgroundColor: "rgba(94, 234, 255, 0.5)",
-              borderColor: "#5eeaff",
-              fill: true,
-              tension: 0.4,
+      const loadingDiv = document.getElementById("chart-loading");
+      const errorDiv = document.getElementById("chart-error");
+      let chartInstance = null;
+      function showLoading(show) {
+        loadingDiv.style.display = show ? "" : "none";
+      }
+      function showError(msg) {
+        errorDiv.textContent = msg;
+        errorDiv.style.display = msg ? "" : "none";
+      }
+      async function fetchAnalytics() {
+        showLoading(true);
+        showError("");
+        try {
+          const resp = await fetch("/admin/analytics-data");
+          const result = await resp.json();
+          showLoading(false);
+          if (!result.success) {
+            showError(result.message || "Failed to load analytics data.");
+            return;
+          }
+          const labels = result.labels;
+          const data = result.data;
+          if (chartInstance) chartInstance.destroy();
+          chartInstance = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: "Active Users",
+                  data: data,
+                  backgroundColor: "rgba(255, 102, 196, 0.5)",
+                  borderColor: "#ff66c4",
+                  fill: true,
+                  tension: 0.4,
+                },
+              ],
             },
-            {
-              label: "Current Year",
-              data: [1100, 1300, 1600, 1900, 1700, 1550, 2100],
-              backgroundColor: "rgba(255, 102, 196, 0.5)",
-              borderColor: "#ff66c4",
-              fill: true,
-              tension: 0.4,
+            options: {
+              plugins: {
+                legend: { display: false },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  grid: { color: "#3a1464" },
+                  ticks: { color: "#fff" },
+                },
+                x: {
+                  grid: { color: "#3a1464" },
+                  ticks: { color: "#fff" },
+                },
+              },
             },
-          ],
-        },
-        options: {
-          plugins: {
-            legend: { display: false },
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: "#3a1464" },
-              ticks: { color: "#fff" },
-            },
-            x: {
-              grid: { color: "#3a1464" },
-              ticks: { color: "#fff" },
-            },
-          },
-        },
-      });
+          });
+        } catch (e) {
+          showLoading(false);
+          showError("Error loading analytics: " + (e.message || e));
+        }
+      }
+      async function fetchTotalUsers() {
+        const el = document.getElementById("total-users-value");
+        const loading = document.getElementById("total-users-loading");
+        try {
+          const resp = await fetch("/admin/total-users");
+          const result = await resp.json();
+          if (result.success) {
+            el.textContent = result.total_users.toLocaleString();
+          } else {
+            el.textContent = "—";
+          }
+        } catch (e) {
+          el.textContent = "—";
+        } finally {
+          if (loading) loading.style.display = "none";
+        }
+      }
+      async function fetchActiveUsers() {
+        const el = document.getElementById("active-users-value");
+        const loading = document.getElementById("active-users-loading");
+        try {
+          const resp = await fetch("/admin/active-users");
+          const result = await resp.json();
+          if (result.success) {
+            el.textContent = result.active_users.toLocaleString();
+          } else {
+            el.textContent = "—";
+          }
+        } catch (e) {
+          el.textContent = "—";
+        } finally {
+          if (loading) loading.style.display = "none";
+        }
+      }
+      async function fetchLevelsCompleted() {
+        const el = document.getElementById("levels-completed-value");
+        const loading = document.getElementById("levels-completed-loading");
+        try {
+          const resp = await fetch("/admin/levels-completed");
+          const result = await resp.json();
+          if (result.success) {
+            el.textContent = result.levels_completed.toLocaleString();
+          } else {
+            el.textContent = "—";
+          }
+        } catch (e) {
+          el.textContent = "—";
+        } finally {
+          if (loading) loading.style.display = "none";
+        }
+      }
+      async function fetchRecentSignups() {
+        const loading = document.getElementById("recent-signups-loading");
+        const error = document.getElementById("recent-signups-error");
+        const list = document.getElementById("recent-signups-list");
+        loading.style.display = "";
+        error.style.display = "none";
+        list.innerHTML = "";
+        try {
+          const resp = await fetch("/admin/recent-signups");
+          const result = await resp.json();
+          loading.style.display = "none";
+          if (!result.success) {
+            error.textContent = result.message || "Failed to load signups.";
+            error.style.display = "";
+            return;
+          }
+          if (!result.users || result.users.length === 0) {
+            list.innerHTML =
+              '<li class="list-group-item" style="background:transparent; color:#fff;">No recent signups.</li>';
+            return;
+          }
+          for (const user of result.users) {
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.style.background = "transparent";
+            li.innerHTML = `<b>${user.username}</b> <span style='color:#aaa;'>(${user.email})</span><br><small style='color:#a259ff;'>${user.registered_at}</small>`;
+            list.appendChild(li);
+          }
+        } catch (e) {
+          loading.style.display = "none";
+          error.textContent = "Error loading signups.";
+          error.style.display = "";
+        }
+      }
+      async function fetchTopUsers() {
+        const loading = document.getElementById("top-users-loading");
+        const error = document.getElementById("top-users-error");
+        const list = document.getElementById("top-users-list");
+        loading.style.display = "";
+        error.style.display = "none";
+        list.innerHTML = "";
+        try {
+          const resp = await fetch("/admin/top-users");
+          const result = await resp.json();
+          loading.style.display = "none";
+          if (!result.success) {
+            error.textContent = result.message || "Failed to load top users.";
+            error.style.display = "";
+            return;
+          }
+          if (!result.users || result.users.length === 0) {
+            list.innerHTML =
+              '<li class="list-group-item" style="background:transparent; color:#fff;">No users found.</li>';
+            return;
+          }
+          for (const [i, user] of result.users.entries()) {
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.style.background = "transparent";
+            li.innerHTML = `<b>#${i + 1} ${
+              user.username
+            }</b> <span style='color:#ffd700;'>${
+              user.points
+            } pts</span> <span style='color:#a259ff;'>${user.xp} XP</span>`;
+            list.appendChild(li);
+          }
+        } catch (e) {
+          loading.style.display = "none";
+          error.textContent = "Error loading top users.";
+          error.style.display = "";
+        }
+      }
+      document.addEventListener("DOMContentLoaded", fetchAnalytics);
+      document.addEventListener("DOMContentLoaded", fetchTotalUsers);
+      document.addEventListener("DOMContentLoaded", fetchActiveUsers);
+      document.addEventListener("DOMContentLoaded", fetchLevelsCompleted);
+      document.addEventListener("DOMContentLoaded", fetchRecentSignups);
+      document.addEventListener("DOMContentLoaded", fetchTopUsers);
     </script>
   </body>
 </html>
