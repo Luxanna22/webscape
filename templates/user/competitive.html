@@ -322,6 +322,27 @@
         </div>
         <button class="btn-queue" onclick="startMatch()">Start Match</button>
       </div>
+
+      <!-- Code Challenge UI -->
+      <div class="code-challenge-ui" id="codeChallengeUI" style="display: none">
+        <h2 id="challengeTitle"></h2>
+        <div id="challengeDescription" style="margin-bottom: 1rem"></div>
+        <div style="margin-bottom: 0.5rem; color: #ff69b4; font-weight: bold">
+          Note: Only <span id="challengeLanguage">JavaScript</span> code is
+          accepted.
+        </div>
+        <textarea
+          id="codeEditor"
+          style="width: 100%; height: 200px; font-family: monospace"
+          spellcheck="false"
+          placeholder="Write your JavaScript code here..."
+        ></textarea>
+        <button class="btn-queue mt-3" onclick="submitCode()">
+          Submit Code
+        </button>
+        <div id="testCaseResults" style="margin-top: 1rem"></div>
+        <div id="timer" style="margin-top: 1rem; font-weight: bold"></div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -330,6 +351,9 @@
       let selectedMode = null;
       let socket = null;
       let isUserInQueue = false;
+      let challengeStartTime = null;
+      let challengeTimeLimit = 300; // seconds
+
       function selectGameMode(mode) {
         selectedMode = mode;
         const gameModeTitle =
@@ -363,6 +387,51 @@
         socket.on("disconnect", function () {
           console.log("Socket.IO disconnected");
         });
+
+        // --- Code Challenge Events ---
+        socket.on("code_challenge_start", function (data) {
+          document.getElementById("matchFoundUI").style.display = "none";
+          document.getElementById("codeChallengeUI").style.display = "block";
+          document.getElementById("challengeTitle").textContent =
+            data.challenge.title;
+          document.getElementById("challengeDescription").textContent =
+            data.challenge.description;
+          document.getElementById("codeEditor").value =
+            data.challenge.starter_code;
+          challengeTimeLimit = data.challenge.time_limit;
+          challengeStartTime = Date.now();
+          startTimer();
+          document.getElementById("testCaseResults").innerHTML = "";
+          document.getElementById("challengeLanguage").textContent = data
+            .challenge.language
+            ? data.challenge.language.charAt(0).toUpperCase() +
+              data.challenge.language.slice(1)
+            : "JavaScript";
+        });
+
+        socket.on("code_challenge_result", function (data) {
+          let html = "";
+          data.results.forEach((r, i) => {
+            html += `<div>Test ${i + 1}: Input <code>${JSON.stringify(
+              r.input
+            )}</code> | Expected: <code>${r.expected}</code> | Output: <code>${
+              r.output
+            }</code> | <b style='color:${r.passed ? "green" : "red"}'>${
+              r.passed ? "Passed" : "Failed"
+            }</b></div>`;
+          });
+          document.getElementById("testCaseResults").innerHTML = html;
+          if (data.winner) {
+            document.getElementById("testCaseResults").innerHTML +=
+              "<div style='color:green;font-weight:bold;'>You won!</div>";
+          }
+        });
+
+        socket.on("match_end", function (data) {
+          document.getElementById(
+            "testCaseResults"
+          ).innerHTML += `<div style='color:blue;font-weight:bold;'>Match ended. Winner: ${data.winner}</div>`;
+        });
       }
 
       function cancelQueue() {
@@ -387,11 +456,30 @@
         if (socket) {
           socket.emit("start_match");
         }
-        // Redirect to the appropriate game mode page
-        window.location.href =
-          selectedMode === "code"
-            ? "/user/competitive/code"
-            : "/user/competitive/quiz";
+        // For code challenge, UI will be handled by code_challenge_start event
+        // For quiz, redirect as before
+        if (selectedMode === "quiz") {
+          window.location.href = "/user/competitive/quiz";
+        }
+      }
+
+      function submitCode() {
+        const code = document.getElementById("codeEditor").value;
+        if (socket) {
+          socket.emit("submit_code", { code });
+        }
+      }
+
+      function startTimer() {
+        const timerDiv = document.getElementById("timer");
+        function update() {
+          const elapsed = Math.floor((Date.now() - challengeStartTime) / 1000);
+          const remaining = Math.max(0, challengeTimeLimit - elapsed);
+          timerDiv.textContent = `Time left: ${remaining}s`;
+          if (remaining > 0) setTimeout(update, 1000);
+          else timerDiv.textContent = "Time's up!";
+        }
+        update();
       }
     </script>
   </body>
