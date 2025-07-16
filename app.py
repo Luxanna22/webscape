@@ -12,6 +12,11 @@ from werkzeug.utils import secure_filename
 import os
 import math
 import time
+import random
+import subprocess
+from google.analytics.data_v1beta import BetaAnalyticsDataClient
+from google.analytics.data_v1beta.types import DateRange, Metric, Dimension, RunReportRequest
+import calendar
 
 # Google Analytics Measurement ID
 GA_MEASUREMENT_ID = 'G-8N1JFLPGQ0'  # Measurement ID
@@ -32,7 +37,7 @@ def get_db_connection():
 )
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
+app.config['SECRET_KEY'] = 'lux'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Add Google Analytics context processor
@@ -57,6 +62,39 @@ code_queue = []  # Will store tuples of (socket_id, user_id)
 quiz_queue = []  # Will store tuples of (socket_id, user_id)
 active_matches = {}
 socket_to_user = {}  # Map socket IDs to user IDs
+
+# Example code challenges (web frontend only, JavaScript)
+CODE_CHALLENGES = [
+    {
+        "id": 1,
+        "title": "Capitalize First Letter",
+        "description": "Write a JavaScript function that capitalizes the first letter of a string.",
+        "function_name": "capitalizeFirst",
+        "language": "javascript",
+        "starter_code": "function capitalizeFirst(str) {\n  // Your code here\n}\n",
+        "test_cases": [
+            {"input": ["hello"], "output": "Hello"},
+            {"input": ["webscape"], "output": "Webscape"},
+            {"input": [""] , "output": ""},
+        ]
+    },
+    {
+        "id": 2,
+        "title": "Sum of Two Numbers",
+        "description": "Write a JavaScript function that returns the sum of two numbers.",
+        "function_name": "sumTwoNumbers",
+        "language": "javascript",
+        "starter_code": "function sumTwoNumbers(a, b) {\n  // Your code here\n}\n",
+        "test_cases": [
+            {"input": [1, 2], "output": "3"},
+            {"input": [5, 7], "output": "12"},
+            {"input": [-1, 1], "output": "0"},
+        ]
+    },
+]
+
+# Store ongoing code matches: {room_id: {...}}
+code_matches = {}
 
 # Login required decorator
 def login_required(f):
@@ -171,6 +209,10 @@ def logout():
 @app.route('/playground')
 def playground():
     return render_template('playground.html')
+
+@app.route('/options')
+def options():
+    return render_template('options.html')
 
 @app.route('/rankings')
 def rankings():
@@ -336,10 +378,11 @@ def update_lesson_progress(level, chapter_id):
         progress = (page_num / total_pages) * 100 if total_pages > 0 else 0
         completed = page_num >= total_pages
 
-        # Fetch current progress
-        db_cursor.execute("SELECT progress FROM user_progress WHERE user_id = %s AND chapter_id = %s", (session['user_id'], chapter_id))
+        # Fetch current progress and completed status
+        db_cursor.execute("SELECT progress, completed FROM user_progress WHERE user_id = %s AND chapter_id = %s", (session['user_id'], chapter_id))
         current = db_cursor.fetchone()
         current_progress = current[0] if current else 0
+        was_completed = bool(current[1]) if current and len(current) > 1 else False
 
         # Only update if new progress is greater
         if progress > current_progress:
@@ -356,13 +399,40 @@ def update_lesson_progress(level, chapter_id):
             updated_completed = completed
         else:
             updated_progress = current_progress
-            updated_completed = current[1] if current and len(current) > 1 else False
+            updated_completed = was_completed
+
+        # --- REWARD LOGIC ---
+        # If the chapter is now completed and was not completed before, give rewards
+        reward_given = False
+        if completed and not was_completed:
+            # Fetch xp_reward and points_reward from chapters table
+            db_cursor.execute("SELECT xp_reward, points_reward FROM chapters WHERE id = %s", (chapter_id,))
+            rewards = db_cursor.fetchone()
+            if rewards:
+                xp_reward, points_reward = rewards
+                # Update user_stats: add xp and points
+                # If user_stats row does not exist, create it
+                db_cursor.execute("SELECT xp, points FROM user_stats WHERE user_id = %s", (session['user_id'],))
+                stats = db_cursor.fetchone()
+                if stats:
+                    db_cursor.execute(
+                        "UPDATE user_stats SET xp = xp + %s, points = points + %s WHERE user_id = %s",
+                        (xp_reward, points_reward, session['user_id'])
+                    )
+                else:
+                    db_cursor.execute(
+                        "INSERT INTO user_stats (user_id, xp, points) VALUES (%s, %s, %s)",
+                        (session['user_id'], xp_reward, points_reward)
+                    )
+                db_connection.commit()
+                reward_given = True
 
         return jsonify({
             'success': True,
             'progress': updated_progress,
             'completed': updated_completed,
-            'total_pages': total_pages
+            'total_pages': total_pages,
+            'reward_given': reward_given
         })
     except Exception as e:
         print("Database error:", str(e))
@@ -817,21 +887,94 @@ def handle_cancel_queue():
 
 @socketio.on('start_match')
 def handle_start_match():
-    # Find the room the user is in
     socket_id = request.sid
     for match_id, players in active_matches.items():
         if socket_id in players:
-            emit('match_started', room=match_id)
+            # Only start if not already started
+            if match_id not in code_matches:
+                challenge = random.choice(CODE_CHALLENGES)
+                code_matches[match_id] = {
+                    "challenge": challenge,
+                    "start_time": time.time(),
+                    "submissions": {},
+                    "winner": None
+                }
+                # Send challenge to both players
+                emit('code_challenge_start', {
+                    "challenge": {
+                        "title": challenge["title"],
+                        "description": challenge["description"],
+                        "starter_code": challenge["starter_code"],
+                        "function_name": challenge["function_name"],
+                        "time_limit": 300  # 5 minutes
+                    }
+                }, room=match_id)
             break
 
-@socketio.on('code_update')
-def handle_code_update(data):
-    # Find the room the user is in and broadcast to other player
+@socketio.on('submit_code')
+def handle_submit_code(data):
     socket_id = request.sid
+    code = data.get('code')
     for match_id, players in active_matches.items():
-        if socket_id in players:
-            emit('code_update', data, room=match_id, skip_sid=socket_id)
+        if socket_id in players and match_id in code_matches:
+            match = code_matches[match_id]
+            challenge = match["challenge"]
+            # Run code against test cases (JavaScript only)
+            results, passed = run_js_code_against_tests(code, challenge)
+            match["submissions"][socket_id] = {
+                "code": code,
+                "results": results,
+                "passed": passed,
+                "timestamp": time.time()
+            }
+            # Check for winner
+            if passed and not match["winner"]:
+                match["winner"] = socket_id
+                emit('code_challenge_result', {
+                    "results": results,
+                    "winner": True
+                }, room=socket_id)
+                # Notify opponent
+                for p in players:
+                    if p != socket_id:
+                        emit('code_challenge_result', {
+                            "results": results,
+                            "winner": False
+                        }, room=p)
+                # End match
+                emit('match_end', {"winner": get_username_by_user_id(socket_to_user[socket_id])}, room=match_id)
+            else:
+                emit('code_challenge_result', {
+                    "results": results,
+                    "winner": False
+                }, room=socket_id)
             break
+
+def run_js_code_against_tests(code, challenge):
+    results = []
+    passed_all = True
+    for case in challenge["test_cases"]:
+        try:
+            # Prepare JS code to run
+            args = ', '.join(repr(arg) for arg in case['input'])
+            test_code = (
+                code +
+                f"\nconsole.log({challenge['function_name']}({args}));"
+            )
+            proc = subprocess.run(
+                ["node", "-e", test_code],
+                capture_output=True, text=True, timeout=2
+            )
+            output = proc.stdout.strip()
+            expected = str(case["output"])
+            passed = (output == expected)
+            results.append({"input": case["input"], "expected": expected, "output": output, "passed": passed})
+            if not passed:
+                passed_all = False
+        except Exception as e:
+            results.append({"input": case["input"], "expected": str(case["output"]), "output": str(e), "passed": False})
+            passed_all = False
+    return results, passed_all
 
 # Create chapters table if it doesn't exist
 def init_chapters_table():
@@ -1415,7 +1558,7 @@ def user_lesson_content_ajax(level, chapter_id):
         <i class="fas fa-expand"></i>
       </button>
     </div>
-    <div id="playground-output" class="playground-output" style="display: none;">
+    <div id="playground-output" class="playground-output" style="display: none; height: 100vh;">
       <div class="playground-output-header" style="display:none;">Output</div>
       <div id="playground-output-content"><span class="playground-output-placeholder">No output yet</span></div>
     </div>
@@ -1498,7 +1641,7 @@ def user_lesson_content_ajax(level, chapter_id):
           outputContent.innerHTML = '';
           var iframe = document.createElement('iframe');
           iframe.style.width = '100%';
-          iframe.style.height = '150px';
+          iframe.style.height = '100%';
           iframe.style.background = '#fff';
           if (document.querySelector('.playground-fullscreen-wrapper.fullscreen')) {
             iframe.style.height = '100%';
@@ -1664,6 +1807,303 @@ def delete_account():
             db_cursor.close()
         if 'db_connection' in locals():
             db_connection.close()
+
+@app.route('/user/classic/<level>/<int:chapter_id>/<int:page_num>/analytics', methods=['POST'])
+@login_required
+def log_page_analytics(level, chapter_id, page_num):
+    try:
+        data = request.get_json()
+        time_spent = int(data.get('time_spent', 0))
+        incorrect_attempts = int(data.get('incorrect_attempts', 0))
+        is_new_visit = data.get('is_new_visit', False)  # New parameter to indicate if this is a new visit
+        session_key = data.get('session_key', None)  # Unique session key to prevent duplicates
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+
+        # Check if this user has already visited this page
+        check_query = """
+        SELECT id, visit_count FROM lesson_page_analytics 
+        WHERE user_id = %s AND chapter_id = %s AND page_num = %s
+        """
+        db_cursor.execute(check_query, (session['user_id'], chapter_id, page_num))
+        existing_record = db_cursor.fetchone()
+
+        if existing_record:
+            # Update existing record - only increment visit_count if it's a new visit
+            # Don't accumulate time_spent or incorrect_attempts for the same session
+            visit_increment = 1 if is_new_visit else 0
+            update_query = """
+            UPDATE lesson_page_analytics 
+            SET visit_count = visit_count + %s,
+                last_visited = NOW()
+            WHERE user_id = %s AND chapter_id = %s AND page_num = %s
+            """
+            db_cursor.execute(update_query, (
+                visit_increment, session['user_id'], chapter_id, page_num
+            ))
+        else:
+            # Insert new record - only for first visit
+            insert_query = """
+            INSERT INTO lesson_page_analytics 
+            (user_id, chapter_id, page_num, time_spent, visit_count, incorrect_attempts, last_visited)
+            VALUES (%s, %s, %s, %s, 1, %s, NOW())
+            """
+            db_cursor.execute(insert_query, (
+                session['user_id'], chapter_id, page_num, time_spent, incorrect_attempts
+            ))
+        
+        db_connection.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        print("Analytics logging error:", str(e))
+        if 'db_connection' in locals():
+            db_connection.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/levels/<int:level_id>/analytics')
+@login_required
+def admin_level_analytics(level_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Query to get analytics data properly aggregated
+        query = '''
+            SELECT 
+                c.id AS chapter_id,
+                c.title AS chapter_title,
+                lc.page_num,
+                lc.title AS page_title,
+                lpa.user_id,
+                AVG(lpa.time_spent) AS avg_time_spent,
+                SUM(lpa.visit_count) AS total_visits,
+                SUM(lpa.incorrect_attempts) AS total_incorrect
+            FROM chapters c
+            JOIN lesson_content lc ON lc.chapter_id = c.id
+            LEFT JOIN lesson_page_analytics lpa ON lpa.chapter_id = c.id AND lpa.page_num = lc.page_num
+            WHERE c.level_id = %s
+            GROUP BY c.id, c.title, lc.page_num, lc.title, lpa.user_id
+            ORDER BY c.id, lc.page_num, lpa.user_id
+        '''
+        db_cursor.execute(query, (level_id,))
+        analytics = db_cursor.fetchall()
+        
+        # Process the data to get proper chapter-level unique user counts
+        chapter_data = {}
+        page_data = {}
+        
+        for row in analytics:
+            chapter_id = row['chapter_id']
+            page_num = row['page_num']
+            user_id = row['user_id']
+            
+            # Initialize chapter data if not exists
+            if chapter_id not in chapter_data:
+                chapter_data[chapter_id] = {
+                    'chapter_title': row['chapter_title'],
+                    'unique_users': set(),
+                    'total_page_visits': 0,
+                    'total_incorrect': 0
+                }
+            
+            # Initialize page data if not exists
+            page_key = f"{chapter_id}_{page_num}"
+            if page_key not in page_data:
+                page_data[page_key] = {
+                    'chapter_id': chapter_id,
+                    'chapter_title': row['chapter_title'],
+                    'page_num': page_num,
+                    'page_title': row['page_title'],
+                    'total_visits': 0,
+                    'total_incorrect': 0
+                }
+            
+            # Add data if user_id exists (not null)
+            if user_id:
+                chapter_data[chapter_id]['unique_users'].add(user_id)
+                chapter_data[chapter_id]['total_page_visits'] += row['total_visits'] or 0
+                chapter_data[chapter_id]['total_incorrect'] += row['total_incorrect'] or 0
+                
+                page_data[page_key]['total_visits'] += row['total_visits'] or 0
+                page_data[page_key]['total_incorrect'] += row['total_incorrect'] or 0
+        
+        # Convert sets to counts and format the response
+        processed_analytics = []
+        for page_key, page_info in page_data.items():
+            processed_analytics.append({
+                'chapter_id': page_info['chapter_id'],
+                'chapter_title': page_info['chapter_title'],
+                'page_num': page_info['page_num'],
+                'page_title': page_info['page_title'],
+                'total_visits': page_info['total_visits'],
+                'total_incorrect': page_info['total_incorrect']
+            })
+        
+        # Add chapter-level data for unique user counts
+        chapter_summary = {}
+        for chapter_id, chapter_info in chapter_data.items():
+            chapter_summary[chapter_id] = {
+                'unique_users': len(chapter_info['unique_users']),
+                'total_page_visits': chapter_info['total_page_visits'],
+                'total_incorrect': chapter_info['total_incorrect']
+            }
+        
+        return jsonify({
+            'success': True, 
+            'analytics': processed_analytics,
+            'chapter_summary': chapter_summary
+        })
+    except Exception as e:
+        print("Analytics fetch error:", str(e))
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+# === GOOGLE ANALYTICS DATA API ENDPOINT FOR ADMIN DASHBOARD ===
+@app.route('/admin/analytics-data')
+@login_required
+def admin_analytics_data():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        GA_PROPERTY_ID = '493879650'
+        CREDENTIALS_FILE = os.path.join(os.getcwd(), 'ga-credentials.json')
+        client = BetaAnalyticsDataClient.from_service_account_file(CREDENTIALS_FILE)
+        from datetime import datetime
+        import calendar
+
+        now = datetime.now()
+        year = now.year
+        current_month = now.month
+        months = [calendar.month_abbr[m] for m in range(1, current_month+1)]
+        month_keys = [f"{m:02d}" for m in range(1, current_month+1)]
+        start_date = f"{year}-01-01"
+        end_date = now.strftime('%Y-%m-%d')
+        request = RunReportRequest(
+            property=f"properties/{GA_PROPERTY_ID}",
+            dimensions=[Dimension(name="month")],
+            metrics=[Metric(name="activeUsers")],
+            date_ranges=[DateRange(start_date=start_date, end_date=end_date)]
+        )
+        response = client.run_report(request)
+        print("GA API rows:", [(row.dimension_values[0].value, row.metric_values[0].value) for row in response.rows])
+        data_map = {row.dimension_values[0].value: int(row.metric_values[0].value) for row in response.rows}
+        print("Data map:", data_map)
+        data = [data_map.get(key, 0) for key in month_keys]
+        print("Labels:", months)
+        print("Data:", data)
+        return jsonify({"success": True, "labels": months, "data": data})
+    except Exception as e:
+        print("Google Analytics API error:", str(e))
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/admin/total-users')
+@login_required
+def admin_total_users():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        db_cursor.execute("SELECT COUNT(*) FROM users")
+        total = db_cursor.fetchone()[0]
+        db_cursor.close()
+        db_connection.close()
+        return jsonify({'success': True, 'total_users': total})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/active-users')
+@login_required
+def admin_active_users():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        GA_PROPERTY_ID = '493879650'
+        CREDENTIALS_FILE = os.path.join(os.getcwd(), 'ga-credentials.json')
+        client = BetaAnalyticsDataClient.from_service_account_file(CREDENTIALS_FILE)
+        request = RunReportRequest(
+            property=f"properties/{GA_PROPERTY_ID}",
+            metrics=[Metric(name="activeUsers")],
+            date_ranges=[DateRange(start_date="7daysAgo", end_date="today")]
+        )
+        response = client.run_report(request)
+        active_users = int(response.rows[0].metric_values[0].value) if response.rows else 0
+        return jsonify({'success': True, 'active_users': active_users})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/levels-completed')
+@login_required
+def admin_levels_completed():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        # Count all completed chapters (levels) by all users
+        db_cursor.execute("SELECT COUNT(*) FROM user_progress WHERE completed = TRUE")
+        total = db_cursor.fetchone()[0]
+        db_cursor.close()
+        db_connection.close()
+        return jsonify({'success': True, 'levels_completed': total})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/recent-signups')
+@login_required
+def admin_recent_signups():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        db_cursor.execute("SELECT id, username, email, created_at FROM users ORDER BY created_at DESC LIMIT 5")
+        users = db_cursor.fetchall()
+        db_cursor.close()
+        db_connection.close()
+        # Format registration date for display
+        for user in users:
+            if user.get('created_at'):
+                user['registered_at'] = user['created_at'].strftime('%Y-%m-%d %H:%M')
+            else:
+                user['registered_at'] = ''
+            user.pop('created_at', None)
+        return jsonify({'success': True, 'users': users})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/top-users')
+@login_required
+def admin_top_users():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        db_cursor.execute("""
+            SELECT u.username, us.points, us.xp
+            FROM user_stats us
+            JOIN users u ON us.user_id = u.id
+            ORDER BY us.points DESC, us.xp DESC
+            LIMIT 5
+        """)
+        users = db_cursor.fetchall()
+        db_cursor.close()
+        db_connection.close()
+        return jsonify({'success': True, 'users': users})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)
