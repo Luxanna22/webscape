@@ -65,21 +65,21 @@ socket_to_user = {}  # Map socket IDs to user IDs
 
 # Example code challenges (web frontend only, JavaScript)
 CODE_CHALLENGES = [
+    # {
+    #     "id": 2,
+    #     "title": "Capitalize First Letter",
+    #     "description": "Write a JavaScript function that capitalizes the first letter of a string.",
+    #     "function_name": "capitalizeFirst",
+    #     "language": "javascript",
+    #     "starter_code": "function capitalizeFirst(str) {\n  // Your code here\n}\n",
+    #     "test_cases": [
+    #         {"input": ["hello"], "output": "Hello"},
+    #         {"input": ["webscape"], "output": "Webscape"},
+    #         {"input": [""] , "output": ""},
+    #     ]
+    # },
     {
         "id": 1,
-        "title": "Capitalize First Letter",
-        "description": "Write a JavaScript function that capitalizes the first letter of a string.",
-        "function_name": "capitalizeFirst",
-        "language": "javascript",
-        "starter_code": "function capitalizeFirst(str) {\n  // Your code here\n}\n",
-        "test_cases": [
-            {"input": ["hello"], "output": "Hello"},
-            {"input": ["webscape"], "output": "Webscape"},
-            {"input": [""] , "output": ""},
-        ]
-    },
-    {
-        "id": 2,
         "title": "Sum of Two Numbers",
         "description": "Write a JavaScript function that returns the sum of two numbers.",
         "function_name": "sumTwoNumbers",
