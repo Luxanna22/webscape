@@ -5,3 +5,4 @@ Werkzeug==2.3.7
 Flask-SocketIO==5.3.5
 gunicorn
 eventlet
+bcrypt
