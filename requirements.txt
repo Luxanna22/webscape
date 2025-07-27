@@ -6,3 +6,5 @@ Flask-SocketIO==5.3.5
 gunicorn
 eventlet
 bcrypt
+requests
+google-analytics-data
