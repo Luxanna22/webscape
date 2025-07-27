@@ -1625,6 +1625,15 @@
                 ((1 - totalIncorrect / totalPageVisits) * 100).toFixed(1) + "%";
             }
 
+            // Debug log for winrate computation
+            console.log("[Winrate Debug] Chapter:", {
+              id: chapter.id,
+              title: chapter.title,
+              totalPageVisits,
+              totalIncorrect,
+              winRate,
+            });
+
             const tr = document.createElement("tr");
             tr.innerHTML = `
               <td>${chapter.order_num}</td>
