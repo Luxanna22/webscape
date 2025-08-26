@@ -18,6 +18,13 @@ from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, Dimension, RunReportRequest
 import calendar
 
+# Load environment variables from a local .env file if present (useful for local dev)
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
+
 # Google Analytics Measurement ID
 GA_MEASUREMENT_ID = 'G-8N1JFLPGQ0'  # Measurement ID
 
@@ -29,15 +36,42 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_db_connection():
-    return mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",
-    database="capstone_v1"
-)
+    """Create a MySQL connection that works for both local and Aiven deployments.
+
+    Environment variables (all optional with sensible local defaults):
+      - DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+      - DB_SSL_CA: path to CA file to verify server cert (Aiven provides this)
+      - DB_SSL_DISABLED: set to '1' to disable SSL (not recommended)
+    """
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = int(os.getenv("DB_PORT", "3306"))
+    db_user = os.getenv("DB_USER", "root")
+    db_password = os.getenv("DB_PASSWORD", "")
+    db_name = os.getenv("DB_NAME", "capstone_v1")
+
+    ssl_ca = os.getenv("DB_SSL_CA")
+    ssl_disabled_env = os.getenv("DB_SSL_DISABLED", "0").strip()
+    ssl_disabled = ssl_disabled_env in ("1", "true", "True")
+
+    connect_kwargs = {
+        "host": db_host,
+        "port": db_port,
+        "user": db_user,
+        "password": db_password,
+        "database": db_name,
+        "autocommit": False,
+    }
+
+    # Configure SSL for Aiven if provided
+    if ssl_disabled:
+        connect_kwargs["ssl_disabled"] = True
+    elif ssl_ca:
+        connect_kwargs["ssl_ca"] = ssl_ca
+
+    return mysql.connector.connect(**connect_kwargs)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'lux'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'lux')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Add Google Analytics context processor
