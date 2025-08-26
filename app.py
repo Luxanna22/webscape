@@ -1,3 +1,13 @@
+import os
+# Enable eventlet monkey patching only when explicitly requested via env
+try:
+    _use_eventlet = os.getenv('USE_EVENTLET', '0').strip()
+    if _use_eventlet in ('1', 'true', 'True'):
+        import eventlet  # type: ignore
+        eventlet.monkey_patch()
+except Exception:
+    pass
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 # mysql connector 
 import mysql.connector
@@ -9,7 +19,6 @@ import requests
 import base64
 from urllib.parse import quote, unquote
 from werkzeug.utils import secure_filename
-import os
 import math
 import time
 import random
@@ -46,7 +55,8 @@ def get_db_connection():
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = int(os.getenv("DB_PORT", "3306"))
     db_user = os.getenv("DB_USER", "root")
-    db_password = os.getenv("DB_PASSWORD", "")
+    # Support both DB_PASSWORD and DB_PASS (Render screenshot shows DB_PASS)
+    db_password = os.getenv("DB_PASSWORD", os.getenv("DB_PASS", ""))
     db_name = os.getenv("DB_NAME", "capstone_v1")
 
     ssl_ca = os.getenv("DB_SSL_CA")
@@ -1892,11 +1902,11 @@ def log_page_analytics(level, chapter_id, page_num):
 
         if existing_record:
             # Update existing record - only increment visit_count if it's a new visit
-            # Don't accumulate time_spent or incorrect_attempts for the same session
+            # Cap visit_count at 1 to satisfy DB constraint (0 or 1 only)
             visit_increment = 1 if is_new_visit else 0
             update_query = """
             UPDATE lesson_page_analytics 
-            SET visit_count = visit_count + %s,
+            SET visit_count = LEAST(1, visit_count + %s),
                 last_visited = NOW()
             WHERE user_id = %s AND chapter_id = %s AND page_num = %s
             """
