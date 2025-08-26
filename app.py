@@ -1,3 +1,10 @@
+# Enable eventlet monkey patching early when running with eventlet workers
+try:
+    import eventlet  # type: ignore
+    eventlet.monkey_patch()
+except Exception:
+    pass
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 # mysql connector 
 import mysql.connector
@@ -46,7 +53,8 @@ def get_db_connection():
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = int(os.getenv("DB_PORT", "3306"))
     db_user = os.getenv("DB_USER", "root")
-    db_password = os.getenv("DB_PASSWORD", "")
+    # Support both DB_PASSWORD and DB_PASS (Render screenshot shows DB_PASS)
+    db_password = os.getenv("DB_PASSWORD", os.getenv("DB_PASS", ""))
     db_name = os.getenv("DB_NAME", "capstone_v1")
 
     ssl_ca = os.getenv("DB_SSL_CA")
@@ -1087,7 +1095,35 @@ def init_chapters_table():
         if 'db_connection' in locals():
             db_connection.close()
 
+# --- Startup diagnostics for DB config (safe: no secrets) ---
+def _log_db_startup_info():
+    try:
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "3306")
+        ssl_ca = os.getenv("DB_SSL_CA")
+        ssl_disabled_env = os.getenv("DB_SSL_DISABLED", "0").strip()
+        print(f"DB startup config → host={db_host}, port={db_port}, ssl_ca_set={'yes' if ssl_ca else 'no'}, ssl_disabled={ssl_disabled_env}")
+        # Try a quick connection ping
+        try:
+            conn = get_db_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT 1")
+                cur.fetchone()
+                print("DB connectivity check: OK")
+            finally:
+                try:
+                    cur.close()
+                except Exception:
+                    pass
+                conn.close()
+        except Exception as e:
+            print(f"DB connectivity check failed: {e}")
+    except Exception as e:
+        print(f"DB startup info error: {e}")
+
 # Call this when the app starts
+_log_db_startup_info()
 init_chapters_table()
 
 @app.route('/api/analyze-code', methods=['POST'])
