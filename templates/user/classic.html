@@ -309,8 +309,8 @@
             <div class="card p-3 h-100 d-flex flex-column align-items-center">
               <img alt="{{ level.title }} logo" class="card-img-top"
               height="200" src="{{ level.image_url or ('/static/images/' ~
-              level.title ~ '-logo.png') }}" width="300" {% if level.id == 1
-              %}style="transform: scale(1.5);"{% endif %} />
+              (level.title|lower) ~ '-logo.png') }}" width="300" {% if level.id
+              == 1 %}style="transform: scale(1.5);"{% endif %} />
               <h2>{{ level.title }}</h2>
               <p>{{ level.description }}</p>
               <button
