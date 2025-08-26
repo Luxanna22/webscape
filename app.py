@@ -1,10 +1,3 @@
-# Enable eventlet monkey patching early when running with eventlet workers
-try:
-    import eventlet  # type: ignore
-    eventlet.monkey_patch()
-except Exception:
-    pass
-
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 # mysql connector 
 import mysql.connector
@@ -53,8 +46,7 @@ def get_db_connection():
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = int(os.getenv("DB_PORT", "3306"))
     db_user = os.getenv("DB_USER", "root")
-    # Support both DB_PASSWORD and DB_PASS (Render screenshot shows DB_PASS)
-    db_password = os.getenv("DB_PASSWORD", os.getenv("DB_PASS", ""))
+    db_password = os.getenv("DB_PASSWORD", "")
     db_name = os.getenv("DB_NAME", "capstone_v1")
 
     ssl_ca = os.getenv("DB_SSL_CA")
