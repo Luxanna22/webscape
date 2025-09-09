@@ -11,6 +11,7 @@ except Exception:
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 # mysql connector 
 import mysql.connector
+from mysql.connector import pooling
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import json
 from functools import wraps
@@ -26,6 +27,8 @@ import subprocess
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, Dimension, RunReportRequest
 import calendar
+from functools import lru_cache
+import threading
 
 # Load environment variables from a local .env file if present (useful for local dev)
 try:
@@ -44,18 +47,67 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def get_db_connection():
-    """Create a MySQL connection that works for both local and Aiven deployments.
+# Global connection pool
+_connection_pool = None
+_pool_lock = threading.Lock()
 
-    Environment variables (all optional with sensible local defaults):
-      - DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
-      - DB_SSL_CA: path to CA file to verify server cert (Aiven provides this)
-      - DB_SSL_DISABLED: set to '1' to disable SSL (not recommended)
-    """
+def get_connection_pool():
+    """Get or create the database connection pool."""
+    global _connection_pool
+    if _connection_pool is None:
+        with _pool_lock:
+            if _connection_pool is None:
+                db_host = os.getenv("DB_HOST", "localhost")
+                db_port = int(os.getenv("DB_PORT", "3306"))
+                db_user = os.getenv("DB_USER", "root")
+                db_password = os.getenv("DB_PASSWORD", os.getenv("DB_PASS", ""))
+                db_name = os.getenv("DB_NAME", "capstone_v1")
+
+                ssl_ca = os.getenv("DB_SSL_CA")
+                ssl_disabled_env = os.getenv("DB_SSL_DISABLED", "0").strip()
+                ssl_disabled = ssl_disabled_env in ("1", "true", "True")
+
+                pool_config = {
+                    "pool_name": "webscape_pool",
+                    "pool_size": 10,  # Number of connections in the pool
+                    "pool_reset_session": True,
+                    "host": db_host,
+                    "port": db_port,
+                    "user": db_user,
+                    "password": db_password,
+                    "database": db_name,
+                    "autocommit": False,
+                    "charset": "utf8mb4",
+                    "use_unicode": True,
+                    "connect_timeout": 10,
+                    "read_timeout": 30,
+                    "write_timeout": 30,
+                }
+
+                # Configure SSL for Aiven if provided
+                if ssl_disabled:
+                    pool_config["ssl_disabled"] = True
+                elif ssl_ca:
+                    pool_config["ssl_ca"] = ssl_ca
+
+                _connection_pool = pooling.MySQLConnectionPool(**pool_config)
+    return _connection_pool
+
+def get_db_connection():
+    """Get a connection from the pool."""
+    try:
+        pool = get_connection_pool()
+        return pool.get_connection()
+    except Exception as e:
+        print(f"Failed to get connection from pool: {e}")
+        # Fallback to direct connection if pool fails
+        return get_db_connection_fallback()
+
+def get_db_connection_fallback():
+    """Fallback method for direct connection (used if pool fails)."""
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = int(os.getenv("DB_PORT", "3306"))
     db_user = os.getenv("DB_USER", "root")
-    # Support both DB_PASSWORD and DB_PASS (Render screenshot shows DB_PASS)
     db_password = os.getenv("DB_PASSWORD", os.getenv("DB_PASS", ""))
     db_name = os.getenv("DB_NAME", "capstone_v1")
 
@@ -70,6 +122,11 @@ def get_db_connection():
         "password": db_password,
         "database": db_name,
         "autocommit": False,
+        "charset": "utf8mb4",
+        "use_unicode": True,
+        "connect_timeout": 10,
+        "read_timeout": 30,
+        "write_timeout": 30,
     }
 
     # Configure SSL for Aiven if provided
@@ -83,6 +140,48 @@ def get_db_connection():
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'lux')
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Simple in-memory cache for frequently accessed data
+_cache = {}
+_cache_lock = threading.Lock()
+CACHE_TTL = 300  # 5 minutes
+
+def get_cached(key):
+    """Get value from cache if not expired."""
+    with _cache_lock:
+        if key in _cache:
+            value, timestamp = _cache[key]
+            if time.time() - timestamp < CACHE_TTL:
+                return value
+            else:
+                del _cache[key]
+    return None
+
+def set_cache(key, value):
+    """Set value in cache with timestamp."""
+    with _cache_lock:
+        _cache[key] = (value, time.time())
+
+def clear_cache():
+    """Clear all cached data."""
+    with _cache_lock:
+        _cache.clear()
+
+# Cache decorator for database queries
+def cached_query(cache_key_func):
+    """Decorator to cache database query results."""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            cache_key = cache_key_func(*args, **kwargs)
+            cached_result = get_cached(cache_key)
+            if cached_result is not None:
+                return cached_result
+            
+            result = func(*args, **kwargs)
+            set_cache(cache_key, result)
+            return result
+        return wrapper
+    return decorator
 
 # Add Google Analytics context processor
 @app.context_processor
