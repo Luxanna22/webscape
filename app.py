@@ -167,6 +167,20 @@ def clear_cache():
     with _cache_lock:
         _cache.clear()
 
+def invalidate_cache_pattern(pattern):
+    """Invalidate cache entries matching a pattern."""
+    with _cache_lock:
+        keys_to_remove = [key for key in _cache.keys() if pattern in key]
+        for key in keys_to_remove:
+            del _cache[key]
+
+def invalidate_user_cache(user_id):
+    """Invalidate cache entries related to a specific user."""
+    invalidate_cache_pattern(f"user_{user_id}")
+    invalidate_cache_pattern(f"lesson_content_")
+    invalidate_cache_pattern(f"chapter_info_")
+    invalidate_cache_pattern(f"total_pages_")
+
 # Cache decorator for database queries
 def cached_query(cache_key_func):
     """Decorator to cache database query results."""
@@ -258,18 +272,27 @@ def home():
 def check_login():
     return jsonify({'logged_in': 'user_id' in session})
 
+@cached_query(lambda username: f"user_login_{username}")
+def get_user_for_login(username):
+    """Get user data for login with caching."""
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor(dictionary=True)
+    
+    try:
+        query = "SELECT id, username, password, role FROM users WHERE username = %s"
+        db_cursor.execute(query, (username,))
+        return db_cursor.fetchone()
+    finally:
+        db_cursor.close()
+        db_connection.close()
+
 @app.route('/login', methods=['POST'])
 def login():
     username = request.form.get('username')
     password = request.form.get('password')
     
     try:
-        db_connection = get_db_connection()
-        db_cursor = db_connection.cursor(dictionary=True)
-        
-        query = "SELECT * FROM users WHERE username = %s"
-        db_cursor.execute(query, (username,))
-        user = db_cursor.fetchone()
+        user = get_user_for_login(username)
         
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             session['user_id'] = user['id']
@@ -285,11 +308,6 @@ def login():
     except Exception as e:
         print("Database error:", str(e))
         return jsonify({'success': False, 'message': 'Database error occurred'})
-    finally:
-        if 'db_cursor' in locals():
-            db_cursor.close()
-        if 'db_connection' in locals():
-            db_connection.close()
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -506,23 +524,25 @@ def update_lesson_progress(level, chapter_id):
     try:
         data = request.get_json()
         page_num = data.get('page_num', 1)
+        user_id = session['user_id']
+        
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor()
 
-        # Get total number of pages for this chapter
-        db_cursor.execute("""
-            SELECT COUNT(*) 
-            FROM lesson_content 
-            WHERE chapter_id = %s
-        """, (chapter_id,))
-        total_pages = db_cursor.fetchone()[0]
+        # Get total number of pages for this chapter (cached)
+        cache_key = f"total_pages_{chapter_id}"
+        total_pages = get_cached(cache_key)
+        if total_pages is None:
+            db_cursor.execute("SELECT COUNT(*) FROM lesson_content WHERE chapter_id = %s", (chapter_id,))
+            total_pages = db_cursor.fetchone()[0]
+            set_cache(cache_key, total_pages)
 
         # Calculate progress percentage based on current page and total pages
         progress = (page_num / total_pages) * 100 if total_pages > 0 else 0
         completed = page_num >= total_pages
 
         # Fetch current progress and completed status
-        db_cursor.execute("SELECT progress, completed FROM user_progress WHERE user_id = %s AND chapter_id = %s", (session['user_id'], chapter_id))
+        db_cursor.execute("SELECT progress, completed FROM user_progress WHERE user_id = %s AND chapter_id = %s", (user_id, chapter_id))
         current = db_cursor.fetchone()
         current_progress = current[0] if current else 0
         was_completed = bool(current[1]) if current and len(current) > 1 else False
@@ -536,7 +556,7 @@ def update_lesson_progress(level, chapter_id):
             progress = VALUES(progress),
             completed = VALUES(completed)
             """
-            db_cursor.execute(upsert_query, (session['user_id'], chapter_id, progress, completed))
+            db_cursor.execute(upsert_query, (user_id, chapter_id, progress, completed))
             db_connection.commit()
             updated_progress = progress
             updated_completed = completed
@@ -548,27 +568,31 @@ def update_lesson_progress(level, chapter_id):
         # If the chapter is now completed and was not completed before, give rewards
         reward_given = False
         if completed and not was_completed:
-            # Fetch xp_reward and points_reward from chapters table
-            db_cursor.execute("SELECT xp_reward, points_reward FROM chapters WHERE id = %s", (chapter_id,))
-            rewards = db_cursor.fetchone()
-            if rewards:
-                xp_reward, points_reward = rewards
+            # Get chapter rewards (cached)
+            chapter = get_chapter_info_cached(chapter_id)
+            if chapter:
+                xp_reward = chapter['xp_reward']
+                points_reward = chapter['points_reward']
+                
                 # Update user_stats: add xp and points
                 # If user_stats row does not exist, create it
-                db_cursor.execute("SELECT xp, points FROM user_stats WHERE user_id = %s", (session['user_id'],))
+                db_cursor.execute("SELECT xp, points FROM user_stats WHERE user_id = %s", (user_id,))
                 stats = db_cursor.fetchone()
                 if stats:
                     db_cursor.execute(
                         "UPDATE user_stats SET xp = xp + %s, points = points + %s WHERE user_id = %s",
-                        (xp_reward, points_reward, session['user_id'])
+                        (xp_reward, points_reward, user_id)
                     )
                 else:
                     db_cursor.execute(
                         "INSERT INTO user_stats (user_id, xp, points) VALUES (%s, %s, %s)",
-                        (session['user_id'], xp_reward, points_reward)
+                        (user_id, xp_reward, points_reward)
                     )
                 db_connection.commit()
                 reward_given = True
+                
+                # Invalidate user-related cache since stats changed
+                invalidate_user_cache(user_id)
 
         return jsonify({
             'success': True,
@@ -641,6 +665,27 @@ def admin_users():
         return redirect(url_for('home'))
     return render_template('admin/users.html')
 
+@cached_query(lambda: "admin_levels")
+def get_admin_levels_cached():
+    """Get admin levels data with caching."""
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor(dictionary=True)
+    
+    try:
+        # Optimized query with proper indexing
+        query = """
+            SELECT l.*, COUNT(c.id) as chapter_count 
+            FROM levels l 
+            LEFT JOIN chapters c ON l.id = c.level_id 
+            GROUP BY l.id, l.title, l.description, l.difficulty
+            ORDER BY l.id
+        """
+        db_cursor.execute(query)
+        return db_cursor.fetchall()
+    finally:
+        db_cursor.close()
+        db_connection.close()
+
 @app.route('/admin/levels')
 @login_required
 def admin_levels():
@@ -648,28 +693,11 @@ def admin_levels():
         return redirect(url_for('home'))
     
     try:
-        db_connection = get_db_connection()
-        db_cursor = db_connection.cursor(dictionary=True)
-        
-        # Fetch all levels with their chapter counts
-        query = """
-            SELECT l.*, COUNT(c.id) as chapter_count 
-            FROM levels l 
-            LEFT JOIN chapters c ON l.id = c.level_id 
-            GROUP BY l.id, l.title, l.description, l.difficulty
-        """
-        db_cursor.execute(query)
-        levels = db_cursor.fetchall()
-        
+        levels = get_admin_levels_cached()
         return render_template('admin/levels.html', levels=levels)
     except Exception as e:
         print("Database error:", str(e))
         return render_template('admin/levels.html', levels=[])
-    finally:
-        if 'db_cursor' in locals():
-            db_cursor.close()
-        if 'db_connection' in locals():
-            db_connection.close()
 
 @app.route('/admin/levels/add', methods=['POST'])
 @login_required
@@ -700,6 +728,10 @@ def add_level():
         query = "INSERT INTO levels (title, description, image_url) VALUES (%s, %s, %s)"
         db_cursor.execute(query, (title, description, image_url))
         db_connection.commit()
+        
+        # Invalidate admin levels cache
+        invalidate_cache_pattern("admin_levels")
+        clear_cache()  # Clear all cache since levels changed
         
         return jsonify({'success': True, 'message': 'Level added successfully'})
     except Exception as e:
@@ -1223,9 +1255,45 @@ def _log_db_startup_info():
     except Exception as e:
         print(f"DB startup info error: {e}")
 
+# Cache warming function
+def warm_cache():
+    """Pre-load frequently accessed data into cache."""
+    try:
+        print("Warming cache...")
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Cache all levels
+        db_cursor.execute("SELECT id, title, description, image_url FROM levels")
+        levels = db_cursor.fetchall()
+        for level in levels:
+            set_cache(f"level_{level['id']}", level)
+        
+        # Cache chapter counts for each level
+        db_cursor.execute("""
+            SELECT l.id, COUNT(c.id) as chapter_count 
+            FROM levels l 
+            LEFT JOIN chapters c ON l.id = c.level_id 
+            GROUP BY l.id
+        """)
+        level_chapter_counts = db_cursor.fetchall()
+        for count in level_chapter_counts:
+            set_cache(f"level_chapter_count_{count['id']}", count['chapter_count'])
+        
+        print(f"Cache warmed with {len(levels)} levels and {len(level_chapter_counts)} chapter counts")
+        
+    except Exception as e:
+        print(f"Cache warming failed: {e}")
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
 # Call this when the app starts
 _log_db_startup_info()
 init_chapters_table()
+warm_cache()
 
 @app.route('/api/analyze-code', methods=['POST'])
 def analyze_code():
@@ -1614,40 +1682,89 @@ def delete_lesson_content(page_id):
         cursor.close()
         conn.close()
 
+@cached_query(lambda level, chapter_id, page: f"lesson_content_{chapter_id}_{page}")
+def get_lesson_content_cached(chapter_id, page_num):
+    """Get lesson content with caching."""
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+
+    try:
+        # Optimized query with LEFT JOIN to get choices in one query
+        content_query = """
+        SELECT lc.*, 
+               GROUP_CONCAT(
+                   CONCAT(lch.id, '|', lch.choice_text, '|', lch.is_correct) 
+                   SEPARATOR '||'
+               ) as choices_data
+        FROM lesson_content lc
+        LEFT JOIN lesson_choices lch ON lc.id = lch.lesson_content_id AND lc.page_type = 'quiz'
+        WHERE lc.chapter_id = %s AND lc.page_num = %s
+        GROUP BY lc.id
+        """
+        db_cursor.execute(content_query, (chapter_id, page_num))
+        page = db_cursor.fetchone()
+        
+        if page and page.get('choices_data'):
+            # Parse choices data
+            choices = []
+            for choice_str in page['choices_data'].split('||'):
+                if choice_str:
+                    parts = choice_str.split('|')
+                    if len(parts) == 3:
+                        choices.append({
+                            'id': int(parts[0]),
+                            'choice_text': parts[1],
+                            'is_correct': bool(int(parts[2]))
+                        })
+            page['choices'] = choices
+        else:
+            page['choices'] = []
+        
+        return page
+    finally:
+        db_cursor.close()
+        db_connection.close()
+
+@cached_query(lambda chapter_id: f"chapter_info_{chapter_id}")
+def get_chapter_info_cached(chapter_id):
+    """Get chapter info with caching."""
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor(dictionary=True)
+    
+    try:
+        db_cursor.execute("SELECT xp_reward, points_reward, title FROM chapters WHERE id = %s", (chapter_id,))
+        return db_cursor.fetchone()
+    finally:
+        db_cursor.close()
+        db_connection.close()
+
 @app.route('/user/classic/<level>/<int:chapter_id>/ajax')
 @login_required
 def user_lesson_content_ajax(level, chapter_id):
     level = unquote(level)
     try:
-        db_connection = get_db_connection()
-        db_cursor = db_connection.cursor(dictionary=True)
-
-        # Get lesson content for this chapter
-        content_query = """
-        SELECT * FROM lesson_content 
-        WHERE chapter_id = %s 
-        ORDER BY page_num
-        """
-        db_cursor.execute(content_query, (chapter_id,))
-        lesson_pages = db_cursor.fetchall()
-        total_pages = len(lesson_pages)
-
-        # For quiz pages, fetch choices from lesson_choices
-        for page in lesson_pages:
-            if page.get('page_type') == 'quiz':
-                db_cursor.execute("SELECT id, choice_text, is_correct FROM lesson_choices WHERE lesson_content_id = %s", (page['id'],))
-                page['choices'] = db_cursor.fetchall()
-
         # Get requested page number
         requested_page = request.args.get('page', type=int)
         if not requested_page or requested_page < 1:
             requested_page = 1
 
+        # Get total pages count (cached)
+        cache_key = f"total_pages_{chapter_id}"
+        total_pages = get_cached(cache_key)
+        if total_pages is None:
+            db_connection = get_db_connection()
+            db_cursor = db_connection.cursor()
+            try:
+                db_cursor.execute("SELECT COUNT(*) FROM lesson_content WHERE chapter_id = %s", (chapter_id,))
+                total_pages = db_cursor.fetchone()[0]
+                set_cache(cache_key, total_pages)
+            finally:
+                db_cursor.close()
+                db_connection.close()
+
         # If requested page is after the last page, show congratulation/summary
         if requested_page > total_pages:
-            # Fetch chapter XP and points
-            db_cursor.execute("SELECT xp_reward, points_reward, title FROM chapters WHERE id = %s", (chapter_id,))
-            chapter = db_cursor.fetchone()
+            chapter = get_chapter_info_cached(chapter_id)
             xp = chapter['xp_reward'] if chapter else 0
             points = chapter['points_reward'] if chapter else 0
             chapter_title = chapter['title'] if chapter else ''
@@ -1673,8 +1790,11 @@ def user_lesson_content_ajax(level, chapter_id):
                 'is_congrats': True
             })
 
-        # Otherwise, normal lesson page
-        page = lesson_pages[requested_page - 1]
+        # Get the specific page content (cached)
+        page = get_lesson_content_cached(chapter_id, requested_page)
+        if not page:
+            return jsonify({'error': 'Page not found'}), 404
+
         from flask import render_template_string
         html = render_template_string('''
 {% if page.page_type == 'text_image' %}
@@ -1886,11 +2006,6 @@ def user_lesson_content_ajax(level, chapter_id):
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        if 'db_cursor' in locals():
-            db_cursor.close()
-        if 'db_connection' in locals():
-            db_connection.close()
 
 @app.route('/proxy/gpt4o')
 def proxy_gpt4o():
@@ -2273,6 +2388,48 @@ def admin_top_users():
         db_cursor.close()
         db_connection.close()
         return jsonify({'success': True, 'users': users})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/performance')
+@login_required
+def admin_performance():
+    """Performance monitoring endpoint for admins."""
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        # Get connection pool status
+        pool = get_connection_pool()
+        pool_status = {
+            'pool_name': pool.pool_name,
+            'pool_size': pool.pool_size,
+            'available_connections': len(pool._cnx_queue._queue),
+            'active_connections': pool.pool_size - len(pool._cnx_queue._queue)
+        }
+        
+        # Get cache status
+        cache_status = {
+            'total_entries': len(_cache),
+            'cache_keys': list(_cache.keys())[:10]  # Show first 10 keys
+        }
+        
+        # Test database connection speed
+        start_time = time.time()
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        db_cursor.execute("SELECT 1")
+        db_cursor.fetchone()
+        db_cursor.close()
+        db_connection.close()
+        db_response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        
+        return jsonify({
+            'success': True,
+            'pool_status': pool_status,
+            'cache_status': cache_status,
+            'db_response_time_ms': round(db_response_time, 2)
+        })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
