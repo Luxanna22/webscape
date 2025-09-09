@@ -80,8 +80,6 @@ def get_connection_pool():
                     "charset": "utf8mb4",
                     "use_unicode": True,
                     "connect_timeout": 10,
-                    "read_timeout": 30,
-                    "write_timeout": 30,
                 }
 
                 # Configure SSL for Aiven if provided
@@ -125,8 +123,6 @@ def get_db_connection_fallback():
         "charset": "utf8mb4",
         "use_unicode": True,
         "connect_timeout": 10,
-        "read_timeout": 30,
-        "write_timeout": 30,
     }
 
     # Configure SSL for Aiven if provided
@@ -1685,9 +1681,9 @@ def delete_lesson_content(page_id):
 @cached_query(lambda level, chapter_id, page: f"lesson_content_{chapter_id}_{page}")
 def get_lesson_content_cached(chapter_id, page_num):
     """Get lesson content with caching."""
-        db_connection = get_db_connection()
-        db_cursor = db_connection.cursor(dictionary=True)
-
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor(dictionary=True)
+    
     try:
         # Optimized query with LEFT JOIN to get choices in one query
         content_query = """
