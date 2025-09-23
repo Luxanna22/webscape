@@ -101,6 +101,15 @@ def inject_ga():
         '''
     }
 
+# Expose Google Client ID to templates (for Google Identity Services)
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
+
+@app.context_processor
+def inject_google_client_id():
+    return {
+        'google_client_id': GOOGLE_CLIENT_ID
+    }
+
 # Store active queues and matches
 code_queue = []  # Will store tuples of (socket_id, user_id)
 quiz_queue = []  # Will store tuples of (socket_id, user_id)
@@ -155,6 +164,33 @@ def home():
     
     return render_template('index.html')
 
+# Ensure DB has columns required for Google auth
+def init_google_auth_columns():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("ALTER TABLE users ADD COLUMN google_id VARCHAR(255) NULL")
+            conn.commit()
+        except Exception:
+            pass
+        try:
+            cur.execute("CREATE UNIQUE INDEX idx_users_google_id ON users(google_id)")
+            conn.commit()
+        except Exception:
+            pass
+    except Exception as e:
+        print("init_google_auth_columns error:", str(e))
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
 @app.route('/check_login')
 def check_login():
     return jsonify({'logged_in': 'user_id' in session})
@@ -191,6 +227,90 @@ def login():
             db_cursor.close()
         if 'db_connection' in locals():
             db_connection.close()
+
+@app.route('/auth/google', methods=['POST'])
+def auth_google():
+    try:
+        data = request.get_json(force=True)
+        id_token = data.get('credential') or data.get('id_token')
+        if not id_token:
+            return jsonify({'success': False, 'message': 'Missing credential'}), 400
+
+        # Verify token via Google tokeninfo endpoint
+        verify_resp = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'id_token': id_token}, timeout=10)
+        if verify_resp.status_code != 200:
+            return jsonify({'success': False, 'message': 'Invalid Google token'}), 400
+        payload = verify_resp.json()
+
+        aud = payload.get('aud') or payload.get('azp')
+        if GOOGLE_CLIENT_ID and aud != GOOGLE_CLIENT_ID:
+            return jsonify({'success': False, 'message': 'Token audience mismatch'}), 400
+
+        google_sub = payload.get('sub')
+        email = payload.get('email')
+        name = payload.get('name') or (payload.get('given_name') or 'User')
+        picture = payload.get('picture')
+        if not google_sub:
+            return jsonify({'success': False, 'message': 'Invalid token payload'}), 400
+
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+
+        # Prefer lookup by google_id
+        cur.execute("SELECT * FROM users WHERE google_id = %s", (google_sub,))
+        user = cur.fetchone()
+
+        # If not found, try by email then link
+        if not user and email:
+            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cur.fetchone()
+            if user:
+                try:
+                    cur2 = conn.cursor()
+                    cur2.execute("UPDATE users SET google_id = %s WHERE id = %s", (google_sub, user['id']))
+                    conn.commit()
+                    cur2.close()
+                except Exception:
+                    conn.rollback()
+
+        # If still not found, create
+        if not user:
+            base_username = (name or (email.split('@')[0] if email else 'user')).strip().lower().replace(' ', '')
+            if not base_username:
+                base_username = 'user'
+            username = base_username
+            suffix = 1
+            while True:
+                cur.execute("SELECT id FROM users WHERE username = %s", (username,))
+                exists = cur.fetchone()
+                if not exists:
+                    break
+                suffix += 1
+                username = f"{base_username}{suffix}"
+
+            try:
+                cur.execute(
+                    "INSERT INTO users (username, email, password, role, avatar_path, google_id) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (username, email or '', '', 'student', picture, google_sub)
+                )
+                conn.commit()
+                new_user_id = cur.lastrowid
+                user = {'id': new_user_id, 'username': username, 'email': email or '', 'role': 'student'}
+            except Exception as e:
+                conn.rollback()
+                print('Google auth insert error:', str(e))
+                return jsonify({'success': False, 'message': 'Failed to create account'}), 500
+
+        # Start session
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        session['role'] = user.get('role', 'student')
+
+        redirect_url = '/admin/dashboard' if session.get('role') == 'admin' else '/'
+        return jsonify({'success': True, 'redirect': redirect_url})
+    except Exception as e:
+        print('auth_google error:', str(e))
+        return jsonify({'success': False, 'message': 'Authentication failed'}), 500
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -1127,6 +1247,7 @@ def _log_db_startup_info():
 # Call this when the app starts
 _log_db_startup_info()
 init_chapters_table()
+init_google_auth_columns()
 
 @app.route('/api/analyze-code', methods=['POST'])
 def analyze_code():
@@ -1821,7 +1942,7 @@ def account():
         db_cursor = db_connection.cursor(dictionary=True)
 
         # Fetch user info
-        db_cursor.execute("SELECT id, username, email FROM users WHERE id = %s", (user_id,))
+        db_cursor.execute("SELECT id, username, email, avatar_path, google_id FROM users WHERE id = %s", (user_id,))
         user = db_cursor.fetchone()
 
         # Fetch user badges (join to get badge name and icon)
@@ -1879,6 +2000,107 @@ def delete_account():
             db_cursor.close()
         if 'db_connection' in locals():
             db_connection.close()
+
+@app.route('/account/update', methods=['POST'])
+@login_required
+def update_account():
+    try:
+        user_id = session['user_id']
+        username = request.form.get('username', '').strip()
+        use_google_avatar = request.form.get('use_google_avatar') == '1'
+        avatar_file = request.files.get('avatar')
+
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+
+        # Fetch current user and google_id
+        cur.execute("SELECT id, username, google_id, avatar_path FROM users WHERE id = %s", (user_id,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        # Validate unique username if changed
+        if username and username != user['username']:
+            if len(username) < 3:
+                return jsonify({'success': False, 'message': 'Username must be at least 3 characters'})
+            cur.execute("SELECT id FROM users WHERE username = %s AND id <> %s", (username, user_id))
+            if cur.fetchone():
+                return jsonify({'success': False, 'message': 'Username already taken'})
+
+        new_avatar_path = user['avatar_path']
+        if use_google_avatar and user.get('google_id'):
+            # Keep avatar_path as is (already set at login) or clear to let frontend display Google image URL
+            # We'll retain avatar_path if already stored from Google profile
+            pass
+        else:
+            # Handle avatar upload if provided
+            if avatar_file and avatar_file.filename and allowed_file(avatar_file.filename):
+                filename = secure_filename(avatar_file.filename)
+                filename = f"{int(time.time())}_{filename}"
+                file_path = os.path.join('static', 'uploads', 'lesson_images', filename)
+                try:
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                except Exception:
+                    pass
+                avatar_file.save(file_path)
+                new_avatar_path = f"/{file_path}"
+
+        # Apply updates
+        update_fields = []
+        params = []
+        if username and username != user['username']:
+            update_fields.append("username = %s")
+            params.append(username)
+        if new_avatar_path != user['avatar_path']:
+            update_fields.append("avatar_path = %s")
+            params.append(new_avatar_path)
+
+        if update_fields:
+            params.append(user_id)
+            cur2 = conn.cursor()
+            cur2.execute(f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s", tuple(params))
+            conn.commit()
+            cur2.close()
+            # Keep session username in sync if it changed
+            if username and username != user['username']:
+                session['username'] = username
+
+        return jsonify({'success': True, 'message': 'Account updated successfully', 'updated_username': username if username else user['username']})
+    except Exception as e:
+        if 'conn' in locals():
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        print('update_account error:', str(e))
+        return jsonify({'success': False, 'message': 'Failed to update account'}), 500
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+@app.route('/account/check-username')
+@login_required
+def check_username():
+    try:
+        desired = (request.args.get('username') or '').strip()
+        if not desired:
+            return jsonify({'available': False, 'reason': 'empty'})
+        if len(desired) < 3:
+            return jsonify({'available': False, 'reason': 'short'})
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM users WHERE username = %s AND id <> %s", (desired, session['user_id']))
+        count = cur.fetchone()[0]
+        cur.close(); conn.close()
+        return jsonify({'available': count == 0})
+    except Exception as e:
+        return jsonify({'available': False, 'error': str(e)}), 500
 
 @app.route('/user/classic/<level>/<int:chapter_id>/<int:page_num>/analytics', methods=['POST'])
 @login_required
