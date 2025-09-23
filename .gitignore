@@ -1,0 +1,7 @@
+.env
+.env.*
+ga-credentials.json
+ca.pem
+__pycache__/
+*.pyc
+.venv/
