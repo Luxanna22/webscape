@@ -231,7 +231,7 @@
       }
       .btn-getstarted {
         background: var(--accent);
-        color: var(--text-main);
+        color: var(--bg-color);
       }
       .btn-getstarted:hover,
       .btn-getstarted:focus {
@@ -361,6 +361,42 @@
       }
       .btn-pink:hover {
         background-color: #ff40b5;
+      }
+      /* Ensure Google Sign-In renders visibly */
+      .google-btn-wrapper {
+        display: block;
+        width: 100%;
+      }
+      .googleSignInContainer {
+        display: block;
+        min-height: 44px;
+        width: 100%;
+      }
+      .auth-separator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #bfbfbf;
+        font-size: 0.85rem;
+        margin: 10px 0 14px 0;
+      }
+      .auth-separator .line {
+        height: 1px;
+        background: #7e31ef;
+        opacity: 0.6;
+        flex: 1 1 0;
+      }
+      /* Loading state helpers */
+      .btn-loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.85;
+      }
+      .btn-loading .spinner-border {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.15em;
+        margin-right: 0.5rem;
       }
       /* Responsive styles */
       @media (max-width: 991.98px) {
@@ -564,7 +600,7 @@
             class="btn btn-getstarted"
             onclick="location.href='#game-modes'"
           >
-            Get Started
+            Explore
           </button>
         </div>
       </section>
@@ -652,6 +688,11 @@
             </div>
             <div class="modal-body">
               <form id="loginForm" onsubmit="handleLogin(event)">
+                <div
+                  class="alert alert-danger d-none"
+                  id="loginAlert"
+                  role="alert"
+                ></div>
                 <div class="mb-3">
                   <div class="form-floating flex-grow-1 position-relative">
                     <input
@@ -709,9 +750,21 @@
                     >Remember me</label
                   >
                 </div>
-                <button type="submit" class="btn btn-pink w-100 mb-3">
+                <button
+                  type="submit"
+                  class="btn btn-pink w-100 mb-3"
+                  id="loginSubmitBtn"
+                >
                   SUBMIT
                 </button>
+                <div class="auth-separator">
+                  <div class="line"></div>
+                  <div>OR CONTINUE WITH</div>
+                  <div class="line"></div>
+                </div>
+                <div class="google-btn-wrapper mb-2">
+                  <div class="googleSignInContainer"></div>
+                </div>
                 <p class="text-center text-gray mb-0 small">
                   Don't have an account?
                   <a
@@ -767,6 +820,11 @@
             </div>
             <div class="modal-body">
               <form id="registerForm" onsubmit="handleRegister(event)">
+                <div
+                  class="alert alert-danger d-none"
+                  id="registerAlert"
+                  role="alert"
+                ></div>
                 <div class="mb-3">
                   <div class="form-floating flex-grow-1 position-relative">
                     <input
@@ -833,9 +891,21 @@
                     ></i>
                   </div>
                 </div>
-                <button type="submit" class="btn btn-pink w-100 mb-3">
+                <button
+                  type="submit"
+                  class="btn btn-pink w-100 mb-3"
+                  id="registerSubmitBtn"
+                >
                   SUBMIT
                 </button>
+                <div class="auth-separator">
+                  <div class="line"></div>
+                  <div>OR CONTINUE WITH</div>
+                  <div class="line"></div>
+                </div>
+                <div class="google-btn-wrapper mb-2">
+                  <div class="googleSignInContainer"></div>
+                </div>
               </form>
               <p class="text-center text-gray mb-0 small">
                 Already have an account?
@@ -865,43 +935,123 @@
       crossorigin="anonymous"
     ></script>
     <script src="/static/theme-manager.js"></script>
+    <!-- Toast container -->
+    <div
+      class="toast-container position-fixed top-0 end-0 p-3"
+      style="z-index: 2000"
+    >
+      <div
+        id="globalToast"
+        class="toast align-items-center text-bg-dark border-0"
+        role="alert"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <div class="d-flex">
+          <div class="toast-body" id="globalToastBody">Action completed.</div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            data-bs-dismiss="toast"
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
+    </div>
     <script>
+      // UI helpers
+      function setFormLoading(form, isLoading, loadingText) {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const inputs = form.querySelectorAll("input, button, select, textarea");
+        if (!submitBtn) return;
+        if (isLoading) {
+          submitBtn.dataset.originalText = submitBtn.textContent;
+          submitBtn.innerHTML =
+            '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>' +
+            (loadingText || "Loading...");
+          submitBtn.classList.add("btn-loading");
+          inputs.forEach((el) => (el.disabled = true));
+        } else {
+          submitBtn.innerHTML = submitBtn.dataset.originalText || "SUBMIT";
+          submitBtn.classList.remove("btn-loading");
+          inputs.forEach((el) => (el.disabled = false));
+        }
+      }
+      function showInlineError(id, message) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = message || "Something went wrong";
+        el.classList.remove("d-none");
+      }
+      function clearInlineError(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add("d-none");
+        el.textContent = "";
+      }
+      function showToast(message) {
+        const toastEl = document.getElementById("globalToast");
+        const body = document.getElementById("globalToastBody");
+        if (toastEl && body) {
+          body.textContent = message;
+          const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+          toast.show();
+        }
+      }
       // Add login handling function
       function handleLogin(event) {
         event.preventDefault();
         const form = event.target;
+        clearInlineError("loginAlert");
         const formData = new FormData(form);
+        setFormLoading(form, true, "Signing in...");
         fetch("/login", { method: "POST", body: formData })
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
+              showToast("Logged in successfully");
               window.location.href = data.redirect;
             } else {
-              alert(data.message || "Login failed");
+              showInlineError("loginAlert", data.message || "Login failed");
             }
           })
           .catch((error) => {
             console.error("Error:", error);
-            alert("An error occurred during login");
+            showInlineError("loginAlert", "An error occurred during login");
+          })
+          .finally(() => {
+            setFormLoading(form, false);
           });
       }
       // Add registration handling function
       function handleRegister(event) {
         event.preventDefault();
         const form = event.target;
+        clearInlineError("registerAlert");
         const formData = new FormData(form);
+        setFormLoading(form, true, "Creating account...");
         fetch("/register", { method: "POST", body: formData })
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
+              showToast("Registration successful");
               window.location.href = data.redirect;
             } else {
-              alert(data.message || "Registration failed");
+              showInlineError(
+                "registerAlert",
+                data.message || "Registration failed"
+              );
             }
           })
           .catch((error) => {
             console.error("Error:", error);
-            alert("An error occurred during registration");
+            showInlineError(
+              "registerAlert",
+              "An error occurred during registration"
+            );
+          })
+          .finally(() => {
+            setFormLoading(form, false);
           });
       }
       // Handle account click in sidebar
@@ -933,6 +1083,118 @@
           });
       }
       document.addEventListener("DOMContentLoaded", checkLoginStatus);
+      // Google Identity Services: load once and render in all containers, including modals
+      (function setupGoogleIdentity() {
+        var CLIENT_ID = "{{ google_client_id }}";
+        function renderGoogleButtons() {
+          var containers = document.querySelectorAll(".googleSignInContainer");
+          containers.forEach(function (el) {
+            el.innerHTML = "";
+            google.accounts.id.renderButton(el, {
+              theme: "outline",
+              size: window.innerWidth <= 575 ? "medium" : "large",
+              type: "standard",
+              text: "signin_with",
+            });
+          });
+        }
+        function initGoogle() {
+          if (!CLIENT_ID) return;
+          if (!(window.google && google.accounts && google.accounts.id)) return;
+          try {
+            google.accounts.id.initialize({
+              client_id: CLIENT_ID,
+              callback: handleGoogleCredential,
+            });
+            renderGoogleButtons();
+          } catch (e) {
+            console.error("GIS init error", e);
+          }
+        }
+        function loadScript(cb) {
+          if (window.google && google.accounts && google.accounts.id) {
+            cb();
+            return;
+          }
+          var s = document.createElement("script");
+          s.src = "https://accounts.google.com/gsi/client";
+          s.async = true;
+          s.defer = true;
+          s.onload = cb;
+          document.body.appendChild(s);
+        }
+        document.addEventListener("DOMContentLoaded", function () {
+          if (!CLIENT_ID) return;
+          loadScript(initGoogle);
+          // Re-render when modals become visible to avoid hidden render issues
+          ["loginModal", "registerModal"].forEach(function (id) {
+            var modalEl = document.getElementById(id);
+            if (!modalEl) return;
+            modalEl.addEventListener("shown.bs.modal", function () {
+              if (window.google && google.accounts && google.accounts.id) {
+                renderGoogleButtons();
+              }
+            });
+          });
+        });
+      })();
+      function handleGoogleCredential(response) {
+        // Find which modal is open to show inline feedback
+        var openModal = document.querySelector(".modal.show");
+        var form = openModal ? openModal.querySelector("form") : null;
+        if (form) {
+          setFormLoading(form, true, "Signing in...");
+          var alertBox = openModal.querySelector("#loginAlert, #registerAlert");
+          if (alertBox) {
+            alertBox.classList.add("d-none");
+            alertBox.textContent = "";
+          }
+        }
+        fetch("/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential: response.credential }),
+        })
+          .then(function (res) {
+            return res.json();
+          })
+          .then(function (data) {
+            if (data && data.success) {
+              showToast("Signed in with Google");
+              window.location.href = data.redirect || "/";
+            } else {
+              var msg = (data && data.message) || "Google login failed";
+              if (openModal) {
+                var alertBox = openModal.querySelector(
+                  "#loginAlert, #registerAlert"
+                );
+                if (alertBox) {
+                  alertBox.textContent = msg;
+                  alertBox.classList.remove("d-none");
+                }
+              } else {
+                showToast(msg);
+              }
+            }
+          })
+          .catch(function (e) {
+            console.error(e);
+            if (openModal) {
+              var alertBox = openModal.querySelector(
+                "#loginAlert, #registerAlert"
+              );
+              if (alertBox) {
+                alertBox.textContent = "Google login error";
+                alertBox.classList.remove("d-none");
+              }
+            } else {
+              showToast("Google login error");
+            }
+          })
+          .finally(function () {
+            if (form) setFormLoading(form, false);
+          });
+      }
       function checkLoginAndRedirect(mode) {
         fetch("/check_login")
           .then((response) => response.json())
