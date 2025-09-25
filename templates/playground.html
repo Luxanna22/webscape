@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Code Playground | WebScape</title>
     <link
       rel="icon"
@@ -103,6 +104,7 @@
         font-weight: 500;
         font-size: 14px;
         color: #a9a9a9;
+        -webkit-user-select: none;
         user-select: none;
       }
       .sidebar .nav-item i {
@@ -541,6 +543,9 @@
         <div class="editor">
           <!-- HTML Editor -->
           <div class="code-editor active" id="html-editor">
+            <label for="html-code" class="visually-hidden"
+              >HTML Code Editor</label
+            >
             <textarea id="html-code" spellcheck="false">
 &lt;h1 id="heading"&gt;Hello, Welcome to WebScape!&lt;/h1&gt;
 &lt;button onclick="changeColor()"&gt;Click Me!&lt;/button&gt;</textarea
@@ -549,13 +554,24 @@
 
           <!-- CSS Editor -->
           <div class="code-editor" id="css-editor">
-            <textarea id="css-code" spellcheck="false">
+            <label for="css-code" class="visually-hidden"
+              >CSS Code Editor</label
+            >
+            <textarea
+              id="css-code"
+              spellcheck="false"
+              title="CSS Code Editor"
+              placeholder="Write your CSS code here"
+            >
 h1 { color: blue; }</textarea
             >
           </div>
 
           <!-- JS Editor -->
           <div class="code-editor" id="js-editor">
+            <label for="js-code" class="visually-hidden"
+              >JavaScript Code Editor</label
+            >
             <textarea id="js-code" spellcheck="false">
 function changeColor() {
     document.getElementById("heading").style.color = "red";
@@ -585,7 +601,12 @@ function changeColor() {
                 >BETA</span
               >
             </div>
-            <button class="ai-response-close" id="aiResponseClose">
+            <button
+              class="ai-response-close"
+              id="aiResponseClose"
+              aria-label="Close"
+            >
+              <span class="visually-hidden">Close</span>
               <i class="fas fa-times"></i>
             </button>
           </div>
