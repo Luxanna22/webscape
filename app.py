@@ -1255,52 +1255,65 @@ def analyze_code():
         data = request.get_json()
         if not data or 'message' not in data:
             return jsonify({'error': 'No message provided'}), 400
-            
-        message = data.get('message')
-        print("Sending message to API:", message)  # Debug log
-        
-        # Make the request to the external API
-        api_url = 'https://hazeyyyy-rest-apis.onrender.com/api/claude'
-        print("Making request to:", api_url)  # Debug log
-        
-        response = requests.get(
+
+        code = data.get('message')
+        print("Sending code to Gemini API:", code)  # Debug log
+
+        # Gemini API endpoint and model (per official docs)
+        api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            return jsonify({'error': 'Gemini API key not set'}), 500
+
+        # Prompt Gemini to analyze code for errors
+        prompt = f"Analyze the following code for potential errors and provide suggestions or corrections. Double check before saying NO ISSUES FOUND IN THE CODE, even missing/wrong semicolons, parenthesis, etc. \n\nCode:\n{code}"
+        payload = {
+            "contents": [
+                {"parts": [{"text": prompt}]}
+            ]
+        }
+        print("[Gemini DEBUG] Prompt sent to Gemini:", prompt)
+        print("[Gemini DEBUG] Payload sent to Gemini:", payload)
+
+        response = requests.post(
             api_url,
-            params={'message': message},
             headers={
-                'Accept': 'application/json',
                 'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'X-goog-api-key': api_key
             },
-            timeout=30  # Add timeout
+            json=payload,
+            timeout=30
         )
-        
-        print("API Response Status:", response.status_code)  # Debug log
-        print("API Response:", response.text)  # Debug log
-        
+
+        print("Gemini API Response Status:", response.status_code)  # Debug log
+        print("Gemini API Response:", response.text)  # Debug log
+
         if response.status_code != 200:
             return jsonify({
-                'error': f'External API returned status {response.status_code}',
+                'error': f'Gemini API returned status {response.status_code}',
                 'details': response.text
             }), 500
-            
+
         try:
             response_data = response.json()
-            return jsonify(response_data)
-        except ValueError as e:
-            print("JSON parsing error:", str(e))  # Debug log
+            # Extract the text response from Gemini
+            gemini_text = response_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            return jsonify({'result': gemini_text, 'raw': response_data})
+        except Exception as e:
+            print("Gemini JSON parsing error:", str(e))
             return jsonify({
-                'error': 'Invalid JSON response from external API',
+                'error': 'Invalid JSON response from Gemini API',
                 'details': response.text
             }), 500
-            
+
     except requests.exceptions.RequestException as e:
-        print("Request error:", str(e))  # Debug log
+        print("Request error:", str(e))
         return jsonify({
-            'error': 'Failed to connect to external API',
+            'error': 'Failed to connect to Gemini API',
             'details': str(e)
         }), 500
     except Exception as e:
-        print("Unexpected error:", str(e))  # Debug log
+        print("Unexpected error:", str(e))
         return jsonify({
             'error': 'An unexpected error occurred',
             'details': str(e)
