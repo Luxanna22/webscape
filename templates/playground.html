@@ -897,54 +897,30 @@ function changeColor() {
 
           try {
             // Construct message with all three code sections
-            const message = `[Your Role: Point out any errors in this code or confirm it's fine. Analyze all three sections (HTML, CSS, and JavaScript) together to check for any mismatches or issues.]\n\nHTML:\n${htmlCode}\n\nCSS:\n${cssCode}\n\nJavaScript:\n${jsCode} \n\n[IMPORTANT!]: Provide response in straightforward manner, focusing on actual code issues like:\n- "The function name in onclick should be changeColor() not changered()"\n- "Missing closing tag for h1 element"\n- "Incorrect attribute name: should be class not className"\n- "Missing semicolon at the end of the statement", if no errors are found, say "No issues found in the code."`;
+            const message = `[Your Role: Point out any errors in this code or confirm it's fine. Analyze all three sections (HTML, CSS, and JavaScript) together to check for any mismatches or issues.]\n\nHTML:\n${htmlCode}\n\nCSS:\n${cssCode}\n\nJavaScript:\n${jsCode}\n\n[IMPORTANT!]: Provide response in straightforward manner, focusing on actual code issues like:\n- "The function name in onclick should be changeColor() not changered()"\n- "Missing closing tag for h1 element"\n- "Incorrect attribute name: should be class not className"\n- "Missing semicolon at the end of the statement", if no errors are found, say "No issues found in the code."`;
 
-            // Encode the message
-            const encodedMessage = encodeBase64Unicode(message);
-            console.log("Encoded message length:", encodedMessage.length); // Debug log
-
-            const response = await fetch(`/proxy/4o?message=${encodedMessage}`);
+            // Send POST request to Gemini-powered backend
+            const response = await fetch("/api/analyze-code", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ message }),
+            });
 
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
-
-            // Debug log for raw AI response
-            console.log("Raw AI response:", data);
-
             aiResponse.classList.remove("loading");
 
-            // Show loading state for cleaning process
-            aiResponse.querySelector(".ai-response-content").innerHTML =
-              '<div class="loader"></div>Making magic happen...';
-            aiResponse.classList.add("loading");
-
-            // Clean the AI response using the backend proxy to avoid CORS
-            const cleanResponse = await fetch(
-              `/proxy/gpt4o?ask=${encodeURIComponent(
-                data.answer
-              )}&uid=8192&roleplay=Code%20Cleaner`
-            );
             let responseText = "";
-            try {
-              const cleanData = await cleanResponse.json();
-              // Debug log for cleaned response
-              console.log("Cleaned response:", cleanData);
-              // Use the plain text answer from the API if present
-              if (cleanData && typeof cleanData.answer === "string") {
-                responseText = cleanData.answer.trim();
-              }
-            } catch (err) {
-              // If JSON parsing fails, fallback to a generic message
-              responseText = "";
-            }
-
-            aiResponse.classList.remove("loading");
-
-            // If no answer, show a fallback message
-            if (!responseText) {
+            if (data && typeof data.result === "string") {
+              responseText = data.result.trim();
+            } else if (data && typeof data.raw === "string") {
+              responseText = data.raw.trim();
+            } else {
               responseText = "No issues found in your code.";
             }
 
