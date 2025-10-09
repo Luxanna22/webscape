@@ -343,14 +343,14 @@ def register():
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
         
         # Insert new user with hashed password and default role
-        insert_query = "INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, 'user')"
+        insert_query = "INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, 'student')"
         db_cursor.execute(insert_query, (username, email, hashed_password))
         db_connection.commit()
         
         # Log the user in after successful registration
         session['user_id'] = db_cursor.lastrowid
         session['username'] = username
-        session['role'] = 'user'
+        session['role'] = 'student'
         
         return jsonify({'success': True, 'redirect': '/'})
     except Exception as e:
