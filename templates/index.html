@@ -54,6 +54,10 @@
         --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         --bright-purple: #7e31ef;
       }
+      .highlight-text {
+        color: var(--accent);
+        font-weight: 600;
+      }
       a[href="https://confettipage.com"]
       {
         display: none !important;
@@ -266,7 +270,7 @@
         font-family: "Montserrat", sans-serif;
         color: var(--text-muted);
         font-size: 1.2rem;
-        margin-bottom: 2.25rem;
+        margin-bottom: 3.25rem;
         max-width: 48rem;
       }
       .hero-ctas {
@@ -747,8 +751,11 @@
               <li>Progress & badges</li>
             </ul>
             <p class="hero-sub">
-              Play short, focused levels to master HTML, CSS and JavaScript —
-              with instant feedback and delightful rewards.
+              Play short, focused levels to master
+              <span class="highlight-text">HTML</span>,
+              <span class="highlight-text">CSS</span> and
+              <span class="highlight-text">JavaScript</span> — with instant
+              feedback and delightful rewards.
             </p>
 
             <div class="hero-ctas">
