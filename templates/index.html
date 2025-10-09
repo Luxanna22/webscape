@@ -172,43 +172,162 @@
       }
       .hero {
         width: 100%;
-        max-width: 900px;
+        max-width: 1000px;
         min-height: 100vh;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
         margin: 0 auto;
-        padding: 0 16px;
+        padding: 64px 24px;
         text-align: center;
+        position: relative;
+        overflow: hidden;
       }
-      .hero-title {
+      /* centered single-column inner */
+      .hero-inner {
+        width: 100%;
+        display: block;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 36px 18px;
+      }
+      .hero-content {
+        width: 100%;
+        margin: 0 auto 18px auto;
+      }
+      /* soft radial glow behind hero */
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+            600px 300px at 15% 30%,
+            rgba(126, 49, 239, 0.14),
+            transparent 25%
+          ),
+          radial-gradient(
+            500px 220px at 85% 70%,
+            rgba(255, 102, 196, 0.08),
+            transparent 30%
+          );
+        pointer-events: none;
+        z-index: 0;
+      }
+      .hero-inner,
+      .hero-content {
+        position: relative;
+        z-index: 1;
+      }
+      .hero .hero-title {
         font-family: "Luckiest Guy", cursive;
-        font-size: 7.5rem;
+        font-size: 1.4rem;
+        line-height: 1.02;
         color: var(--accent);
-        margin-bottom: 0.5rem;
-        letter-spacing: 0.04em;
-        text-shadow: 0 2px 12px #0002;
+        margin: 0 0 0.6rem 0;
+        letter-spacing: 0.02em;
+        text-shadow: 0 6px 30px rgba(0, 0, 0, 0.45);
       }
-      .hero-tagline {
-        font-family: "Anton", sans-serif;
-        font-size: 2rem;
+      /* Brand glow styling */
+      .brand {
+        color: #fff;
+        font-size: 8rem;
+        display: inline-block;
+        padding: 0 6px;
+        margin-left: 6px;
+        position: relative;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        text-shadow: 0 6px 18px rgba(126, 49, 239, 0.08);
+        -webkit-font-smoothing: antialiased;
+      }
+      @keyframes brandGlow {
+        0% {
+          text-shadow: 0 0 6px rgba(255, 102, 196, 0.75),
+            0 0 18px rgba(197, 79, 163, 0.45);
+        }
+        50% {
+          text-shadow: 0 0 12px rgba(255, 102, 196, 0.95),
+            0 0 28px rgba(197, 79, 163, 0.65);
+        }
+        100% {
+          text-shadow: 0 0 6px rgba(255, 102, 196, 0.75),
+            0 0 18px rgba(197, 79, 163, 0.45);
+        }
+      }
+      .brand {
+        animation: brandGlow 2.8s ease-in-out infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .brand {
+          animation: none;
+        }
+      }
+      .hero .hero-sub {
+        font-family: "Montserrat", sans-serif;
         color: var(--text-muted);
-        margin-bottom: 2.5rem;
-        font-weight: 700;
+        font-size: 1.2rem;
+        margin-bottom: 2.25rem;
+        max-width: 48rem;
       }
-      .hero-logo {
-        width: 40%;
-        margin-bottom: 2.5rem;
-        filter: drop-shadow(0 2px 12px #0003);
-      }
-      .hero-actions {
-        border-radius: var(--border-radius);
+      .hero-ctas {
         display: flex;
-        gap: 18px;
-        justify-content: center;
-        margin-bottom: 0;
+        gap: 12px;
+        margin: 18px auto 22px auto;
+        flex-direction: row;
+        align-items: center;
+        width: 100%;
+        max-width: 360px;
       }
+      .btn-cta {
+        padding: 0.8rem 1.4rem;
+        font-weight: 700;
+        border-radius: 10px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+      }
+      .btn-cta.primary {
+        background: linear-gradient(
+          90deg,
+          var(--accent) 0%,
+          var(--accent-hover) 100%
+        );
+        color: var(--bg-color);
+        border: none;
+        &:hover {
+          background: linear-gradient(
+            90deg,
+            var(--accent-hover) 0%,
+            var(--accent) 100%
+          );
+          color: var(--text-main);
+        }
+      }
+      .btn-cta.secondary {
+        background: transparent;
+        color: var(--text-main);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+
+        &:hover {
+          color: var(--accent);
+        }
+      }
+      .feature-chips {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1rem 0;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .feature-chips li {
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-muted);
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      /* no image media in single-column layout */
       .btn-login,
       .btn-getstarted {
         width: 14vw;
@@ -400,14 +519,44 @@
       }
       /* Responsive styles */
       @media (max-width: 991.98px) {
-        .hero-title {
-          font-size: 6rem;
+        .hero .hero-title {
+          font-size: 2.4rem;
         }
-        .hero-tagline {
-          font-size: 1.5rem;
+        .hero .hero-sub {
+          font-size: 1rem;
         }
         .section-title {
           font-size: 2rem;
+        }
+        .hero {
+          padding: 20px 12px;
+          min-height: 100vh;
+        }
+        .hero .hero-sub {
+          font-size: 0.96rem;
+          margin-bottom: 1rem;
+        }
+        .brand {
+          font-size: 4.5rem;
+          letter-spacing: 0.04em;
+        }
+        .hero-ctas {
+          flex-direction: row;
+          gap: 10px;
+          max-width: 100%;
+          margin-top: 3rem;
+        }
+        .btn-cta {
+          width: 100%;
+          padding: 0.95rem 1rem;
+          font-size: 1rem;
+        }
+        .feature-chips {
+          gap: 8px;
+        }
+        .feature-chips li {
+          padding: 6px 10px;
+          font-size: 0.8rem;
         }
         .game-modes-row {
           gap: 18px;
@@ -466,13 +615,13 @@
           margin-left: 0;
         }
         .hero {
-          padding: 0 8px;
+          padding: 28px 12px;
         }
-        .hero-tagline {
-          font-size: 1.2rem;
+        .hero .hero-sub {
+          font-size: 0.98rem;
         }
         .hero-actions {
-          width: 60%;
+          width: 100%;
         }
         .section {
           padding: 24px 8px 0 8px;
@@ -514,7 +663,17 @@
         }
       }
       @media (max-width: 575.98px) {
-        .hero-title {
+        .hero .hero-title {
+          font-size: 2.2rem;
+        }
+        .hero {
+          padding: 18px 10px;
+          min-height: 100vh;
+        }
+        .hero .hero-title {
+          font-size: 1.6rem;
+        }
+        .brand {
           font-size: 4rem;
         }
         .section-title {
@@ -527,6 +686,7 @@
         .btn-getstarted {
           padding: 0.7rem 1.2rem;
           font-size: 1rem;
+          width: 100%;
         }
       }
     </style>
@@ -575,33 +735,38 @@
       </div>
     </nav>
     <main>
-      <section class="hero">
-        <h1 class="hero-title">WEBSCAPE</h1>
-        <div class="hero-tagline">
-          Escape The Struggles for Learning Web Fundamentals
-        </div>
-        <img
-          src="/static/images/book-icon.png"
-          alt="WebScape Logo"
-          class="hero-logo"
-        />
-        <div class="hero-actions">
-          <button
-            type="button"
-            class="btn btn-login"
-            data-bs-target="#loginModal"
-            data-bs-toggle="modal"
-            id="loginButton"
-            style="display: none"
-          >
-            Login
-          </button>
-          <button
-            class="btn btn-getstarted"
-            onclick="location.href='#game-modes'"
-          >
-            Explore
-          </button>
+      <section class="hero" aria-labelledby="hero-heading">
+        <div class="hero-inner">
+          <div class="hero-content">
+            <h1 id="hero-heading" class="hero-title">
+              <span class="brand">WEBSCAPE</span>
+            </h1>
+            <ul class="feature-chips" aria-hidden="false">
+              <li>Interactive challenges</li>
+              <li>Bite-size lessons</li>
+              <li>Progress & badges</li>
+            </ul>
+            <p class="hero-sub">
+              Play short, focused levels to master HTML, CSS and JavaScript —
+              with instant feedback and delightful rewards.
+            </p>
+
+            <div class="hero-ctas">
+              <button
+                class="btn btn-cta primary"
+                onclick="checkLoginAndRedirect('classic')"
+              >
+                Start Learning
+              </button>
+              <button
+                class="btn btn-cta secondary"
+                onclick="location.href='#game-modes'"
+              >
+                Explore Modes
+              </button>
+            </div>
+          </div>
+          <!-- single-column hero: no media/image -->
         </div>
       </section>
       <section class="section">
