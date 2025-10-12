@@ -18,8 +18,6 @@ import bcrypt
 import requests 
 import base64
 from urllib.parse import quote, unquote
-import time
-from collections import defaultdict
 from werkzeug.utils import secure_filename
 import math
 import time
@@ -28,46 +26,6 @@ import subprocess
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, Dimension, RunReportRequest
 import calendar
-
-# Rate limiting for API endpoints
-request_timestamps = defaultdict(list)
-
-# Allowed web origins (for CORS reflection)
-ALLOWED_WEB_ORIGINS = set([
-    os.getenv('WEB_ORIGIN_PRIMARY', 'https://webscape.fun').rstrip('/'),
-    os.getenv('WEB_ORIGIN_WWW', 'https://www.webscape.fun').rstrip('/'),
-])
-
-def rate_limit(max_requests=5, time_window=60):
-    """Decorator to limit requests per IP address"""
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            # Prefer Cloudflare real client IP header if present
-            client_ip = (
-                request.headers.get('CF-Connecting-IP')
-                or request.headers.get('X-Forwarded-For')
-                or request.environ.get('HTTP_X_FORWARDED_FOR')
-                or request.environ.get('REMOTE_ADDR', 'unknown')
-            )
-            current_time = time.time()
-            
-            # Clean old timestamps
-            request_timestamps[client_ip] = [
-                timestamp for timestamp in request_timestamps[client_ip]
-                if current_time - timestamp < time_window
-            ]
-            
-            # Check if limit exceeded
-            if len(request_timestamps[client_ip]) >= max_requests:
-                return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
-            
-            # Add current timestamp
-            request_timestamps[client_ip].append(current_time)
-            
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
 
 # Load environment variables from a local .env file if present (useful for local dev)
 try:
@@ -125,29 +83,6 @@ def get_db_connection():
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'lux')
 socketio = SocketIO(app, cors_allowed_origins="*")
-
-# Add security headers for OAuth and CORS
-@app.after_request
-def after_request(response):
-    # Allow credentials for OAuth
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
-    # Reflect allowed origin for CORS (applies to apex and www)
-    req_origin = request.headers.get('Origin')
-    if req_origin and req_origin.rstrip('/') in ALLOWED_WEB_ORIGINS:
-        response.headers['Access-Control-Allow-Origin'] = req_origin
-        response.headers['Vary'] = (response.headers.get('Vary', '') + ', Origin').strip(', ')
-    # Common CORS headers for APIs
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    # Set secure headers
-    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
-    response.headers['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
-    # Cache control for OAuth endpoints
-    if request.endpoint and 'auth' in request.endpoint:
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-    return response
 
 # Add Google Analytics context processor
 @app.context_processor
@@ -293,20 +228,8 @@ def login():
         if 'db_connection' in locals():
             db_connection.close()
 
-@app.route('/auth/google', methods=['POST', 'OPTIONS'])
-@rate_limit(max_requests=5, time_window=60)  # Limit auth attempts
+@app.route('/auth/google', methods=['POST'])
 def auth_google():
-    # Handle preflight quickly
-    if request.method == 'OPTIONS':
-        return ('', 204)
-
-    # Basic diagnostics for production troubleshooting (non-sensitive)
-    try:
-        print(f"/auth/google request → Origin={request.headers.get('Origin')} Host={request.headers.get('Host')} Referer={request.headers.get('Referer')}")
-    except Exception:
-        pass
-    conn = None
-    cur = None
     try:
         data = request.get_json(force=True)
         id_token = data.get('credential') or data.get('id_token')
@@ -314,20 +237,14 @@ def auth_google():
             return jsonify({'success': False, 'message': 'Missing credential'}), 400
 
         # Verify token via Google tokeninfo endpoint
-        try:
-            verify_resp = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'id_token': id_token}, timeout=10)
-            if verify_resp.status_code != 200:
-                print(f"Google tokeninfo failed: {verify_resp.status_code} - {verify_resp.text}")
-                return jsonify({'success': False, 'message': 'Invalid Google token'}), 400
-            payload = verify_resp.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Google tokeninfo request failed: {str(e)}")
-            return jsonify({'success': False, 'message': 'Failed to verify Google token'}), 500
+        verify_resp = requests.get('https://oauth2.googleapis.com/tokeninfo', params={'id_token': id_token}, timeout=10)
+        if verify_resp.status_code != 200:
+            return jsonify({'success': False, 'message': 'Invalid Google token'}), 400
+        payload = verify_resp.json()
 
         aud = payload.get('aud') or payload.get('azp')
         if GOOGLE_CLIENT_ID and aud != GOOGLE_CLIENT_ID:
-            print(f"Google token audience mismatch. Expected: {GOOGLE_CLIENT_ID}, Got: {aud}")
-            return jsonify({'success': False, 'message': 'Token audience mismatch', 'expected_aud': GOOGLE_CLIENT_ID, 'got_aud': aud}), 400
+            return jsonify({'success': False, 'message': 'Token audience mismatch'}), 400
 
         google_sub = payload.get('sub')
         email = payload.get('email')
@@ -393,19 +310,7 @@ def auth_google():
         return jsonify({'success': True, 'redirect': redirect_url})
     except Exception as e:
         print('auth_google error:', str(e))
-        return jsonify({'success': False, 'message': 'Authentication failed', 'error': str(e)}), 500
-    finally:
-        # Ensure database connections are properly closed
-        if cur:
-            try:
-                cur.close()
-            except Exception:
-                pass
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
+        return jsonify({'success': False, 'message': 'Authentication failed'}), 500
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -1345,7 +1250,6 @@ init_chapters_table()
 init_google_auth_columns()
 
 @app.route('/api/analyze-code', methods=['POST'])
-@rate_limit(max_requests=3, time_window=30)  # Limit to 3 requests per 30 seconds
 def analyze_code():
     try:
         data = request.get_json()
@@ -1353,8 +1257,7 @@ def analyze_code():
             return jsonify({'error': 'No message provided'}), 400
 
         code = data.get('message')
-        if not code or len(code.strip()) == 0:
-            return jsonify({'error': 'Empty code provided'}), 400
+        print("Sending code to Gemini API:", code)  # Debug log
 
         # Gemini API endpoint and model (per official docs)
         api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
@@ -1369,77 +1272,48 @@ def analyze_code():
                 {"parts": [{"text": prompt}]}
             ]
         }
+        print("[Gemini DEBUG] Prompt sent to Gemini:", prompt)
+        print("[Gemini DEBUG] Payload sent to Gemini:", payload)
+
+        response = requests.post(
+            api_url,
+            headers={
+                'Content-Type': 'application/json',
+                'X-goog-api-key': api_key
+            },
+            json=payload,
+            timeout=30
+        )
+
+        print("Gemini API Response Status:", response.status_code)  # Debug log
+        print("Gemini API Response:", response.text)  # Debug log
+
+        if response.status_code != 200:
+            return jsonify({
+                'error': f'Gemini API returned status {response.status_code}',
+                'details': response.text
+            }), 500
 
         try:
-            response = requests.post(
-                api_url,
-                headers={
-                    'Content-Type': 'application/json',
-                    'X-goog-api-key': api_key
-                },
-                json=payload,
-                timeout=30
-            )
-            
-            if response.status_code != 200:
-                error_msg = f'Gemini API returned status {response.status_code}'
-                print(f"Gemini API Error: {error_msg}")
-                return jsonify({
-                    'error': error_msg,
-                    'details': response.text[:500]  # Limit response text to prevent issues
-                }), 500
+            response_data = response.json()
+            # Extract the text response from Gemini
+            gemini_text = response_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            return jsonify({'result': gemini_text, 'raw': response_data})
+        except Exception as e:
+            print("Gemini JSON parsing error:", str(e))
+            return jsonify({
+                'error': 'Invalid JSON response from Gemini API',
+                'details': response.text
+            }), 500
 
-            try:
-                response_data = response.json()
-                # Extract the text response from Gemini
-                candidates = response_data.get('candidates', [])
-                if not candidates:
-                    return jsonify({'error': 'No response from Gemini API'}), 500
-                
-                content = candidates[0].get('content', {})
-                parts = content.get('parts', [])
-                if not parts:
-                    return jsonify({'error': 'Empty response from Gemini API'}), 500
-                
-                gemini_text = parts[0].get('text', '')
-                if not gemini_text:
-                    return jsonify({'error': 'No text in Gemini API response'}), 500
-                    
-                return jsonify({'result': gemini_text})
-            except (KeyError, IndexError, TypeError) as e:
-                print(f"Gemini response parsing error: {str(e)}")
-                return jsonify({
-                    'error': 'Invalid response format from Gemini API',
-                    'details': str(e)
-                }), 500
-            except Exception as e:
-                print(f"Gemini JSON parsing error: {str(e)}")
-                return jsonify({
-                    'error': 'Failed to parse Gemini API response',
-                    'details': str(e)
-                }), 500
-                
-        except requests.exceptions.Timeout:
-            print("Gemini API timeout")
-            return jsonify({
-                'error': 'Gemini API request timed out',
-                'details': 'Request took longer than 30 seconds'
-            }), 504
-        except requests.exceptions.ConnectionError:
-            print("Gemini API connection error")
-            return jsonify({
-                'error': 'Failed to connect to Gemini API',
-                'details': 'Connection error occurred'
-            }), 503
-        except requests.exceptions.RequestException as e:
-            print(f"Gemini API request error: {str(e)}")
-            return jsonify({
-                'error': 'Gemini API request failed',
-                'details': str(e)
-            }), 502
-            
+    except requests.exceptions.RequestException as e:
+        print("Request error:", str(e))
+        return jsonify({
+            'error': 'Failed to connect to Gemini API',
+            'details': str(e)
+        }), 500
     except Exception as e:
-        print(f"Unexpected analyze_code error: {str(e)}")
+        print("Unexpected error:", str(e))
         return jsonify({
             'error': 'An unexpected error occurred',
             'details': str(e)

@@ -488,18 +488,12 @@
       /* Ensure Google Sign-In renders visibly */
       .google-btn-wrapper {
         display: block;
-        width: 100% !important;
+        width: 100%;
       }
       .googleSignInContainer {
         display: block;
         min-height: 44px;
-        width: 100% !important;
-      }
-      .googleSignInContainer div {
-        width: 100% !important;
-      }
-      .googleSignInContainer iframe {
-        width: 100% !important;
+        width: 100%;
       }
       .auth-separator {
         display: flex;
@@ -1316,19 +1310,7 @@
           });
         });
       })();
-      var isProcessingGoogleAuth = false;
-
       function handleGoogleCredential(response) {
-        // Prevent multiple simultaneous auth attempts
-        if (isProcessingGoogleAuth) {
-          console.log(
-            "Google auth already in progress, ignoring duplicate request"
-          );
-          return;
-        }
-
-        isProcessingGoogleAuth = true;
-
         // Find which modal is open to show inline feedback
         var openModal = document.querySelector(".modal.show");
         var form = openModal ? openModal.querySelector("form") : null;
@@ -1383,8 +1365,6 @@
           })
           .finally(function () {
             if (form) setFormLoading(form, false);
-            // Reset the flag to allow future attempts
-            isProcessingGoogleAuth = false;
           });
       }
       function checkLoginAndRedirect(mode) {

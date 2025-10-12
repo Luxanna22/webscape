@@ -884,17 +884,7 @@ function changeColor() {
           return padding === 4 ? base64 : base64 + "=".repeat(padding);
         }
 
-        let isAnalyzing = false;
-
         async function analyzeCode() {
-          // Prevent multiple simultaneous requests
-          if (isAnalyzing) {
-            console.log("Code analysis already in progress");
-            return;
-          }
-
-          isAnalyzing = true;
-
           // Clear previous response and show loading state
           aiResponse.querySelector(".ai-response-content").innerHTML =
             '<div class="loader"></div>Analyzing your code...';
@@ -958,9 +948,6 @@ function changeColor() {
             aiResponse.classList.remove("loading");
             aiResponse.querySelector(".ai-response-content").innerHTML =
               "Sorry, there was an error analyzing your code.";
-          } finally {
-            // Reset the flag to allow future requests
-            isAnalyzing = false;
           }
         }
 
