@@ -32,12 +32,24 @@ import calendar
 # Rate limiting for API endpoints
 request_timestamps = defaultdict(list)
 
+# Allowed web origins (for CORS reflection)
+ALLOWED_WEB_ORIGINS = set([
+    os.getenv('WEB_ORIGIN_PRIMARY', 'https://webscape.fun').rstrip('/'),
+    os.getenv('WEB_ORIGIN_WWW', 'https://www.webscape.fun').rstrip('/'),
+])
+
 def rate_limit(max_requests=5, time_window=60):
     """Decorator to limit requests per IP address"""
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'unknown'))
+            # Prefer Cloudflare real client IP header if present
+            client_ip = (
+                request.headers.get('CF-Connecting-IP')
+                or request.headers.get('X-Forwarded-For')
+                or request.environ.get('HTTP_X_FORWARDED_FOR')
+                or request.environ.get('REMOTE_ADDR', 'unknown')
+            )
             current_time = time.time()
             
             # Clean old timestamps
@@ -119,6 +131,14 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 def after_request(response):
     # Allow credentials for OAuth
     response.headers['Access-Control-Allow-Credentials'] = 'true'
+    # Reflect allowed origin for CORS (applies to apex and www)
+    req_origin = request.headers.get('Origin')
+    if req_origin and req_origin.rstrip('/') in ALLOWED_WEB_ORIGINS:
+        response.headers['Access-Control-Allow-Origin'] = req_origin
+        response.headers['Vary'] = (response.headers.get('Vary', '') + ', Origin').strip(', ')
+    # Common CORS headers for APIs
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     # Set secure headers
     response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
     response.headers['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
@@ -273,9 +293,18 @@ def login():
         if 'db_connection' in locals():
             db_connection.close()
 
-@app.route('/auth/google', methods=['POST'])
+@app.route('/auth/google', methods=['POST', 'OPTIONS'])
 @rate_limit(max_requests=5, time_window=60)  # Limit auth attempts
 def auth_google():
+    # Handle preflight quickly
+    if request.method == 'OPTIONS':
+        return ('', 204)
+
+    # Basic diagnostics for production troubleshooting (non-sensitive)
+    try:
+        print(f"/auth/google request → Origin={request.headers.get('Origin')} Host={request.headers.get('Host')} Referer={request.headers.get('Referer')}")
+    except Exception:
+        pass
     conn = None
     cur = None
     try:
@@ -298,7 +327,7 @@ def auth_google():
         aud = payload.get('aud') or payload.get('azp')
         if GOOGLE_CLIENT_ID and aud != GOOGLE_CLIENT_ID:
             print(f"Google token audience mismatch. Expected: {GOOGLE_CLIENT_ID}, Got: {aud}")
-            return jsonify({'success': False, 'message': 'Token audience mismatch'}), 400
+            return jsonify({'success': False, 'message': 'Token audience mismatch', 'expected_aud': GOOGLE_CLIENT_ID, 'got_aud': aud}), 400
 
         google_sub = payload.get('sub')
         email = payload.get('email')
@@ -364,7 +393,7 @@ def auth_google():
         return jsonify({'success': True, 'redirect': redirect_url})
     except Exception as e:
         print('auth_google error:', str(e))
-        return jsonify({'success': False, 'message': 'Authentication failed'}), 500
+        return jsonify({'success': False, 'message': 'Authentication failed', 'error': str(e)}), 500
     finally:
         # Ensure database connections are properly closed
         if cur:
