@@ -114,6 +114,21 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'lux')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# Add security headers for OAuth and CORS
+@app.after_request
+def after_request(response):
+    # Allow credentials for OAuth
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    # Set secure headers
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+    response.headers['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
+    # Cache control for OAuth endpoints
+    if request.endpoint and 'auth' in request.endpoint:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
 # Add Google Analytics context processor
 @app.context_processor
 def inject_ga():
