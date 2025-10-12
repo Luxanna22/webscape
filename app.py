@@ -18,6 +18,8 @@ import bcrypt
 import requests 
 import base64
 from urllib.parse import quote, unquote
+import time
+from collections import defaultdict
 from werkzeug.utils import secure_filename
 import math
 import time
@@ -26,6 +28,34 @@ import subprocess
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, Dimension, RunReportRequest
 import calendar
+
+# Rate limiting for API endpoints
+request_timestamps = defaultdict(list)
+
+def rate_limit(max_requests=5, time_window=60):
+    """Decorator to limit requests per IP address"""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'unknown'))
+            current_time = time.time()
+            
+            # Clean old timestamps
+            request_timestamps[client_ip] = [
+                timestamp for timestamp in request_timestamps[client_ip]
+                if current_time - timestamp < time_window
+            ]
+            
+            # Check if limit exceeded
+            if len(request_timestamps[client_ip]) >= max_requests:
+                return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
+            
+            # Add current timestamp
+            request_timestamps[client_ip].append(current_time)
+            
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 # Load environment variables from a local .env file if present (useful for local dev)
 try:
@@ -229,6 +259,7 @@ def login():
             db_connection.close()
 
 @app.route('/auth/google', methods=['POST'])
+@rate_limit(max_requests=5, time_window=60)  # Limit auth attempts
 def auth_google():
     conn = None
     cur = None
@@ -1270,6 +1301,7 @@ init_chapters_table()
 init_google_auth_columns()
 
 @app.route('/api/analyze-code', methods=['POST'])
+@rate_limit(max_requests=3, time_window=30)  # Limit to 3 requests per 30 seconds
 def analyze_code():
     try:
         data = request.get_json()
