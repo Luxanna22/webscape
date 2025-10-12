@@ -230,6 +230,8 @@ def login():
 
 @app.route('/auth/google', methods=['POST'])
 def auth_google():
+    conn = None
+    cur = None
     try:
         data = request.get_json(force=True)
         id_token = data.get('credential') or data.get('id_token')
@@ -311,6 +313,18 @@ def auth_google():
     except Exception as e:
         print('auth_google error:', str(e))
         return jsonify({'success': False, 'message': 'Authentication failed'}), 500
+    finally:
+        # Ensure database connections are properly closed
+        if cur:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -1289,31 +1303,60 @@ def analyze_code():
         print("Gemini API Response:", response.text)  # Debug log
 
         if response.status_code != 200:
+            error_msg = f'Gemini API returned status {response.status_code}'
+            print(f"Gemini API Error: {error_msg}")
             return jsonify({
-                'error': f'Gemini API returned status {response.status_code}',
-                'details': response.text
+                'error': error_msg,
+                'details': response.text[:500]  # Limit response text to prevent issues
             }), 500
 
         try:
             response_data = response.json()
             # Extract the text response from Gemini
-            gemini_text = response_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            candidates = response_data.get('candidates', [])
+            if not candidates:
+                return jsonify({'error': 'No response from Gemini API'}), 500
+            
+            content = candidates[0].get('content', {})
+            parts = content.get('parts', [])
+            if not parts:
+                return jsonify({'error': 'Empty response from Gemini API'}), 500
+            
+            gemini_text = parts[0].get('text', '')
             return jsonify({'result': gemini_text, 'raw': response_data})
-        except Exception as e:
-            print("Gemini JSON parsing error:", str(e))
+        except (KeyError, IndexError, TypeError) as e:
+            print(f"Gemini response parsing error: {str(e)}")
             return jsonify({
-                'error': 'Invalid JSON response from Gemini API',
-                'details': response.text
+                'error': 'Invalid response format from Gemini API',
+                'details': str(e)
+            }), 500
+        except Exception as e:
+            print(f"Gemini JSON parsing error: {str(e)}")
+            return jsonify({
+                'error': 'Failed to parse Gemini API response',
+                'details': str(e)
             }), 500
 
-    except requests.exceptions.RequestException as e:
-        print("Request error:", str(e))
+    except requests.exceptions.Timeout:
+        print("Gemini API timeout")
+        return jsonify({
+            'error': 'Gemini API request timed out',
+            'details': 'Request took longer than 30 seconds'
+        }), 504
+    except requests.exceptions.ConnectionError:
+        print("Gemini API connection error")
         return jsonify({
             'error': 'Failed to connect to Gemini API',
+            'details': 'Connection error occurred'
+        }), 503
+    except requests.exceptions.RequestException as e:
+        print(f"Gemini API request error: {str(e)}")
+        return jsonify({
+            'error': 'Gemini API request failed',
             'details': str(e)
-        }), 500
+        }), 502
     except Exception as e:
-        print("Unexpected error:", str(e))
+        print(f"Unexpected analyze_code error: {str(e)}")
         return jsonify({
             'error': 'An unexpected error occurred',
             'details': str(e)
