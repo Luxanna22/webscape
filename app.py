@@ -565,8 +565,8 @@ def update_lesson_progress(level, chapter_id):
             updated_progress = current_progress
             updated_completed = was_completed
 
-        # --- REWARD LOGIC ---
-        # If the chapter is now completed and was not completed before, give rewards
+        # --- REWARD & BADGE LOGIC ---
+        badges_awarded = []
         reward_given = False
         if completed and not was_completed:
             # Fetch xp_reward and points_reward from chapters table
@@ -591,15 +591,74 @@ def update_lesson_progress(level, chapter_id):
                 db_connection.commit()
                 reward_given = True
 
+            # --- BADGE AWARDING LOGIC ---
+            try:
+                # Check for "First Steps" badge - award when user completes their first chapter
+                db_cursor.execute("SELECT COUNT(*) FROM user_badges WHERE user_id = %s", (session['user_id'],))
+                badge_count_row = db_cursor.fetchone()
+                current_badge_count = badge_count_row[0] if badge_count_row else 0
+                print(f"Badge check - User {session['user_id']} has {current_badge_count} badges")
+
+                if current_badge_count == 0:
+                    # Award "First Steps" badge
+                    db_cursor.execute("SELECT id, name, description, icon FROM badges WHERE LOWER(name) = %s LIMIT 1", ('first steps',))
+                    badge_row = db_cursor.fetchone()
+                    print(f"Badge query result: {badge_row}")
+                    if badge_row:
+                        badge_id, badge_name, badge_desc, badge_icon = badge_row
+                        # Insert badge award (ignore if already exists)
+                        db_cursor.execute(
+                            "INSERT IGNORE INTO user_badges (user_id, badge_id) VALUES (%s, %s)",
+                            (session['user_id'], badge_id)
+                        )
+                        print(f"Insert rowcount: {db_cursor.rowcount}")
+                        if db_cursor.rowcount > 0:
+                            db_connection.commit()
+                            badges_awarded.append({
+                                'id': badge_id,
+                                'name': badge_name,
+                                'description': badge_desc,
+                                'icon': badge_icon
+                            })
+                            print(f"✅ Badge awarded: {badge_name} to user {session['user_id']}")
+            except Exception as badge_error:
+                print("Badge award error:", str(badge_error))
+                import traceback
+                traceback.print_exc()
+                try:
+                    db_connection.rollback()
+                except Exception:
+                    pass
+
+        # Emit socket event for real-time badge notification
+        if badges_awarded:
+            print(f"🎯 Emitting badge_awarded event for {len(badges_awarded)} badges to user {session['user_id']}")
+            print(f"Socket mapping: {socket_to_user}")
+            try:
+                for sid, uid in list(socket_to_user.items()):
+                    if uid == session['user_id']:
+                        print(f"📡 Emitting to socket {sid}")
+                        socketio.emit('badge_awarded', {'badges': badges_awarded}, room=sid)
+            except Exception as socket_error:
+                print("Socket emit error:", str(socket_error))
+                import traceback
+                traceback.print_exc()
+
         return jsonify({
             'success': True,
             'progress': updated_progress,
             'completed': updated_completed,
             'total_pages': total_pages,
-            'reward_given': reward_given
+            'reward_given': reward_given,
+            'badges_awarded': badges_awarded
         })
     except Exception as e:
         print("Database error:", str(e))
+        if 'db_connection' in locals():
+            try:
+                db_connection.rollback()
+            except Exception:
+                pass
         return jsonify({'success': False, 'error': str(e)})
     finally:
         if 'db_cursor' in locals():
@@ -677,7 +736,7 @@ def admin_levels():
             SELECT l.*, COUNT(c.id) as chapter_count 
             FROM levels l 
             LEFT JOIN chapters c ON l.id = c.level_id 
-            GROUP BY l.id, l.title, l.description, l.difficulty
+            GROUP BY l.id
         """
         db_cursor.execute(query)
         levels = db_cursor.fetchall()
@@ -728,6 +787,108 @@ def add_level():
         if 'db_connection' in locals():
             db_connection.rollback()
         return jsonify({'success': False, 'message': 'Failed to add level'})
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/levels/<int:level_id>/edit')
+@login_required
+def get_level_for_edit(level_id):
+    print(f"=== BACKEND: get_level_for_edit called with level_id={level_id} ===")
+    print(f"Session data: user_id={session.get('user_id')}, role={session.get('role')}")
+    
+    if session.get('role') != 'admin':
+        print("❌ Unauthorized access attempt")
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        print("📊 Connecting to database...")
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        query = "SELECT id, title, description, image_url FROM levels WHERE id = %s"
+        print(f"🔍 Executing query: {query} with level_id={level_id}")
+        db_cursor.execute(query, (level_id,))
+        level = db_cursor.fetchone()
+        
+        print(f"📋 Query result: {level}")
+        
+        if level:
+            print(f"✅ Returning level data: {level}")
+            return jsonify(level)
+        else:
+            print("❌ Level not found in database")
+            return jsonify({'success': False, 'message': 'Level not found'}), 404
+    except Exception as e:
+        print(f"💥 Database error in get_level_for_edit: {str(e)}")
+        print(f"💥 Exception type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Failed to fetch level'}), 500
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+        print("=== BACKEND: get_level_for_edit completed ===")
+
+@app.route('/admin/levels/<int:level_id>', methods=['PUT'])
+@login_required
+def update_level(level_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        title = request.form.get('title')
+        description = request.form.get('description')
+        
+        if not title or not description:
+            return jsonify({'success': False, 'message': 'Title and description are required'})
+        
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Get current level data
+        db_cursor.execute("SELECT image_url FROM levels WHERE id = %s", (level_id,))
+        current_level = db_cursor.fetchone()
+        
+        if not current_level:
+            return jsonify({'success': False, 'message': 'Level not found'}), 404
+        
+        image_url = current_level['image_url']
+        
+        # Handle image upload (if new image provided)
+        if 'image_url' in request.files:
+            image_file = request.files['image_url']
+            if image_file and image_file.filename:
+                filename = secure_filename(image_file.filename)
+                # Save to static/images
+                image_path = os.path.join('static', 'images', filename)
+                image_file.save(image_path)
+                image_url = f'/static/images/{filename}'
+        
+        # Update level
+        query = "UPDATE levels SET title = %s, description = %s, image_url = %s WHERE id = %s"
+        db_cursor.execute(query, (title, description, image_url, level_id))
+        db_connection.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Level updated successfully',
+            'level': {
+                'id': level_id,
+                'title': title,
+                'description': description,
+                'image_url': image_url
+            }
+        })
+    except Exception as e:
+        print("Database error:", str(e))
+        if 'db_connection' in locals():
+            db_connection.rollback()
+        return jsonify({'success': False, 'message': 'Failed to update level'}), 500
     finally:
         if 'db_cursor' in locals():
             db_cursor.close()
