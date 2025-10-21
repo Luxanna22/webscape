@@ -8,9 +8,11 @@ try:
 except Exception:
     pass
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, render_template_string, request, redirect, url_for, session, flash, jsonify
 # mysql connector 
 import mysql.connector
+from mysql.connector import errors as mysql_errors
+from mysql.connector.pooling import MySQLConnectionPool
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import json
 from functools import wraps
@@ -26,6 +28,7 @@ import subprocess
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, Dimension, RunReportRequest
 import calendar
+from threading import Lock
 
 # Load environment variables from a local .env file if present (useful for local dev)
 try:
@@ -44,14 +47,13 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def get_db_connection():
-    """Create a MySQL connection that works for both local and Aiven deployments.
+_db_pool = None  # MySQLConnectionPool instance
+_db_pool_config = None  # Cached config dict used to build the pool
+_db_pool_lock = Lock()
 
-    Environment variables (all optional with sensible local defaults):
-      - DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
-      - DB_SSL_CA: path to CA file to verify server cert (Aiven provides this)
-      - DB_SSL_DISABLED: set to '1' to disable SSL (not recommended)
-    """
+
+def _build_db_config() -> dict:
+    """Build connection keyword arguments based on environment variables."""
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = int(os.getenv("DB_PORT", "3306"))
     db_user = os.getenv("DB_USER", "root")
@@ -70,6 +72,7 @@ def get_db_connection():
         "password": db_password,
         "database": db_name,
         "autocommit": False,
+        "connection_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
     }
 
     # Configure SSL for Aiven if provided
@@ -78,7 +81,45 @@ def get_db_connection():
     elif ssl_ca:
         connect_kwargs["ssl_ca"] = ssl_ca
 
-    return mysql.connector.connect(**connect_kwargs)
+    return connect_kwargs
+
+
+def _get_db_pool(config: dict) -> MySQLConnectionPool:
+    """Create or reuse a global connection pool."""
+    global _db_pool, _db_pool_config
+    if _db_pool is not None and _db_pool_config == config:
+        return _db_pool
+
+    with _db_pool_lock:
+        if _db_pool is not None and _db_pool_config == config:
+            return _db_pool
+
+        pool_size = max(int(os.getenv("DB_POOL_SIZE", "10")), 1)
+        pool_name = os.getenv("DB_POOL_NAME", "webscape_pool")
+        _db_pool = MySQLConnectionPool(
+            pool_name=pool_name,
+            pool_size=pool_size,
+            pool_reset_session=True,
+            **config,
+        )
+        _db_pool_config = config.copy()
+        return _db_pool
+
+
+def get_db_connection():
+    """Get a pooled database connection (falls back to direct connection)."""
+    config = _build_db_config()
+    try:
+        pool = _get_db_pool(config)
+        connection = pool.get_connection()
+    except mysql_errors.PoolError as pool_error:
+        print("DB pool issue, falling back to direct connection:", str(pool_error))
+        connection = mysql.connector.connect(**config)
+
+    # Ensure autocommit stays disabled for compatibility with existing code
+    if connection.autocommit:
+        connection.autocommit = False
+    return connection
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'lux')
@@ -1324,6 +1365,13 @@ def init_chapters_table():
         
         db_cursor.execute(create_chapters_table)
         db_connection.commit()
+
+        # Ensure fast lookups for chapters by level and order
+        try:
+            db_cursor.execute("CREATE INDEX idx_chapters_level_order ON chapters(level_id, order_num)")
+            db_connection.commit()
+        except Exception:
+            pass
         
         # Create user_progress table to track chapter completion
         create_user_progress_table = """
@@ -1342,6 +1390,13 @@ def init_chapters_table():
         
         db_cursor.execute(create_user_progress_table)
         db_connection.commit()
+
+        # Improve lesson_content page retrieval performance
+        try:
+            db_cursor.execute("CREATE INDEX idx_lesson_content_chapter_page ON lesson_content(chapter_id, page_num)")
+            db_connection.commit()
+        except Exception:
+            pass
 
         # Add page_type to lesson_content table if it doesn't exist
         try:
@@ -1369,6 +1424,12 @@ def init_chapters_table():
         """
         db_cursor.execute(create_lesson_choices_table)
         db_connection.commit()
+
+        try:
+            db_cursor.execute("CREATE INDEX idx_lesson_choices_content ON lesson_choices(lesson_content_id)")
+            db_connection.commit()
+        except Exception:
+            pass
         
     except Exception as e:
         print("Error initializing tables:", str(e))
@@ -1818,36 +1879,25 @@ def user_lesson_content_ajax(level, chapter_id):
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor(dictionary=True)
 
-        # Get lesson content for this chapter
-        content_query = """
-        SELECT * FROM lesson_content 
-        WHERE chapter_id = %s 
-        ORDER BY page_num
-        """
-        db_cursor.execute(content_query, (chapter_id,))
-        lesson_pages = db_cursor.fetchall()
-        total_pages = len(lesson_pages)
-
-        # For quiz pages, fetch choices from lesson_choices
-        for page in lesson_pages:
-            if page.get('page_type') == 'quiz':
-                db_cursor.execute("SELECT id, choice_text, is_correct FROM lesson_choices WHERE lesson_content_id = %s", (page['id'],))
-                page['choices'] = db_cursor.fetchall()
-
-        # Get requested page number
-        requested_page = request.args.get('page', type=int)
-        if not requested_page or requested_page < 1:
+        requested_page = request.args.get('page', type=int) or 1
+        if requested_page < 1:
             requested_page = 1
 
-        # If requested page is after the last page, show congratulation/summary
+        # Retrieve total page count once (leverages new index on chapter_id/page_num)
+        db_cursor.execute("SELECT COUNT(*) AS total FROM lesson_content WHERE chapter_id = %s", (chapter_id,))
+        total_row = db_cursor.fetchone() or {}
+        total_pages = total_row.get('total', 0)
+
+        if total_pages == 0:
+            return jsonify({'error': 'No lesson pages found', 'is_congrats': False}), 404
+
+        # When requested page exceeds available pages, return completion summary
         if requested_page > total_pages:
-            # Fetch chapter XP and points
             db_cursor.execute("SELECT xp_reward, points_reward, title FROM chapters WHERE id = %s", (chapter_id,))
-            chapter = db_cursor.fetchone()
-            xp = chapter['xp_reward'] if chapter else 0
-            points = chapter['points_reward'] if chapter else 0
-            chapter_title = chapter['title'] if chapter else ''
-            from flask import render_template_string
+            chapter = db_cursor.fetchone() or {}
+            xp = chapter.get('xp_reward', 0)
+            points = chapter.get('points_reward', 0)
+            chapter_title = chapter.get('title', '')
             html = render_template_string('''
 <div class="congrats-summary text-center">
   <dotlottie-player src="https://lottie.host/1aaf6a28-e236-4b85-80a9-36d4f5fdcc54/YzZgsLVQjc.lottie" background="transparent" speed="1" style="width: 200px; height: 200px; margin: 0 auto; scale: 1.5;" autoplay></dotlottie-player>
@@ -1869,9 +1919,38 @@ def user_lesson_content_ajax(level, chapter_id):
                 'is_congrats': True
             })
 
-        # Otherwise, normal lesson page
-        page = lesson_pages[requested_page - 1]
-        from flask import render_template_string
+        # Fetch the requested page only
+        db_cursor.execute(
+            """
+            SELECT id, page_num, title, content, code_example, image_url, next_button_text,
+                   page_type, correct_message, notes
+            FROM lesson_content
+            WHERE chapter_id = %s AND page_num = %s
+            LIMIT 1
+            """,
+            (chapter_id, requested_page),
+        )
+        page = db_cursor.fetchone()
+
+        if not page:
+            return jsonify({'error': 'Lesson page not found', 'is_congrats': False}), 404
+
+        if page.get('next_button_text') is None:
+            page['next_button_text'] = 'Next'
+        if page.get('code_example') is None:
+            page['code_example'] = ''
+        if page.get('notes') is None:
+            page['notes'] = ''
+
+        if page.get('page_type') == 'quiz':
+            db_cursor.execute(
+                "SELECT id, choice_text, is_correct FROM lesson_choices WHERE lesson_content_id = %s ORDER BY id",
+                (page['id'],),
+            )
+            page['choices'] = db_cursor.fetchall()
+        else:
+            page['choices'] = []
+
         html = render_template_string('''
 {% if page.page_type == 'text_image' %}
   {% if page.image_url %}
