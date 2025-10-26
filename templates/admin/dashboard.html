@@ -391,9 +391,9 @@
         </a>
       </div>
       <div class="nav-item options">
-        <a href="/admin/rankings">
-          <i class="fas fa-medal" aria-hidden="true"></i>
-          <span>Rankings</span>
+        <a href="/admin/pvp">
+          <i class="fas fa-crosshairs" aria-hidden="true"></i>
+          <span>PvP</span>
         </a>
       </div>
       <div class="nav-item account mt-auto mb-4">
@@ -727,9 +727,10 @@
             const li = document.createElement("li");
             li.className = "list-group-item";
             li.style.background = "transparent";
+            const rating = user.rating != null ? user.rating : "—";
             li.innerHTML = `<b>#${i + 1} ${
               user.username
-            }</b> <span style='color:#ffd700;'>${
+            }</b> <span style='color:#32ffda;'>${rating} rating</span> <span style='color:#ffd700;'>${
               user.points
             } pts</span> <span style='color:#a259ff;'>${user.xp} XP</span>`;
             list.appendChild(li);
