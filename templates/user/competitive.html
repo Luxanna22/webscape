@@ -122,6 +122,143 @@
         margin: 0 auto;
       }
 
+      .code-challenge-ui {
+        display: none;
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-top: 2rem;
+      }
+
+      .code-challenge-ui textarea {
+        width: 100%;
+        height: 200px;
+        font-family: monospace;
+        background: #20103c;
+        color: #f8f8f8;
+        border: 2px solid #7e31ef;
+        border-radius: 10px;
+        padding: 0.75rem;
+      }
+
+      .code-results {
+        margin-top: 1rem;
+        text-align: left;
+        font-family: "Courier New", monospace;
+        font-size: 0.95rem;
+      }
+
+      .code-language-note {
+        margin-bottom: 0.5rem;
+        color: #ff69b4;
+        font-weight: bold;
+      }
+
+      .code-timer {
+        margin-top: 1rem;
+        font-weight: bold;
+        color: #32ffda;
+      }
+
+      .quiz-ui {
+        display: none;
+        margin-top: 2rem;
+        text-align: center;
+      }
+
+      .quiz-card {
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        border-radius: 15px;
+        padding: 2rem;
+        max-width: 600px;
+        margin: 0 auto;
+        text-align: left;
+      }
+
+      .quiz-question {
+        color: #ff69b4;
+        font-family: "Luckiest Guy", cursive;
+        margin-bottom: 1.5rem;
+      }
+
+      .quiz-choices {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .quiz-choice-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid #7e31ef;
+        border-radius: 12px;
+        padding: 0.85rem 1.2rem;
+        color: #ffffff;
+        text-align: left;
+        font-weight: 600;
+        transition: background 0.15s ease, transform 0.1s ease;
+        width: 100%;
+      }
+
+      .quiz-choice-btn:hover:not(.disabled) {
+        background: rgba(255, 105, 180, 0.2);
+        transform: translateY(-2px);
+      }
+
+      .quiz-choice-btn.disabled {
+        cursor: not-allowed;
+        opacity: 0.75;
+      }
+
+      .quiz-choice-btn.selected {
+        border-color: #ff69b4;
+        background: rgba(255, 105, 180, 0.25);
+      }
+
+      .quiz-choice-btn.correct {
+        border-color: #32ffda;
+        background: rgba(50, 255, 218, 0.2);
+      }
+
+      .quiz-choice-btn.incorrect {
+        border-color: #ff4d6d;
+        background: rgba(255, 77, 109, 0.2);
+      }
+
+      .quiz-timer {
+        margin-top: 1.5rem;
+        font-weight: bold;
+        color: #32ffda;
+      }
+
+      .quiz-feedback {
+        margin-top: 1rem;
+        font-size: 1.05rem;
+      }
+
+      .quiz-explanation {
+        margin-top: 0.75rem;
+        color: #c5c5c5;
+        font-size: 0.95rem;
+      }
+
+      .match-summary {
+        display: none;
+        margin-top: 2rem;
+        background: rgba(122, 49, 239, 0.2);
+        border: 2px solid #7e31ef;
+        border-radius: 12px;
+        padding: 1.5rem;
+      }
+
+      .player-rating {
+        display: none;
+        color: #32ffda;
+        font-weight: bold;
+        margin-top: 0.5rem;
+      }
+
       .matchmaking-animation {
         width: 100px;
         height: 100px;
@@ -198,6 +335,9 @@
         .matchmaking-container {
           width: 90%;
           max-width: 90%;
+        }
+        .quiz-card {
+          padding: 1.5rem;
         }
         .opponent-info {
           max-width: 100%;
@@ -308,6 +448,7 @@
         </h2>
         <div class="matchmaking-animation"></div>
         <p>Waiting for another player to join...</p>
+        <p id="playerRatingDisplay" class="player-rating">Your rating: --</p>
         <button class="btn-queue" onclick="cancelQueue()">Cancel Queue</button>
       </div>
 
@@ -324,25 +465,35 @@
       </div>
 
       <!-- Code Challenge UI -->
-      <div class="code-challenge-ui" id="codeChallengeUI" style="display: none">
+      <div class="code-challenge-ui" id="codeChallengeUI">
         <h2 id="challengeTitle"></h2>
-        <div id="challengeDescription" style="margin-bottom: 1rem"></div>
-        <div style="margin-bottom: 0.5rem; color: #ff69b4; font-weight: bold">
+        <div id="challengeDescription" class="mb-3"></div>
+        <div class="code-language-note">
           Note: Only <span id="challengeLanguage">JavaScript</span> code is
           accepted.
         </div>
         <textarea
           id="codeEditor"
-          style="width: 100%; height: 200px; font-family: monospace"
           spellcheck="false"
           placeholder="Write your JavaScript code here..."
         ></textarea>
         <button class="btn-queue mt-3" onclick="submitCode()">
           Submit Code
         </button>
-        <div id="testCaseResults" style="margin-top: 1rem"></div>
-        <div id="timer" style="margin-top: 1rem; font-weight: bold"></div>
+        <div id="codeResults" class="code-results"></div>
+        <div id="codeTimer" class="code-timer"></div>
       </div>
+
+      <div class="quiz-ui" id="quizUIContainer">
+        <div class="quiz-card">
+          <h2 id="quizQuestion" class="quiz-question"></h2>
+          <div id="quizChoices" class="quiz-choices"></div>
+          <div id="quizTimer" class="quiz-timer"></div>
+          <div id="quizFeedback" class="quiz-feedback"></div>
+        </div>
+      </div>
+
+      <div id="matchSummary" class="match-summary"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -351,8 +502,14 @@
       let selectedMode = null;
       let socket = null;
       let isUserInQueue = false;
-      let challengeStartTime = null;
-      let challengeTimeLimit = 300; // seconds
+      let codeChallengeStartTime = null;
+      let codeTimeLimit = 300;
+      let codeTimerInterval = null;
+      let quizStartTime = null;
+      let quizTimeLimit = 45;
+      let quizTimerInterval = null;
+      let quizAnswered = false;
+      let quizChoiceButtons = [];
 
       function selectGameMode(mode) {
         selectedMode = mode;
@@ -382,6 +539,15 @@
 
         socket.on("queue_status", function (data) {
           console.log("Queue status:", data.status);
+          const ratingEl = document.getElementById("playerRatingDisplay");
+          if (ratingEl) {
+            if (typeof data.rating === "number") {
+              ratingEl.textContent = `Your rating: ${data.rating}`;
+              ratingEl.style.display = "block";
+            } else {
+              ratingEl.style.display = "none";
+            }
+          }
         });
 
         socket.on("disconnect", function () {
@@ -391,6 +557,8 @@
         // --- Code Challenge Events ---
         socket.on("code_challenge_start", function (data) {
           document.getElementById("matchFoundUI").style.display = "none";
+          document.getElementById("quizUIContainer").style.display = "none";
+          document.getElementById("matchSummary").style.display = "none";
           document.getElementById("codeChallengeUI").style.display = "block";
           document.getElementById("challengeTitle").textContent =
             data.challenge.title;
@@ -398,15 +566,100 @@
             data.challenge.description;
           document.getElementById("codeEditor").value =
             data.challenge.starter_code;
-          challengeTimeLimit = data.challenge.time_limit;
-          challengeStartTime = Date.now();
-          startTimer();
-          document.getElementById("testCaseResults").innerHTML = "";
+          codeTimeLimit = data.challenge.time_limit || 300;
+          codeChallengeStartTime = Date.now();
+          document.getElementById("codeResults").innerHTML = "";
+          document.getElementById("codeTimer").textContent = "";
+          startCodeTimer();
           document.getElementById("challengeLanguage").textContent = data
             .challenge.language
             ? data.challenge.language.charAt(0).toUpperCase() +
               data.challenge.language.slice(1)
             : "JavaScript";
+        });
+
+        // --- Quiz Events ---
+        socket.on("quiz_question_start", function (data) {
+          document.getElementById("matchFoundUI").style.display = "none";
+          document.getElementById("codeChallengeUI").style.display = "none";
+          document.getElementById("matchSummary").style.display = "none";
+          document.getElementById("quizUIContainer").style.display = "block";
+          const q = data.question;
+          document.getElementById("quizQuestion").textContent = q.question;
+          const choicesContainer = document.getElementById("quizChoices");
+          choicesContainer.innerHTML = "";
+          quizChoiceButtons = [];
+          quizAnswered = false;
+          q.choices.forEach((choice, index) => {
+            const button = document.createElement("button");
+            button.className = "quiz-choice-btn";
+            button.textContent = `${String.fromCharCode(
+              65 + index
+            )}. ${choice}`;
+            button.onclick = () => submitQuizAnswer(index);
+            choicesContainer.appendChild(button);
+            quizChoiceButtons.push(button);
+          });
+          quizTimeLimit = q.time_limit || 45;
+          quizStartTime = Date.now();
+          document.getElementById("quizTimer").textContent = "";
+          startQuizTimer();
+          document.getElementById("quizFeedback").textContent =
+            "Lock in your answer.";
+        });
+
+        socket.on("quiz_result", function (data) {
+          if (quizTimerInterval) {
+            clearInterval(quizTimerInterval);
+            quizTimerInterval = null;
+          }
+          quizAnswered = true;
+          document.getElementById("quizTimer").textContent = "";
+          const correctIndex = data.correct_index;
+          quizChoiceButtons.forEach((button, index) => {
+            button.classList.add("disabled");
+            button.disabled = true;
+            if (index === data.your_answer) {
+              button.classList.add(
+                data.your_answer === correctIndex ? "selected" : "incorrect"
+              );
+            }
+            if (index === correctIndex) {
+              button.classList.add("correct");
+            }
+          });
+          const feedbackEl = document.getElementById("quizFeedback");
+          let feedbackText = "";
+          if (data.your_answer === correctIndex) {
+            feedbackText = "You answered correctly.";
+          } else if (
+            typeof data.your_answer === "number" &&
+            data.your_answer >= 0
+          ) {
+            feedbackText = "Your answer was incorrect.";
+          } else {
+            feedbackText = "You did not submit an answer.";
+          }
+          if (data.winner === true) {
+            feedbackText += " You won the round!";
+          } else if (data.winner === false) {
+            feedbackText += " Opponent captured the round.";
+          }
+          feedbackEl.innerHTML = "";
+          const summaryDiv = document.createElement("div");
+          summaryDiv.textContent = feedbackText;
+          feedbackEl.appendChild(summaryDiv);
+          if (data.correct_choice) {
+            const correctDiv = document.createElement("div");
+            correctDiv.textContent = `Correct answer: ${data.correct_choice}`;
+            feedbackEl.appendChild(correctDiv);
+          }
+          if (data.explanation) {
+            const explanationDiv = document.createElement("div");
+            explanationDiv.className = "quiz-explanation";
+            explanationDiv.textContent = data.explanation;
+            feedbackEl.appendChild(explanationDiv);
+          }
         });
 
         socket.on("code_challenge_result", function (data) {
@@ -420,17 +673,41 @@
               r.passed ? "Passed" : "Failed"
             }</b></div>`;
           });
-          document.getElementById("testCaseResults").innerHTML = html;
+          document.getElementById("codeResults").innerHTML = html;
           if (data.winner) {
-            document.getElementById("testCaseResults").innerHTML +=
+            document.getElementById("codeResults").innerHTML +=
               "<div style='color:green;font-weight:bold;'>You won!</div>";
           }
         });
 
         socket.on("match_end", function (data) {
-          document.getElementById(
-            "testCaseResults"
-          ).innerHTML += `<div style='color:blue;font-weight:bold;'>Match ended. Winner: ${data.winner}</div>`;
+          if (codeTimerInterval) {
+            clearInterval(codeTimerInterval);
+            codeTimerInterval = null;
+          }
+          if (quizTimerInterval) {
+            clearInterval(quizTimerInterval);
+            quizTimerInterval = null;
+          }
+          const summaryEl = document.getElementById("matchSummary");
+          summaryEl.innerHTML = "";
+          const winnerHeading = document.createElement("h4");
+          winnerHeading.textContent = data.winner
+            ? `Winner: ${data.winner}`
+            : "Match ended";
+          summaryEl.appendChild(winnerHeading);
+          if (data.summary && data.summary.overview) {
+            const overview = document.createElement("p");
+            overview.textContent = data.summary.overview;
+            summaryEl.appendChild(overview);
+          }
+          if (data.summary && data.summary.details) {
+            const details = document.createElement("p");
+            details.className = "text-muted";
+            details.textContent = data.summary.details;
+            summaryEl.appendChild(details);
+          }
+          summaryEl.style.display = "block";
         });
       }
 
@@ -443,6 +720,28 @@
           "Choose your battleground";
         document.getElementById("matchmakingUI").style.display = "none";
         document.getElementById("gameModeSelection").style.display = "flex";
+        document.getElementById("codeChallengeUI").style.display = "none";
+        document.getElementById("quizUIContainer").style.display = "none";
+        document.getElementById("matchSummary").style.display = "none";
+        document.getElementById("codeResults").innerHTML = "";
+        document.getElementById("quizChoices").innerHTML = "";
+        document.getElementById("quizFeedback").textContent = "";
+        document.getElementById("quizTimer").textContent = "";
+        document.getElementById("codeTimer").textContent = "";
+        if (codeTimerInterval) {
+          clearInterval(codeTimerInterval);
+          codeTimerInterval = null;
+        }
+        if (quizTimerInterval) {
+          clearInterval(quizTimerInterval);
+          quizTimerInterval = null;
+        }
+        quizChoiceButtons = [];
+        quizAnswered = false;
+        const ratingEl = document.getElementById("playerRatingDisplay");
+        if (ratingEl) {
+          ratingEl.style.display = "none";
+        }
       }
 
       function showMatchFound(opponent) {
@@ -450,16 +749,12 @@
         document.getElementById("matchFoundUI").style.display = "block";
         document.getElementById("opponentName").textContent = opponent.name;
         document.getElementById("opponentRating").textContent = opponent.rating;
+        document.getElementById("matchSummary").style.display = "none";
       }
 
       function startMatch() {
         if (socket) {
           socket.emit("start_match");
-        }
-        // For code challenge, UI will be handled by code_challenge_start event
-        // For quiz, redirect as before
-        if (selectedMode === "quiz") {
-          window.location.href = "/user/competitive/quiz";
         }
       }
 
@@ -470,16 +765,65 @@
         }
       }
 
-      function startTimer() {
-        const timerDiv = document.getElementById("timer");
-        function update() {
-          const elapsed = Math.floor((Date.now() - challengeStartTime) / 1000);
-          const remaining = Math.max(0, challengeTimeLimit - elapsed);
-          timerDiv.textContent = `Time left: ${remaining}s`;
-          if (remaining > 0) setTimeout(update, 1000);
-          else timerDiv.textContent = "Time's up!";
+      function submitQuizAnswer(idx) {
+        if (!socket || quizAnswered) {
+          return;
         }
-        update();
+        quizAnswered = true;
+        quizChoiceButtons.forEach((button, index) => {
+          if (index === idx) {
+            button.classList.add("selected");
+          }
+          button.classList.add("disabled");
+          button.disabled = true;
+        });
+        document.getElementById("quizFeedback").textContent =
+          "Answer locked. Waiting for opponent...";
+        socket.emit("submit_quiz_answer", { answer_index: idx });
+      }
+
+      function startCodeTimer() {
+        if (codeTimerInterval) {
+          clearInterval(codeTimerInterval);
+        }
+        const timerDiv = document.getElementById("codeTimer");
+        if (!timerDiv) {
+          return;
+        }
+        const render = () => {
+          const elapsed = Math.floor(
+            (Date.now() - codeChallengeStartTime) / 1000
+          );
+          const remaining = Math.max(0, codeTimeLimit - elapsed);
+          timerDiv.textContent = `Time left: ${remaining}s`;
+          if (remaining <= 0 && codeTimerInterval) {
+            clearInterval(codeTimerInterval);
+            codeTimerInterval = null;
+          }
+        };
+        render();
+        codeTimerInterval = setInterval(render, 1000);
+      }
+
+      function startQuizTimer() {
+        if (quizTimerInterval) {
+          clearInterval(quizTimerInterval);
+        }
+        const timerDiv = document.getElementById("quizTimer");
+        if (!timerDiv) {
+          return;
+        }
+        const render = () => {
+          const elapsed = Math.floor((Date.now() - quizStartTime) / 1000);
+          const remaining = Math.max(0, quizTimeLimit - elapsed);
+          timerDiv.textContent = `Time left: ${remaining}s`;
+          if (remaining <= 0 && quizTimerInterval) {
+            clearInterval(quizTimerInterval);
+            quizTimerInterval = null;
+          }
+        };
+        render();
+        quizTimerInterval = setInterval(render, 1000);
       }
     </script>
   </body>
