@@ -1266,14 +1266,41 @@
         el.classList.add("d-none");
         el.textContent = "";
       }
-      function showToast(message) {
+      function showToast(message, options) {
         const toastEl = document.getElementById("globalToast");
         const body = document.getElementById("globalToastBody");
         if (toastEl && body) {
           body.textContent = message;
-          const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+          const settings = Object.assign(
+            { delay: 4000, autohide: true },
+            options || {}
+          );
+          const toast = new bootstrap.Toast(toastEl, settings);
           toast.show();
         }
+      }
+      function persistToastMessage(message) {
+        if (!message) return;
+        try {
+          sessionStorage.setItem("globalToastMessage", message);
+        } catch (error) {
+          console.warn("Unable to persist toast message", error);
+        }
+      }
+      function restorePersistedToast() {
+        try {
+          const message = sessionStorage.getItem("globalToastMessage");
+          if (message) {
+            sessionStorage.removeItem("globalToastMessage");
+            showToast(message);
+          }
+        } catch (error) {
+          console.warn("Unable to restore toast message", error);
+        }
+      }
+      function redirectWithToast(message, redirectUrl) {
+        persistToastMessage(message);
+        window.location.href = redirectUrl || "/";
       }
 
       // Custom Google Sign-In handler
@@ -1331,8 +1358,7 @@
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
-              showToast("Logged in successfully");
-              window.location.href = data.redirect;
+              redirectWithToast("Logged in successfully", data.redirect);
             } else {
               showInlineError("loginAlert", data.message || "Login failed");
             }
@@ -1356,8 +1382,7 @@
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
-              showToast("Registration successful");
-              window.location.href = data.redirect;
+              redirectWithToast("Registration successful", data.redirect);
             } else {
               showInlineError(
                 "registerAlert",
@@ -1404,7 +1429,10 @@
             }
           });
       }
-      document.addEventListener("DOMContentLoaded", checkLoginStatus);
+      document.addEventListener("DOMContentLoaded", function () {
+        checkLoginStatus();
+        restorePersistedToast();
+      });
       // Google Identity Services: load once and render in all containers, including modals
       (function setupGoogleIdentity() {
         var CLIENT_ID = "{{ google_client_id }}";
@@ -1493,8 +1521,7 @@
           })
           .then(function (data) {
             if (data && data.success) {
-              showToast("Signed in with Google");
-              window.location.href = data.redirect || "/";
+              redirectWithToast("Signed in with Google", data.redirect || "/");
             } else {
               var msg = (data && data.message) || "Google login failed";
               if (openModal) {
