@@ -387,6 +387,65 @@
         color: #ff69b4;
       }
 
+      .top-badge {
+        margin-top: 0.35rem;
+        font-size: 0.95rem;
+        color: #d3d3d3;
+        font-family: "Montserrat", sans-serif;
+      }
+
+      .empty-state {
+        margin: 2rem auto;
+        padding: 2rem;
+        background: #2d145c;
+        border: 2px dashed #7e31ef;
+        color: #d3d3d3;
+        font-family: "Montserrat", sans-serif;
+        max-width: 640px;
+      }
+
+      .current-user {
+        background: linear-gradient(
+          90deg,
+          rgba(255, 102, 196, 0.22),
+          rgba(126, 49, 239, 0.22)
+        );
+      }
+
+      .current-user td {
+        color: #ffffff;
+        font-weight: 600;
+      }
+
+      .rank-top-1 td {
+        color: #ffd369;
+        font-weight: 600;
+      }
+
+      .rank-top-2 td {
+        color: #cddafd;
+        font-weight: 600;
+      }
+
+      .rank-top-3 td {
+        color: #ffb347;
+        font-weight: 600;
+      }
+
+      .table-meta {
+        font-size: 0.9rem;
+        color: #d3d3d3;
+        font-family: "Montserrat", sans-serif;
+        margin-top: 0.5rem;
+      }
+
+      #no-results {
+        color: #d3d3d3;
+        font-size: 1rem;
+        text-align: center;
+        padding: 1.5rem 0;
+      }
+
       .top-one {
         margin-bottom: 2rem;
         scale: 1.1;
@@ -574,91 +633,167 @@
     <div class="main-content">
       <div class="container">
         <h1 class="dashboard-title">Rankings</h1>
-        <!-- top 3 users STATIC -->
+        <!-- Top three users -->
+        {% if total_players %} {% set top_spots = [ { 'class': 'top-two',
+        'image': '/static/images/badges/top-two.png', 'title': 'Runner Up',
+        'player': top_three|length > 1 and top_three[1] or None }, { 'class':
+        'top-one', 'image': '/static/images/badges/top-one.png', 'title':
+        'Champion', 'player': top_three|length > 0 and top_three[0] or None }, {
+        'class': 'top-three', 'image': '/static/images/badges/top-three.png',
+        'title': 'Third Place', 'player': top_three|length > 2 and top_three[2]
+        or None } ] %}
         <div
           class="top-three-container d-flex justify-content-center align-items-end mb-4"
         >
-          <div class="top-two">
+          {% for spot in top_spots %} {% set player = spot.player %}
+          <div
+            class="{{ spot.class }}"
+            {%
+            if
+            player
+            %}
+            data-username="{{ player.username|lower }}"
+            {%
+            endif
+            %}
+          >
             <img
-              src="/static/images/badges/top-two.png"
-              alt="top-three-item"
+              src="{{ spot.image }}"
+              alt="{{ spot.title }} badge"
               class="img-fluid"
             />
-            <h3>LeBlancakes</h3>
-            <h4>Speed Runner</h4>
+            {% if player %}
+            <h3>#{{ player.rank }} {{ player.username }}</h3>
+            <h4>{{ spot.title }}</h4>
+            <div class="top-badge">
+              <span
+                ><i class="fas fa-trophy me-1"></i>{{ player.points }} pts</span
+              >
+              <span class="ms-2"
+                ><i class="fas fa-chart-line me-1"></i>{{ player.rating }}</span
+              >
+              <span class="ms-2"
+                ><i class="fas fa-medal me-1"></i>{{ player.badges }}</span
+              >
+            </div>
+            {% else %}
+            <h3>Awaiting Challenger</h3>
+            <h4>{{ spot.title }}</h4>
+            <div class="top-badge">Keep learning to claim this spot.</div>
+            {% endif %}
           </div>
-          <div class="top-one">
-            <img
-              src="/static/images/badges/top-one.png"
-              alt="top-three-item"
-              class="img-fluid"
-            />
-            <h3>Luxinnamon</h3>
-            <h4>Top Conqueror</h4>
-          </div>
-          <div class="top-three">
-            <img
-              src="/static/images/badges/top-three.png"
-              alt="top-three-item"
-              class="img-fluid"
-            />
-            <h3>KittyKatarina</h3>
-            <h4>Skilled Master</h4>
-          </div>
+          {% endfor %}
         </div>
-
-        <!-- table top 100 users STATIC -->
-        <div class="table-responsive">
-          <table class="custom-user-table">
+        {% else %}
+        <div class="empty-state text-center">
+          Leaderboard data is not available yet. Complete lessons and earn
+          points to see rankings here.
+        </div>
+        {% endif %} {% if total_players %}
+        <div class="table-responsive mt-4">
+          <table class="custom-user-table" id="leaderboardTable">
             <thead>
               <tr>
-                <th colspan="5" class="table-header">
+                <th colspan="6" class="table-header">
                   <div class="header-flex">
-                    <span class="table-title">Top 100</span>
+                    <span class="table-title"
+                      >Top {{ total_players if total_players < 100 else 100
+                      }}</span
+                    >
                     <div class="search-bar">
-                      <input type="text" placeholder="Search User" />
+                      <input
+                        type="text"
+                        id="leaderboardSearch"
+                        placeholder="Search user"
+                        aria-label="Search leaderboard"
+                      />
                       <span class="search-icon"
                         ><i class="fas fa-search"></i
                       ></span>
                     </div>
                   </div>
+                  <div class="table-meta">
+                    <span>Players tracked: {{ total_players }}</span>
+                    {% if last_refreshed %}
+                    <span class="ms-3">Last updated: {{ last_refreshed }}</span>
+                    {% endif %}
+                  </div>
                 </th>
               </tr>
               <tr class="column-header">
-                <th>Top</th>
+                <th>Rank</th>
                 <th>Username</th>
                 <th>Badges</th>
                 <th>Points</th>
+                <th>XP</th>
+                <th>Rating</th>
               </tr>
             </thead>
             <tbody>
-              <!-- Example row, replace with your backend loop -->
-
-              <tr>
-                <td>1</td>
-                <td>Luxinnamon</td>
-                <td>18</td>
-                <td>1000</td>
+              {% for player in leaderboard %}
+              <tr
+                data-username="{{ player.username|lower }}"
+                class="{% if player.is_current %}current-user {% endif %}{% if player.rank <= 3 %}rank-top-{{ player.rank }}{% endif %}"
+              >
+                <td>{{ player.rank }}</td>
+                <td class="text-start">{{ player.username }}</td>
+                <td>{{ player.badges }}</td>
+                <td>{{ player.points }}</td>
+                <td>{{ player.xp }}</td>
+                <td>{{ player.rating }}</td>
               </tr>
-              <tr>
-                <td>2</td>
-                <td>LeBlancakes</td>
-                <td>10</td>
-                <td>500</td>
-              </tr>
-              <tr>
-                <td>3</td>
-                <td>KittyKatarina</td>
-                <td>6</td>
-                <td>200</td>
-              </tr>
-              <!-- More rows... -->
+              {% endfor %}
             </tbody>
           </table>
+          <div id="no-results" class="d-none">
+            No players match your search.
+          </div>
         </div>
+        {% endif %}
       </div>
     </div>
 
-    <!--  -->
+    <script>
+      (function () {
+        const searchInput = document.getElementById("leaderboardSearch");
+        const table = document.getElementById("leaderboardTable");
+        if (!searchInput || !table) {
+          return;
+        }
+
+        const rows = table.querySelectorAll("tbody tr[data-username]");
+        const emptyState = document.getElementById("no-results");
+        const topCards = document.querySelectorAll(
+          ".top-three-container [data-username]"
+        );
+
+        const handleSearch = () => {
+          const query = searchInput.value.trim().toLowerCase();
+          let visibleCount = 0;
+
+          rows.forEach((row) => {
+            const username = row.dataset.username || "";
+            const matches = !query || username.includes(query);
+            row.classList.toggle("d-none", !matches);
+            if (matches) {
+              visibleCount += 1;
+            }
+          });
+
+          topCards.forEach((card) => {
+            const username = card.dataset.username || "";
+            const matches = !query || username.includes(query);
+            card.classList.toggle("d-none", !matches);
+          });
+
+          if (emptyState) {
+            emptyState.classList.toggle("d-none", visibleCount !== 0);
+          }
+        };
+
+        searchInput.addEventListener("input", handleSearch);
+        handleSearch();
+      })();
+    </script>
   </body>
 </html>
