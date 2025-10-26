@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PvP Management | WebScape</title>
+    <link
+      rel="icon"
+      href="/static/images/playground-mode.png"
+      type="image/png"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
+
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #2d2c2f;
+        --accent-color: #ff66c4;
+      }
+
+      * {
+        list-style-type: none;
+        text-decoration: none;
+      }
+      body,
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent-color) var(--secondary-color);
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: var(--bg-color);
+        color: #a9a9a9;
+        font-family: "Montserrat", sans-serif;
+      }
+      b {
+        color: white;
+      }
+
+      .sidebar {
+        background-color: #3a1464;
+        width: 90px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 35px;
+      }
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+        cursor: pointer;
+      }
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+      .sidebar .nav-item.badges i {
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item.account i {
+        font-size: 32px;
+        color: #bfbfbf;
+      }
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item a {
+        text-decoration: none;
+        color: #a9a9a9;
+      }
+      .sidebar .nav-item a:hover {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item.active {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item.active i {
+        color: #ff69b4;
+      }
+      .sidebar .nav-item.active a {
+        color: #ff69b4;
+      }
+
+      .main-content {
+        margin-left: 90px;
+        padding: 2rem;
+        min-height: 100vh;
+      }
+      .dashboard-title {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 2.5rem;
+        color: var(--accent-color);
+        margin-bottom: 2rem;
+        text-align: left;
+        letter-spacing: 2px;
+      }
+
+      .pvp-section {
+        background: #2d145c;
+        border: 2px solid #a259ff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .pvp-section h3 {
+        font-family: "Luckiest Guy", cursive;
+        color: var(--accent-color);
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .challenge-list {
+        background: #1a0d2e;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .challenge-item {
+        background: #371569;
+        border: 1px solid #7e31ef;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+      }
+
+      .challenge-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .challenge-item:hover {
+        background: #481c89;
+        border-color: var(--accent-color);
+      }
+
+      .challenge-title {
+        color: var(--accent-color);
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .challenge-meta {
+        color: #8a8a8f;
+        font-size: 0.9rem;
+      }
+
+      .form-container {
+        background: #1a0d2e;
+        border-radius: 8px;
+        padding: 1.5rem;
+      }
+
+      .form-container h5 {
+        color: var(--accent-color);
+        font-family: "Luckiest Guy", cursive;
+        margin-bottom: 1rem;
+      }
+
+      .form-control {
+        background-color: #371569;
+        border: 2px solid #7e31ef;
+        border-radius: 8px;
+        color: #ffffff;
+        padding: 0.75rem;
+      }
+
+      .form-control:focus {
+        background-color: #481c89;
+        border-color: var(--accent-color);
+        color: #ffffff;
+        box-shadow: 0 0 0 0.2rem rgba(255, 105, 180, 0.25);
+      }
+
+      .form-control::placeholder {
+        color: #8a8a8f;
+      }
+
+      .btn-primary {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+        font-weight: bold;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+      }
+
+      .btn-primary:hover {
+        background-color: #c54fa3;
+        border-color: #c54fa3;
+      }
+
+      .btn-outline-light {
+        border-color: #7e31ef;
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+      }
+
+      .btn-outline-light:hover {
+        background-color: #7e31ef;
+        border-color: #7e31ef;
+        color: #ffffff;
+      }
+
+      .test-case-group {
+        background: #2d145c;
+        border: 1px solid #7e31ef;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .test-case-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .test-case-title {
+        color: var(--accent-color);
+        font-weight: bold;
+        font-size: 0.95rem;
+      }
+
+      .btn-remove {
+        background: none;
+        border: none;
+        color: #ff4d6d;
+        font-size: 1.1rem;
+        cursor: pointer;
+        padding: 0.25rem;
+      }
+
+      .btn-remove:hover {
+        color: #ff2d4d;
+      }
+
+      .btn-add {
+        background-color: #32ffda;
+        color: #240e44;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        margin-top: 0.5rem;
+      }
+
+      .btn-add:hover {
+        background-color: #1fe5cc;
+      }
+
+      .choice-group {
+        background: #2d145c;
+        border: 1px solid #7e31ef;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .choice-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .choice-title {
+        color: var(--accent-color);
+        font-weight: bold;
+        font-size: 0.95rem;
+      }
+
+      .form-check-input[type="radio"] {
+        background-color: #371569;
+        border-color: #7e31ef;
+      }
+
+      .form-check-input[type="radio"]:checked {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+      }
+
+      .form-check-label {
+        color: #ffffff;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #8a8a8f;
+        font-style: italic;
+      }
+
+      @media (max-width: 575.98px) {
+        .sidebar {
+          width: 60px;
+          padding-top: 15px;
+          gap: 35px;
+        }
+        .sidebar .nav-item {
+          font-size: 11px;
+        }
+        .sidebar .nav-item i {
+          font-size: 22px;
+          margin-bottom: 3px;
+        }
+        .sidebar .nav-item.account i {
+          font-size: 26px;
+        }
+        .main-content {
+          margin-left: 60px;
+          padding: 1rem;
+        }
+        .dashboard-title {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <div class="nav-item levels">
+        <a href="/"
+          ><img
+            src="/static/images/book-icon.png"
+            alt="webscape-logo"
+            width="60px"
+        /></a>
+        <br />
+      </div>
+      <div class="nav-item levels">
+        <a href="/admin/dashboard">
+          <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
+          <span>Dashboard</span>
+        </a>
+      </div>
+      <div class="nav-item badges">
+        <a href="/admin/users">
+          <i class="fas fa-users" aria-hidden="true"></i>
+          <span>Users</span>
+        </a>
+      </div>
+      <div class="nav-item options">
+        <a href="/admin/levels">
+          <i class="fas fa-paint-brush" aria-hidden="true"></i>
+          <span>Levels</span>
+        </a>
+      </div>
+      <div class="nav-item options active">
+        <a href="/admin/pvp">
+          <i class="fas fa-crosshairs" aria-hidden="true"></i>
+          <span>PvP</span>
+        </a>
+      </div>
+      <div class="nav-item account mt-auto mb-4">
+        <a href="/logout">
+          <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+          <span>Logout</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <h1 class="dashboard-title">
+        <i class="fas fa-crosshairs me-3"></i>PvP Management
+      </h1>
+
+      <div class="row">
+        <!-- Code Challenges Section -->
+        <div class="col-xl-6 mb-4">
+          <div class="pvp-section">
+            <h3><i class="fas fa-code me-2"></i>Code Challenges</h3>
+
+            <div class="challenge-list">
+              {% if code_challenges %} {% for c in code_challenges %}
+              <div class="challenge-item">
+                <div class="challenge-title">{{ c.title }}</div>
+                <div class="challenge-meta">
+                  <i class="fas fa-code me-1"></i>{{ c.language|title }} •
+                  <i class="fas fa-clock me-1"></i>{{ c.time_limit }}s •
+                  <i class="fas fa-hashtag me-1"></i>ID: {{ c.id }}
+                </div>
+              </div>
+              {% endfor %} {% else %}
+              <div class="empty-state">
+                <i class="fas fa-code fa-3x mb-3 d-block"></i>
+                No code challenges created yet
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="form-container">
+              <h5><i class="fas fa-plus me-2"></i>Add New Code Challenge</h5>
+              <form method="post" action="/admin/pvp/code/add" id="codeForm">
+                <div class="mb-3">
+                  <label class="form-label">Challenge Title</label>
+                  <input
+                    name="title"
+                    class="form-control"
+                    placeholder="e.g., Sum of Two Numbers"
+                    required
+                  />
+                </div>
+
+                <div class="row">
+                  <div class="col-md-8 mb-3">
+                    <label class="form-label">Function Name</label>
+                    <input
+                      name="function_name"
+                      class="form-control"
+                      placeholder="e.g., sumTwoNumbers"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-4 mb-3">
+                    <label class="form-label">Time Limit (seconds)</label>
+                    <input
+                      name="time_limit"
+                      type="number"
+                      class="form-control"
+                      value="300"
+                      min="30"
+                      max="1800"
+                    />
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea
+                    name="description"
+                    class="form-control"
+                    placeholder="Describe what the function should do..."
+                    rows="3"
+                  ></textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Starter Code</label>
+                  <textarea
+                    name="starter_code"
+                    class="form-control"
+                    placeholder="function sumTwoNumbers(a, b) {&#10;  // Your code here&#10;}"
+                    rows="4"
+                  ></textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Test Cases</label>
+                  <div id="testCases">
+                    <div class="test-case-group">
+                      <div class="test-case-header">
+                        <span class="test-case-title">Test Case 1</span>
+                        <button
+                          type="button"
+                          class="btn-remove"
+                          onclick="removeTestCase(this)"
+                          style="display: none"
+                        >
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
+                      <div class="row">
+                        <div class="col-md-6 mb-2">
+                          <input
+                            class="form-control"
+                            placeholder="Input (e.g., 1, 2)"
+                            name="test_input_0"
+                            required
+                          />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                          <input
+                            class="form-control"
+                            placeholder="Expected Output (e.g., 3)"
+                            name="test_output_0"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-add" onclick="addTestCase()">
+                    <i class="fas fa-plus me-1"></i>Add Test Case
+                  </button>
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>Save Challenge
+                  </button>
+                  <button
+                    type="reset"
+                    class="btn btn-outline-light"
+                    onclick="resetCodeForm()"
+                  >
+                    <i class="fas fa-undo me-1"></i>Clear Form
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quiz Questions Section -->
+        <div class="col-xl-6 mb-4">
+          <div class="pvp-section">
+            <h3><i class="fas fa-question-circle me-2"></i>Quiz Questions</h3>
+
+            <div class="challenge-list">
+              {% if quiz_questions %} {% for q in quiz_questions %}
+              <div class="challenge-item">
+                <div class="challenge-title">
+                  {{ q.question[:50] }}{% if q.question|length > 50 %}...{%
+                  endif %}
+                </div>
+                <div class="challenge-meta">
+                  <i class="fas fa-clock me-1"></i>{{ q.time_limit }}s •
+                  <i class="fas fa-list me-1"></i>{{ q.choices|length }} choices
+                  • <i class="fas fa-hashtag me-1"></i>ID: {{ q.id }}
+                </div>
+              </div>
+              {% endfor %} {% else %}
+              <div class="empty-state">
+                <i class="fas fa-question-circle fa-3x mb-3 d-block"></i>
+                No quiz questions created yet
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="form-container">
+              <h5><i class="fas fa-plus me-2"></i>Add New Quiz Question</h5>
+              <form method="post" action="/admin/pvp/quiz/add" id="quizForm">
+                <div class="mb-3">
+                  <label class="form-label">Question</label>
+                  <textarea
+                    name="question"
+                    class="form-control"
+                    placeholder="Enter your quiz question here..."
+                    rows="3"
+                    required
+                  ></textarea>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-8 mb-3">
+                    <label class="form-label">Time Limit (seconds)</label>
+                    <input
+                      name="time_limit"
+                      type="number"
+                      class="form-control"
+                      value="45"
+                      min="10"
+                      max="300"
+                    />
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Answer Choices</label>
+                  <div id="choices">
+                    <div class="choice-group">
+                      <div class="choice-header">
+                        <span class="choice-title">Choice A</span>
+                        <div>
+                          <input
+                            type="radio"
+                            name="correct_choice"
+                            value="0"
+                            class="form-check-input me-2"
+                            required
+                          />
+                          <label class="form-check-label">Correct Answer</label>
+                          <button
+                            type="button"
+                            class="btn-remove ms-2"
+                            onclick="removeChoice(this)"
+                            style="display: none"
+                          >
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        class="form-control"
+                        placeholder="Enter choice text..."
+                        name="choice_0"
+                        required
+                      />
+                    </div>
+
+                    <div class="choice-group">
+                      <div class="choice-header">
+                        <span class="choice-title">Choice B</span>
+                        <div>
+                          <input
+                            type="radio"
+                            name="correct_choice"
+                            value="1"
+                            class="form-check-input me-2"
+                          />
+                          <label class="form-check-label">Correct Answer</label>
+                          <button
+                            type="button"
+                            class="btn-remove ms-2"
+                            onclick="removeChoice(this)"
+                            style="display: none"
+                          >
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        class="form-control"
+                        placeholder="Enter choice text..."
+                        name="choice_1"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <button type="button" class="btn-add" onclick="addChoice()">
+                    <i class="fas fa-plus me-1"></i>Add Choice
+                  </button>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Explanation (Optional)</label>
+                  <textarea
+                    name="explanation"
+                    class="form-control"
+                    placeholder="Explain why this is the correct answer..."
+                    rows="2"
+                  ></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>Save Question
+                  </button>
+                  <button
+                    type="reset"
+                    class="btn btn-outline-light"
+                    onclick="resetQuizForm()"
+                  >
+                    <i class="fas fa-undo me-1"></i>Clear Form
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      let testCaseCount = 1;
+      let choiceCount = 2;
+
+      function addTestCase() {
+        const container = document.getElementById("testCases");
+        const newTestCase = document.createElement("div");
+        newTestCase.className = "test-case-group";
+        newTestCase.innerHTML = `
+          <div class="test-case-header">
+            <span class="test-case-title">Test Case ${testCaseCount + 1}</span>
+            <button type="button" class="btn-remove" onclick="removeTestCase(this)">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-2">
+              <input class="form-control" placeholder="Input (e.g., 1, 2)" name="test_input_${testCaseCount}" required>
+            </div>
+            <div class="col-md-6 mb-2">
+              <input class="form-control" placeholder="Expected Output (e.g., 3)" name="test_output_${testCaseCount}" required>
+            </div>
+          </div>
+        `;
+        container.appendChild(newTestCase);
+        testCaseCount++;
+        updateTestCaseRemoveButtons();
+      }
+
+      function removeTestCase(button) {
+        button.closest(".test-case-group").remove();
+        updateTestCaseRemoveButtons();
+        renumberTestCases();
+      }
+
+      function updateTestCaseRemoveButtons() {
+        const testCases = document.querySelectorAll(".test-case-group");
+        testCases.forEach((testCase, index) => {
+          const removeBtn = testCase.querySelector(".btn-remove");
+          removeBtn.style.display = testCases.length > 1 ? "block" : "none";
+        });
+      }
+
+      function renumberTestCases() {
+        const testCases = document.querySelectorAll(".test-case-group");
+        testCases.forEach((testCase, index) => {
+          const title = testCase.querySelector(".test-case-title");
+          title.textContent = `Test Case ${index + 1}`;
+
+          const inputs = testCase.querySelectorAll("input");
+          inputs[0].name = `test_input_${index}`;
+          inputs[1].name = `test_output_${index}`;
+        });
+        testCaseCount = testCases.length;
+      }
+
+      function addChoice() {
+        const container = document.getElementById("choices");
+        const newChoice = document.createElement("div");
+        const choiceLetter = String.fromCharCode(65 + choiceCount);
+        newChoice.className = "choice-group";
+        newChoice.innerHTML = `
+          <div class="choice-header">
+            <span class="choice-title">Choice ${choiceLetter}</span>
+            <div>
+              <input type="radio" name="correct_choice" value="${choiceCount}" class="form-check-input me-2">
+              <label class="form-check-label">Correct Answer</label>
+              <button type="button" class="btn-remove ms-2" onclick="removeChoice(this)">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <input class="form-control" placeholder="Enter choice text..." name="choice_${choiceCount}" required>
+        `;
+        container.appendChild(newChoice);
+        choiceCount++;
+        updateChoiceRemoveButtons();
+      }
+
+      function removeChoice(button) {
+        button.closest(".choice-group").remove();
+        updateChoiceRemoveButtons();
+        renumberChoices();
+      }
+
+      function updateChoiceRemoveButtons() {
+        const choices = document.querySelectorAll(".choice-group");
+        choices.forEach((choice, index) => {
+          const removeBtn = choice.querySelector(".btn-remove");
+          removeBtn.style.display = choices.length > 2 ? "block" : "none";
+        });
+      }
+
+      function renumberChoices() {
+        const choices = document.querySelectorAll(".choice-group");
+        choices.forEach((choice, index) => {
+          const title = choice.querySelector(".choice-title");
+          const choiceLetter = String.fromCharCode(65 + index);
+          title.textContent = `Choice ${choiceLetter}`;
+
+          const radio = choice.querySelector('input[type="radio"]');
+          const textInput = choice.querySelector('input[type="text"]');
+          radio.value = index;
+          textInput.name = `choice_${index}`;
+        });
+        choiceCount = choices.length;
+      }
+
+      function resetCodeForm() {
+        document.getElementById("codeForm").reset();
+        const container = document.getElementById("testCases");
+        container.innerHTML = `
+          <div class="test-case-group">
+            <div class="test-case-header">
+              <span class="test-case-title">Test Case 1</span>
+              <button type="button" class="btn-remove" onclick="removeTestCase(this)" style="display: none;">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-2">
+                <input class="form-control" placeholder="Input (e.g., 1, 2)" name="test_input_0" required>
+              </div>
+              <div class="col-md-6 mb-2">
+                <input class="form-control" placeholder="Expected Output (e.g., 3)" name="test_output_0" required>
+              </div>
+            </div>
+          </div>
+        `;
+        testCaseCount = 1;
+      }
+
+      function resetQuizForm() {
+        document.getElementById("quizForm").reset();
+        const container = document.getElementById("choices");
+        container.innerHTML = `
+          <div class="choice-group">
+            <div class="choice-header">
+              <span class="choice-title">Choice A</span>
+              <div>
+                <input type="radio" name="correct_choice" value="0" class="form-check-input me-2" required>
+                <label class="form-check-label">Correct Answer</label>
+                <button type="button" class="btn-remove ms-2" onclick="removeChoice(this)" style="display: none;">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <input class="form-control" placeholder="Enter choice text..." name="choice_0" required>
+          </div>
+          
+          <div class="choice-group">
+            <div class="choice-header">
+              <span class="choice-title">Choice B</span>
+              <div>
+                <input type="radio" name="correct_choice" value="1" class="form-check-input me-2">
+                <label class="form-check-label">Correct Answer</label>
+                <button type="button" class="btn-remove ms-2" onclick="removeChoice(this)" style="display: none;">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <input class="form-control" placeholder="Enter choice text..." name="choice_1" required>
+          </div>
+        `;
+        choiceCount = 2;
+      }
+
+      // Initialize remove button visibility
+      updateTestCaseRemoveButtons();
+      updateChoiceRemoveButtons();
+    </script>
+  </body>
+</html>
