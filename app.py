@@ -47,6 +47,167 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+DEFAULT_RATING = max(int(os.getenv('DEFAULT_RATING', '100')), 0)
+RATING_XP_DIVISOR = max(int(os.getenv('RATING_XP_DIVISOR', '20')), 1)
+RATING_POINTS_DIVISOR = max(int(os.getenv('RATING_POINTS_DIVISOR', '10')), 1)
+RATING_CHAPTER_BONUS = max(int(os.getenv('RATING_CHAPTER_BONUS', '15')), 0)
+MATCHMAKING_MAX_DELTA = max(int(os.getenv('MATCHMAKING_MAX_DELTA', '0')), 0)
+MATCHMAKING_FORCE_MATCH_SIZE = max(int(os.getenv('MATCHMAKING_FORCE_MATCH_SIZE', '4')), 1)
+
+
+def calculate_rating(xp_total: int, points_total: int, completed_chapters: int) -> int:
+    """Compute a deterministic rating based on a user's overall progress."""
+    rating = DEFAULT_RATING
+    rating += max(xp_total, 0) // RATING_XP_DIVISOR
+    rating += max(points_total, 0) // RATING_POINTS_DIVISOR
+    rating += max(completed_chapters, 0) * RATING_CHAPTER_BONUS
+    return int(max(rating, DEFAULT_RATING))
+
+
+def get_completed_chapter_count(db_cursor, user_id: int) -> int:
+    db_cursor.execute(
+        "SELECT COUNT(*) FROM user_progress WHERE user_id = %s AND completed = 1",
+        (user_id,),
+    )
+    row = db_cursor.fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
+
+
+def recalculate_all_user_ratings() -> None:
+    """Ensure legacy rows receive an up-to-date rating on startup."""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id, xp, points FROM user_stats")
+        rows = cursor.fetchall() or []
+        for user_id, xp_total, points_total in rows:
+            try:
+                completed = get_completed_chapter_count(cursor, user_id)
+                total_xp = int(xp_total or 0)
+                total_points = int(points_total or 0)
+                new_rating = calculate_rating(total_xp, total_points, completed)
+                cursor.execute(
+                    "UPDATE user_stats SET rating = %s WHERE user_id = %s",
+                    (new_rating, user_id),
+                )
+            except Exception as inner_err:
+                print(f"Rating recalculation failed for user {user_id}: {inner_err}")
+        conn.commit()
+    except Exception as e:
+        print("Rating recalculation error:", str(e))
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def get_user_rating(user_id: int) -> int:
+    """Fetch a user's current rating, defaulting when no stats are present."""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT rating FROM user_stats WHERE user_id = %s",
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        if row and row[0] is not None:
+            return int(row[0])
+    except Exception as e:
+        print("Rating fetch error:", str(e))
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+    return DEFAULT_RATING
+
+
+def fetch_leaderboard(limit: int = 100):
+    """Return leaderboard rows (sorted) and the latest stats timestamp."""
+    conn = None
+    cursor = None
+    last_refresh = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        leaderboard_query = """
+            SELECT
+                u.id AS user_id,
+                u.username,
+                COALESCE(MAX(us.points), 0) AS points,
+                COALESCE(MAX(us.rating), %s) AS rating,
+                COALESCE(MAX(us.xp), 0) AS xp,
+                COALESCE(MAX(us.level), 1) AS user_level,
+                COUNT(DISTINCT ub.badge_id) AS badges
+            FROM users u
+            LEFT JOIN user_stats us ON u.id = us.user_id
+            LEFT JOIN user_badges ub ON u.id = ub.user_id
+            GROUP BY u.id, u.username
+            ORDER BY points DESC, rating DESC, xp DESC, u.username ASC
+            LIMIT %s
+        """
+        cursor.execute(leaderboard_query, (DEFAULT_RATING, limit))
+        rows = cursor.fetchall() or []
+        for index, row in enumerate(rows, start=1):
+            row["rank"] = index
+            row["badges"] = int(row.get("badges", 0) or 0)
+            row["points"] = int(row.get("points", 0) or 0)
+            row["rating"] = int(row.get("rating", DEFAULT_RATING) or DEFAULT_RATING)
+            row["xp"] = int(row.get("xp", 0) or 0)
+            row["user_level"] = int(row.get("user_level", 1) or 1)
+
+        cursor.execute("SELECT MAX(last_updated) AS last_refresh FROM user_stats")
+        meta = cursor.fetchone()
+        if meta and meta.get("last_refresh"):
+            last_refresh = meta["last_refresh"]
+
+        return rows, last_refresh
+    except Exception as e:
+        print("Leaderboard fetch error:", str(e))
+        return [], last_refresh
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+def _pop_best_match(queue: list, target_rating: int):
+    """Return the closest-rated opponent from the queue while honoring tolerance."""
+    if not queue:
+        return None
+
+    best_index = 0
+    best_diff = abs(queue[0][2] - target_rating)
+    for idx in range(1, len(queue)):
+        diff = abs(queue[idx][2] - target_rating)
+        if diff < best_diff:
+            best_index = idx
+            best_diff = diff
+
+    if MATCHMAKING_MAX_DELTA and best_diff > MATCHMAKING_MAX_DELTA and len(queue) < MATCHMAKING_FORCE_MATCH_SIZE:
+        return None
+
+    return queue.pop(best_index)
+
 _db_pool = None  # MySQLConnectionPool instance
 _db_pool_config = None  # Cached config dict used to build the pool
 _db_pool_lock = Lock()
@@ -152,43 +313,51 @@ def inject_google_client_id():
     }
 
 # Store active queues and matches
-code_queue = []  # Will store tuples of (socket_id, user_id)
-quiz_queue = []  # Will store tuples of (socket_id, user_id)
-active_matches = {}
+code_queue = []  # Will store tuples of (socket_id, user_id, rating)
+quiz_queue = []  # Will store tuples of (socket_id, user_id, rating)
+active_matches = {}  # room_id -> { players: [sid1, sid2], mode: 'code'|'quiz' }
 socket_to_user = {}  # Map socket IDs to user IDs
 
-# Example code challenges (web frontend only, JavaScript)
-CODE_CHALLENGES = [
-    # {
-    #     "id": 2,
-    #     "title": "Capitalize First Letter",
-    #     "description": "Write a JavaScript function that capitalizes the first letter of a string.",
-    #     "function_name": "capitalizeFirst",
-    #     "language": "javascript",
-    #     "starter_code": "function capitalizeFirst(str) {\n  // Your code here\n}\n",
-    #     "test_cases": [
-    #         {"input": ["hello"], "output": "Hello"},
-    #         {"input": ["webscape"], "output": "Webscape"},
-    #         {"input": [""] , "output": ""},
-    #     ]
-    # },
-    {
-        "id": 1,
-        "title": "Sum of Two Numbers",
-        "description": "Write a JavaScript function that returns the sum of two numbers.",
-        "function_name": "sumTwoNumbers",
-        "language": "javascript",
-        "starter_code": "function sumTwoNumbers(a, b) {\n  // Your code here\n}\n",
-        "test_cases": [
-            {"input": [1, 2], "output": "3"},
-            {"input": [5, 7], "output": "12"},
-            {"input": [-1, 1], "output": "0"},
-        ]
-    },
-]
+# Default challenge used if the database has no PvP challenges configured
+DEFAULT_CODE_CHALLENGE = {
+    "id": 0,
+    "title": "Sum of Two Numbers",
+    "description": "Write a JavaScript function that returns the sum of two numbers.",
+    "function_name": "sumTwoNumbers",
+    "language": "javascript",
+    "starter_code": "function sumTwoNumbers(a, b) {\n  // Your code here\n}\n",
+    "time_limit": 300,
+    "test_cases": [
+        {"input": [1, 2], "output": "3"},
+        {"input": [5, 7], "output": "12"},
+        {"input": [-1, 1], "output": "0"},
+    ],
+}
+
+DEFAULT_QUIZ_QUESTION = {
+    "id": 0,
+    "question": "Which HTML tag creates the largest heading on a page?",
+    "choices": [
+        "<title>",
+        "<h1>",
+        "<heading>",
+        "<h6>",
+    ],
+    "correct_index": 1,
+    "time_limit": 45,
+    "explanation": "<h1> renders the highest-level heading and is the largest by default.",
+}
 
 # Store ongoing code matches: {room_id: {...}}
 code_matches = {}
+quiz_matches = {}
+
+
+def _finalize_match(match_id: str) -> None:
+    """Remove all in-memory state for a completed or cancelled match."""
+    active_matches.pop(match_id, None)
+    code_matches.pop(match_id, None)
+    quiz_matches.pop(match_id, None)
 
 # Login required decorator
 def login_required(f):
@@ -421,7 +590,28 @@ def options():
 
 @app.route('/rankings')
 def rankings():
-    return render_template('rankings.html')
+    leaderboard_rows, last_refresh = fetch_leaderboard(limit=100)
+    current_user_id = session.get('user_id')
+
+    for row in leaderboard_rows:
+        row["is_current"] = current_user_id is not None and row["user_id"] == current_user_id
+
+    top_three = leaderboard_rows[:3]
+    total_players = len(leaderboard_rows)
+    formatted_refresh = None
+    if last_refresh:
+        try:
+            formatted_refresh = last_refresh.strftime("%b %d, %Y %I:%M %p")
+        except Exception:
+            formatted_refresh = str(last_refresh)
+
+    return render_template(
+        'rankings.html',
+        top_three=top_three,
+        leaderboard=leaderboard_rows,
+        total_players=total_players,
+        last_refreshed=formatted_refresh,
+    )
 
 # -------------------------------------------------------USER--------------------------------------------------------------------#
 @app.route('/user/classic')
@@ -609,28 +799,47 @@ def update_lesson_progress(level, chapter_id):
         # --- REWARD & BADGE LOGIC ---
         badges_awarded = []
         reward_given = False
+        rating_update = None
         if completed and not was_completed:
             # Fetch xp_reward and points_reward from chapters table
             db_cursor.execute("SELECT xp_reward, points_reward FROM chapters WHERE id = %s", (chapter_id,))
             rewards = db_cursor.fetchone()
             if rewards:
                 xp_reward, points_reward = rewards
-                # Update user_stats: add xp and points
-                # If user_stats row does not exist, create it
-                db_cursor.execute("SELECT xp, points FROM user_stats WHERE user_id = %s", (session['user_id'],))
+                xp_reward = int(xp_reward or 0)
+                points_reward = int(points_reward or 0)
+                # Update user_stats with the new totals and derived rating
+                db_cursor.execute(
+                    "SELECT xp, points, rating FROM user_stats WHERE user_id = %s",
+                    (session['user_id'],),
+                )
                 stats = db_cursor.fetchone()
+                current_xp = int(stats[0]) if stats and stats[0] is not None else 0
+                current_points = int(stats[1]) if stats and stats[1] is not None else 0
+                current_rating = int(stats[2]) if stats and len(stats) > 2 and stats[2] is not None else DEFAULT_RATING
+
+                new_xp_total = current_xp + xp_reward
+                new_points_total = current_points + points_reward
+                completed_chapters = get_completed_chapter_count(db_cursor, session['user_id'])
+                new_rating = calculate_rating(new_xp_total, new_points_total, completed_chapters)
+
                 if stats:
                     db_cursor.execute(
-                        "UPDATE user_stats SET xp = xp + %s, points = points + %s WHERE user_id = %s",
-                        (xp_reward, points_reward, session['user_id'])
+                        "UPDATE user_stats SET xp = %s, points = %s, rating = %s WHERE user_id = %s",
+                        (new_xp_total, new_points_total, new_rating, session['user_id'])
                     )
                 else:
                     db_cursor.execute(
-                        "INSERT INTO user_stats (user_id, xp, points) VALUES (%s, %s, %s)",
-                        (session['user_id'], xp_reward, points_reward)
+                        "INSERT INTO user_stats (user_id, xp, points, rating) VALUES (%s, %s, %s, %s)",
+                        (session['user_id'], new_xp_total, new_points_total, new_rating)
                     )
                 db_connection.commit()
                 reward_given = True
+                rating_update = {
+                    'previous_rating': current_rating,
+                    'new_rating': new_rating,
+                    'delta': new_rating - current_rating
+                }
 
             # --- BADGE AWARDING LOGIC ---
             try:
@@ -691,7 +900,8 @@ def update_lesson_progress(level, chapter_id):
             'completed': updated_completed,
             'total_pages': total_pages,
             'reward_given': reward_given,
-            'badges_awarded': badges_awarded
+            'badges_awarded': badges_awarded,
+            'rating_update': rating_update
         })
     except Exception as e:
         print("Database error:", str(e))
@@ -1142,16 +1352,23 @@ def handle_disconnect():
     if request.sid in socket_to_user:
         del socket_to_user[request.sid]
     # Remove from queues if present
-    code_queue[:] = [(sid, uid) for sid, uid in code_queue if sid != request.sid]
-    quiz_queue[:] = [(sid, uid) for sid, uid in quiz_queue if sid != request.sid]
+    code_queue[:] = [(sid, uid, rating) for sid, uid, rating in code_queue if sid != request.sid]
+    quiz_queue[:] = [(sid, uid, rating) for sid, uid, rating in quiz_queue if sid != request.sid]
     # Handle disconnection from active matches
-    for match_id, players in active_matches.items():
+    for match_id, info in list(active_matches.items()):
+        players = info.get('players', [])
         if request.sid in players:
-            players.remove(request.sid)
-            if len(players) == 0:
-                del active_matches[match_id]
+            players = [p for p in players if p != request.sid]
+            remaining_user = players[0] if players else None
+            if not players:
+                _finalize_match(match_id)
             else:
+                info['players'] = players
                 emit('opponent_disconnected', room=match_id)
+                winner_id = socket_to_user.get(remaining_user) if remaining_user else None
+                winner_name = get_username_by_user_id(winner_id) if winner_id else 'Draw'
+                emit('match_end', {'winner': winner_name}, room=match_id)
+                _finalize_match(match_id)
 
 def get_username_by_user_id(user_id):
     try:
@@ -1179,109 +1396,140 @@ def handle_queue(data):
     mode = data.get('mode')
     socket_id = request.sid
     user_id = session['user_id']
+    user_rating = get_user_rating(user_id)
     
     if mode == 'code':
-        if len(code_queue) > 0:
-            opponent_socket, opponent_user_id = code_queue.pop(0)
-            # Create a unique room for the match
+        code_queue[:] = [(sid, uid, rating) for sid, uid, rating in code_queue if sid != socket_id]
+        opponent = _pop_best_match(code_queue, user_rating)
+        if opponent:
+            opponent_socket, opponent_user_id, opponent_rating = opponent
             room = f'match_{socket_id}_{opponent_socket}'
-            active_matches[room] = [socket_id, opponent_socket]
-            
+            active_matches[room] = { 'players': [socket_id, opponent_socket], 'mode': 'code' }
+
             join_room(room, socket_id)
             join_room(room, opponent_socket)
-            
-            # Get opponent's username from database
+
             opponent_username = get_username_by_user_id(opponent_user_id)
             current_username = get_username_by_user_id(user_id)
-            
-            # Notify both players with their respective opponent's username
+
             emit('match_found', {
                 'opponent': {
                     'name': opponent_username,
-                    'rating': 1500
+                    'rating': opponent_rating
                 }
             }, room=socket_id)
-            
+
             emit('match_found', {
                 'opponent': {
                     'name': current_username,
-                    'rating': 1500
+                    'rating': user_rating
                 }
             }, room=opponent_socket)
         else:
-            code_queue.append((socket_id, user_id))
-            emit('queue_status', {'status': 'waiting'})
+            code_queue.append((socket_id, user_id, user_rating))
+            emit('queue_status', {'status': 'waiting', 'rating': user_rating})
     
     elif mode == 'quiz':
-        if len(quiz_queue) > 0:
-            opponent_socket, opponent_user_id = quiz_queue.pop(0)
+        quiz_queue[:] = [(sid, uid, rating) for sid, uid, rating in quiz_queue if sid != socket_id]
+        opponent = _pop_best_match(quiz_queue, user_rating)
+        if opponent:
+            opponent_socket, opponent_user_id, opponent_rating = opponent
             room = f'match_{socket_id}_{opponent_socket}'
-            active_matches[room] = [socket_id, opponent_socket]
-            
+            active_matches[room] = { 'players': [socket_id, opponent_socket], 'mode': 'quiz' }
+
             join_room(room, socket_id)
             join_room(room, opponent_socket)
-            
-            # Get opponent's username from database
+
             opponent_username = get_username_by_user_id(opponent_user_id)
             current_username = get_username_by_user_id(user_id)
-            
-            # Notify both players with their respective opponent's username
+
             emit('match_found', {
                 'opponent': {
                     'name': opponent_username,
-                    'rating': 1500
+                    'rating': opponent_rating
                 }
             }, room=socket_id)
-            
+
             emit('match_found', {
                 'opponent': {
                     'name': current_username,
-                    'rating': 1500
+                    'rating': user_rating
                 }
             }, room=opponent_socket)
         else:
-            quiz_queue.append((socket_id, user_id))
-            emit('queue_status', {'status': 'waiting'})
+            quiz_queue.append((socket_id, user_id, user_rating))
+            emit('queue_status', {'status': 'waiting', 'rating': user_rating})
 
 @socketio.on('cancel_queue')
 def handle_cancel_queue():
     socket_id = request.sid
     # Remove from queues if present
-    code_queue[:] = [(sid, uid) for sid, uid in code_queue if sid != socket_id]
-    quiz_queue[:] = [(sid, uid) for sid, uid in quiz_queue if sid != socket_id]
+    code_queue[:] = [(sid, uid, rating) for sid, uid, rating in code_queue if sid != socket_id]
+    quiz_queue[:] = [(sid, uid, rating) for sid, uid, rating in quiz_queue if sid != socket_id]
     emit('queue_cancelled')
 
 @socketio.on('start_match')
 def handle_start_match():
     socket_id = request.sid
-    for match_id, players in active_matches.items():
-        if socket_id in players:
-            # Only start if not already started
-            if match_id not in code_matches:
-                challenge = random.choice(CODE_CHALLENGES)
-                code_matches[match_id] = {
-                    "challenge": challenge,
-                    "start_time": time.time(),
-                    "submissions": {},
-                    "winner": None
+    for match_id, info in active_matches.items():
+        players = info.get('players', [])
+        mode = info.get('mode', 'code')
+        if socket_id not in players:
+            continue
+
+        if mode == 'code':
+            if match_id in code_matches:
+                break
+            db_challenges = load_all_code_challenges()
+            challenge = random.choice(db_challenges) if db_challenges else DEFAULT_CODE_CHALLENGE
+            code_matches[match_id] = {
+                "challenge": challenge,
+                "start_time": time.time(),
+                "submissions": {},
+                "winner": None
+            }
+            emit('code_challenge_start', {
+                "challenge": {
+                    "title": challenge["title"],
+                    "description": challenge.get("description", ""),
+                    "starter_code": challenge.get("starter_code", ""),
+                    "function_name": challenge.get("function_name", ""),
+                    "time_limit": challenge.get("time_limit", 300),
+                    "language": challenge.get("language", "javascript")
                 }
-                # Send challenge to both players
-                emit('code_challenge_start', {
-                    "challenge": {
-                        "title": challenge["title"],
-                        "description": challenge["description"],
-                        "starter_code": challenge["starter_code"],
-                        "function_name": challenge["function_name"],
-                        "time_limit": 300  # 5 minutes
-                    }
-                }, room=match_id)
+            }, room=match_id)
+
+            break
+
+        elif mode == 'quiz':
+            if match_id in quiz_matches:
+                break
+            questions = load_all_quiz_questions()
+            question = random.choice(questions) if questions else DEFAULT_QUIZ_QUESTION
+            quiz_matches[match_id] = {
+                'question': question,
+                'start_time': time.time(),
+                'answers': {},
+                'winner': None,
+                'answer_times': {}
+            }
+            emit('quiz_question_start', {
+                'question': {
+                    'id': question.get('id', 0),
+                    'question': question['question'],
+                    'choices': question['choices'],
+                    'time_limit': question.get('time_limit', 45),
+                    'explanation': question.get('explanation')
+                }
+            }, room=match_id)
             break
 
 @socketio.on('submit_code')
 def handle_submit_code(data):
     socket_id = request.sid
     code = data.get('code')
-    for match_id, players in active_matches.items():
+    for match_id, info in active_matches.items():
+        players = info.get('players', [])
         if socket_id in players and match_id in code_matches:
             match = code_matches[match_id]
             challenge = match["challenge"]
@@ -1307,13 +1555,74 @@ def handle_submit_code(data):
                             "results": results,
                             "winner": False
                         }, room=p)
-                # End match
-                emit('match_end', {"winner": get_username_by_user_id(socket_to_user[socket_id])}, room=match_id)
+                winner_id = socket_to_user.get(socket_id)
+                winner_name = get_username_by_user_id(winner_id) if winner_id else 'Unknown'
+                summary = {
+                    'overview': f"{winner_name} solved '{challenge['title']}' first.",
+                    'details': challenge.get('description', '')
+                }
+                emit('match_end', {
+                    "winner": winner_name,
+                    "mode": "code",
+                    "summary": summary
+                }, room=match_id)
+                _finalize_match(match_id)
             else:
                 emit('code_challenge_result', {
                     "results": results,
                     "winner": False
                 }, room=socket_id)
+            break
+
+
+@socketio.on('submit_quiz_answer')
+def handle_submit_quiz_answer(data):
+    socket_id = request.sid
+    answer_index = int(data.get('answer_index', -1))
+    # find match
+    for match_id, info in active_matches.items():
+        players = info.get('players', [])
+        if socket_id in players and match_id in quiz_matches:
+            qm = quiz_matches[match_id]
+            question = qm['question']
+            qm['answers'][socket_id] = answer_index
+            qm['answer_times'][socket_id] = time.time()
+            # if both answered, decide
+            if len(qm['answers']) >= 2 and not qm['winner']:
+                correct_index = question.get('correct_index')
+                winner = None
+                correct_entries = [
+                    (p, qm['answer_times'].get(p, float('inf')))
+                    for p in players
+                    if qm['answers'].get(p) == correct_index
+                ]
+                if correct_entries:
+                    winner = min(correct_entries, key=lambda item: item[1])[0]
+                qm['winner'] = winner
+                correct_choice = None
+                if isinstance(question.get('choices'), list) and 0 <= correct_index < len(question['choices']):
+                    correct_choice = question['choices'][correct_index]
+                # emit result
+                for p in players:
+                    emit('quiz_result', {
+                        'your_answer': qm['answers'].get(p),
+                        'correct_index': question.get('correct_index'),
+                        'correct_choice': correct_choice,
+                        'explanation': question.get('explanation'),
+                        'winner': (p == winner)
+                    }, room=p)
+                winner_id = socket_to_user.get(winner) if winner else None
+                winner_name = get_username_by_user_id(winner_id) if winner_id else 'Draw'
+                summary = {
+                    'overview': f"{winner_name} answered correctly fastest." if winner else 'No player answered correctly.',
+                    'details': question.get('question')
+                }
+                emit('match_end', {
+                    'winner': winner_name,
+                    'mode': 'quiz',
+                    'summary': summary
+                }, room=match_id)
+                _finalize_match(match_id)
             break
 
 def run_js_code_against_tests(code, challenge):
@@ -1430,6 +1739,45 @@ def init_chapters_table():
             db_connection.commit()
         except Exception:
             pass
+
+        # Create PvP-specific tables for configurable challenges
+        try:
+            db_cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pvp_code_challenges (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    function_name VARCHAR(255),
+                    starter_code TEXT,
+                    language VARCHAR(50) DEFAULT 'javascript',
+                    time_limit INT DEFAULT 300,
+                    test_cases JSON,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+            db_connection.commit()
+        except Exception:
+            pass
+
+        try:
+            db_cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS pvp_quiz_questions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    question TEXT NOT NULL,
+                    choices JSON NOT NULL,
+                    correct_index INT NOT NULL,
+                    time_limit INT DEFAULT 45,
+                    explanation TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+            db_connection.commit()
+        except Exception:
+            pass
         
     except Exception as e:
         print("Error initializing tables:", str(e))
@@ -1466,10 +1814,246 @@ def _log_db_startup_info():
     except Exception as e:
         print(f"DB startup info error: {e}")
 
+
+# --- PvP challenge helpers ---
+def load_all_code_challenges():
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM pvp_code_challenges ORDER BY id DESC")
+        rows = cur.fetchall() or []
+        challenges = []
+        for r in rows:
+            try:
+                test_cases = json.loads(r.get('test_cases') or '[]')
+            except Exception:
+                test_cases = []
+            challenges.append({
+                'id': r['id'],
+                'title': r['title'],
+                'description': r['description'],
+                'function_name': r['function_name'],
+                'starter_code': r['starter_code'],
+                'language': r['language'] or 'javascript',
+                'time_limit': r.get('time_limit') or 300,
+                'test_cases': test_cases,
+            })
+        return challenges
+    except Exception as e:
+        print('load_all_code_challenges error:', str(e))
+        return []
+    finally:
+        try:
+            if cur:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+
+def load_all_quiz_questions():
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM pvp_quiz_questions ORDER BY id DESC")
+        rows = cur.fetchall() or []
+        questions = []
+        for r in rows:
+            try:
+                choices = json.loads(r.get('choices') or '[]')
+            except Exception:
+                choices = []
+            questions.append({
+                'id': r['id'],
+                'question': r['question'],
+                'choices': choices,
+                'correct_index': int(r['correct_index']),
+                'time_limit': int(r.get('time_limit') or 45),
+                'explanation': r.get('explanation')
+            })
+        return questions
+    except Exception as e:
+        print('load_all_quiz_questions error:', str(e))
+        return []
+    finally:
+        try:
+            if cur:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+
+# Admin pages for PvP management
+@app.route('/admin/pvp')
+@login_required
+def admin_pvp():
+    if session.get('role') != 'admin':
+        return redirect(url_for('home'))
+    code_challenges = load_all_code_challenges()
+    quiz_questions = load_all_quiz_questions()
+    return render_template('admin/pvp.html', code_challenges=code_challenges, quiz_questions=quiz_questions)
+
+
+@app.route('/admin/pvp/code/add', methods=['POST'])
+@login_required
+def admin_add_code_challenge():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    title = request.form.get('title', '').strip()
+    description = request.form.get('description', '').strip()
+    function_name = request.form.get('function_name', '').strip()
+    starter_code = request.form.get('starter_code', '').strip()
+    language = request.form.get('language') or 'javascript'
+    time_limit = int(request.form.get('time_limit') or 300)
+    
+    if not title or not function_name:
+        return jsonify({'success': False, 'message': 'Title and function name are required'}), 400
+    
+    # Build test cases from form inputs
+    test_cases = []
+    i = 0
+    while f'test_input_{i}' in request.form and f'test_output_{i}' in request.form:
+        test_input = request.form.get(f'test_input_{i}', '').strip()
+        test_output = request.form.get(f'test_output_{i}', '').strip()
+        
+        if test_input and test_output:
+            # Parse input as comma-separated values for function arguments
+            try:
+                # Split and parse input values
+                input_parts = [part.strip() for part in test_input.split(',')]
+                parsed_input = []
+                for part in input_parts:
+                    try:
+                        # Try to parse as number first
+                        if '.' in part:
+                            parsed_input.append(float(part))
+                        else:
+                            parsed_input.append(int(part))
+                    except ValueError:
+                        # If not a number, treat as string (remove quotes if present)
+                        if part.startswith('"') and part.endswith('"'):
+                            parsed_input.append(part[1:-1])
+                        elif part.startswith("'") and part.endswith("'"):
+                            parsed_input.append(part[1:-1])
+                        else:
+                            parsed_input.append(part)
+                
+                test_cases.append({
+                    "input": parsed_input,
+                    "output": test_output
+                })
+            except Exception:
+                # If parsing fails, use raw values
+                test_cases.append({
+                    "input": [test_input],
+                    "output": test_output
+                })
+        i += 1
+    
+    if not test_cases:
+        return jsonify({'success': False, 'message': 'At least one test case is required'}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO pvp_code_challenges (title, description, function_name, starter_code, language, time_limit, test_cases) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (title, description, function_name, starter_code, language, time_limit, json.dumps(test_cases))
+        )
+        conn.commit()
+        return redirect(url_for('admin_pvp'))
+    except Exception as e:
+        print('admin_add_code_challenge error:', str(e))
+        return jsonify({'success': False, 'message': 'DB error'}), 500
+    finally:
+        try:
+            if cur:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/admin/pvp/quiz/add', methods=['POST'])
+@login_required
+def admin_add_quiz_question():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    question = request.form.get('question', '').strip()
+    correct_choice_index = int(request.form.get('correct_choice') or 0)
+    time_limit = int(request.form.get('time_limit') or 45)
+    explanation = request.form.get('explanation', '').strip()
+    
+    if not question:
+        return jsonify({'success': False, 'message': 'Question text is required'}), 400
+    
+    # Build choices from form inputs
+    choices = []
+    i = 0
+    while f'choice_{i}' in request.form:
+        choice_text = request.form.get(f'choice_{i}', '').strip()
+        if choice_text:
+            choices.append(choice_text)
+        i += 1
+    
+    if len(choices) < 2:
+        return jsonify({'success': False, 'message': 'At least 2 choices are required'}), 400
+    
+    if correct_choice_index >= len(choices):
+        return jsonify({'success': False, 'message': 'Invalid correct choice index'}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO pvp_quiz_questions (question, choices, correct_index, time_limit, explanation) VALUES (%s,%s,%s,%s,%s)",
+            (question, json.dumps(choices), correct_choice_index, time_limit, explanation)
+        )
+        conn.commit()
+        return redirect(url_for('admin_pvp'))
+    except Exception as e:
+        print('admin_add_quiz_question error:', str(e))
+        return jsonify({'success': False, 'message': 'DB error'}), 500
+    finally:
+        try:
+            if cur:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
 # Call this when the app starts
 _log_db_startup_info()
 init_chapters_table()
 init_google_auth_columns()
+recalculate_all_user_ratings()
 
 @app.route('/api/analyze-code', methods=['POST'])
 def analyze_code():
@@ -1685,6 +2269,37 @@ def add_lesson_content():
                     VALUES (%s, %s, %s)
                 """, (lesson_content_id, text, is_correct))
 
+        conn.commit()
+        # Create table for pvp code challenges
+        db_cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pvp_code_challenges (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                function_name VARCHAR(255),
+                starter_code TEXT,
+                language VARCHAR(50) DEFAULT 'javascript',
+                time_limit INT DEFAULT 300,
+                test_cases JSON,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+        )
+        # Create table for pvp quiz questions
+        db_cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pvp_quiz_questions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                question TEXT NOT NULL,
+                choices JSON NOT NULL,
+                correct_index INT NOT NULL,
+                time_limit INT DEFAULT 45,
+                explanation TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+        )
         conn.commit()
         return jsonify({"success": True, "message": "Lesson page added successfully"})
     except Exception as e:
@@ -2639,12 +3254,15 @@ def admin_top_users():
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor(dictionary=True)
         db_cursor.execute("""
-            SELECT u.username, us.points, us.xp
+            SELECT u.username,
+                   us.points,
+                   us.xp,
+                   COALESCE(us.rating, %s) AS rating
             FROM user_stats us
             JOIN users u ON us.user_id = u.id
-            ORDER BY us.points DESC, us.xp DESC
+            ORDER BY rating DESC, us.points DESC, us.xp DESC
             LIMIT 5
-        """)
+        """, (DEFAULT_RATING,))
         users = db_cursor.fetchall()
         db_cursor.close()
         db_connection.close()
