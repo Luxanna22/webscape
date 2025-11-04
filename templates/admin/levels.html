@@ -1312,6 +1312,26 @@
                     "
                   />
                 </div>
+                <div class="mb-3">
+                  <label
+                    for="incorrect_message"
+                    class="form-label"
+                    style="color: #d3d3d3"
+                    >Incorrect Answer Message (Why)</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="incorrect_message"
+                    name="incorrect_message"
+                    placeholder="e.g., Here's why that's not correct"
+                    style="
+                      background: #240e44;
+                      border: 1px solid #a259ff;
+                      color: #fff;
+                    "
+                  />
+                </div>
               </div>
               <!-- Notes Section (for all page types) -->
               <div class="mb-3">
@@ -1554,6 +1574,26 @@
                     id="edit_correct_message"
                     name="correct_message"
                     placeholder="e.g., Great job! That's correct!"
+                    style="
+                      background: #240e44;
+                      border: 1px solid #a259ff;
+                      color: #fff;
+                    "
+                  />
+                </div>
+                <div class="mb-3">
+                  <label
+                    for="edit_incorrect_message"
+                    class="form-label"
+                    style="color: #d3d3d3"
+                    >Incorrect Answer Message (Why)</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="edit_incorrect_message"
+                    name="incorrect_message"
+                    placeholder="e.g., Here's why that's not correct"
                     style="
                       background: #240e44;
                       border: 1px solid #a259ff;
@@ -1921,6 +1961,8 @@
             document.getElementById("edit_notes").value = page.notes || "";
             document.getElementById("edit_correct_message").value =
               page.correct_message || "";
+            document.getElementById("edit_incorrect_message").value =
+              page.incorrect_message || "";
 
             // Handle image preview
             const currentImagePreview = document.getElementById(
