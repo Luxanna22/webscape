@@ -1470,6 +1470,12 @@ def user_competitive_code():
 def user_competitive_quiz():
     return render_template('user/competitive_quiz.html')
 
+@app.route('/user/code-battle')
+@login_required
+def user_code_battle():
+    """Code battle page - real-time coding competition"""
+    return render_template('user/code-challenge.html')
+
 # -------------------------------------------------------ADMIN------------------------------------------------------------------- #
 # admin>dashboard.html
 @app.route('/admin/dashboard')
@@ -2521,6 +2527,796 @@ def handle_surrender(data):
     code_queue[:] = [(s, u, r) for s, u, r in code_queue if s != sid]
     quiz_queue[:] = [(s, u, r) for s, u, r in quiz_queue if s != sid]
 
+# ============================================
+# CODE BATTLE SOCKET.IO HANDLERS
+# ============================================
+
+@socketio.on('code_battle_queue')
+def handle_code_battle_queue(data):
+    """Handle player joining code battle matchmaking queue"""
+    user_id = session.get('user_id')
+    if not user_id:
+        emit('error', {'message': 'Not authenticated'})
+        return
+    
+    sid = request.sid
+    
+    # Get user's rating from database
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("""
+            SELECT username, code_rating 
+            FROM users 
+            WHERE id = %s
+        """, (user_id,))
+        user_data = cur.fetchone()
+        
+        if not user_data:
+            emit('error', {'message': 'User not found'})
+            return
+            
+        rating = user_data.get('code_rating', 1000)
+        username = user_data.get('username', 'Player')
+        
+    except Exception as e:
+        print(f'Error fetching user rating: {e}')
+        rating = 1000
+        username = 'Player'
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+    
+    # Store socket-to-user mapping
+    socket_to_user[sid] = user_id
+    
+    # Check if already in queue
+    if any(s == sid for s, _, _ in code_queue):
+        emit('queue_status', {'status': 'already_queued'})
+        return
+    
+    # Add to queue
+    code_queue.append((sid, user_id, rating))
+    emit('queue_status', {
+        'status': 'queued',
+        'position': len(code_queue),
+        'message': 'Searching for opponent...'
+    })
+    
+    # Try to find a match
+    _try_match_code_players()
+
+def _try_match_code_players():
+    """Attempt to match players in code battle queue"""
+    if len(code_queue) < 2:
+        return
+    
+    # Simple matchmaking: match first two players (can be enhanced with rating-based matching)
+    sid1, uid1, rating1 = code_queue.pop(0)
+    sid2, uid2, rating2 = code_queue.pop(0)
+    
+    # Rating-based matching: ensure players are within 200 rating points
+    rating_diff = abs(rating1 - rating2)
+    if rating_diff > 200 and len(code_queue) > 0:
+        # Put higher rated player back and try next
+        code_queue.insert(0, (sid2, uid2, rating2))
+        code_queue.append((sid1, uid1, rating1))
+        return
+    
+    # Create match room
+    match_id = f"code_battle_{uid1}_{uid2}_{int(time.time())}"
+    
+    # Get player usernames
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT username FROM users WHERE id IN (%s, %s)", (uid1, uid2))
+        users = cur.fetchall()
+        username_map = {user['username']: user for user in users}
+        
+        cur.execute("SELECT username FROM users WHERE id = %s", (uid1,))
+        player1 = cur.fetchone()
+        cur.execute("SELECT username FROM users WHERE id = %s", (uid2,))
+        player2 = cur.fetchone()
+        
+        player1_name = player1['username'] if player1 else 'Player 1'
+        player2_name = player2['username'] if player2 else 'Player 2'
+        
+    except Exception as e:
+        print(f'Error fetching usernames: {e}')
+        player1_name = 'Player 1'
+        player2_name = 'Player 2'
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+    
+    # Select 5 challenges for this battle
+    challenges = select_battle_challenges(rating1, rating2)
+    
+    if not challenges or len(challenges) < 5:
+        # Not enough challenges, notify players and re-queue
+        emit('error', {'message': 'Not enough challenges available'}, room=sid1)
+        emit('error', {'message': 'Not enough challenges available'}, room=sid2)
+        code_queue.append((sid1, uid1, rating1))
+        code_queue.append((sid2, uid2, rating2))
+        return
+    
+    # Initialize match data
+    active_matches[match_id] = {
+        'players': [sid1, sid2],
+        'mode': 'code_battle',
+        'started_at': time.time()
+    }
+    
+    code_matches[match_id] = {
+        'players': {
+            sid1: {'user_id': uid1, 'username': player1_name, 'rating': rating1},
+            sid2: {'user_id': uid2, 'username': player2_name, 'rating': rating2}
+        },
+        'challenges': challenges,
+        'current_challenge_index': 0,
+        'scores': {sid1: 0, sid2: 0},
+        'completed': {sid1: 0, sid2: 0},
+        'submissions': {sid1: [], sid2: []},
+        'started_at': time.time()
+    }
+    
+    # Join players to room
+    join_room(match_id, sid=sid1)
+    join_room(match_id, sid=sid2)
+    
+    # Notify both players
+    emit('match_found', {
+        'match_id': match_id,
+        'your_name': player1_name,
+        'your_rating': rating1,
+        'opponent': player2_name,
+        'opponent_rating': rating2,
+        'mode': 'code_battle'
+    }, room=sid1)
+    
+    emit('match_found', {
+        'match_id': match_id,
+        'your_name': player2_name,
+        'your_rating': rating2,
+        'opponent': player1_name,
+        'opponent_rating': rating1,
+        'mode': 'code_battle'
+    }, room=sid2)
+    
+    # Start the match after a brief delay
+    socketio.sleep(2)
+    _start_code_battle(match_id)
+
+def _start_code_battle(match_id):
+    """Start a code battle by sending first challenge"""
+    match_data = code_matches.get(match_id)
+    if not match_data:
+        return
+    
+    first_challenge = match_data['challenges'][0]
+    
+    # Send challenge data to both players
+    emit('code_battle_start', {
+        'match_id': match_id,
+        'total_challenges': len(match_data['challenges']),
+        'current_challenge': 1,
+        'challenge': {
+            'id': first_challenge['id'],
+            'title': first_challenge['title'],
+            'description': first_challenge['description'],
+            'difficulty': first_challenge.get('difficulty', 'normal'),
+            'points': first_challenge.get('points_reward', 100),
+            'category': first_challenge.get('category', 'General'),
+            'time_limit': first_challenge.get('time_limit', 300),
+            'requires_html': first_challenge.get('requires_html', False),
+            'requires_css': first_challenge.get('requires_css', False),
+            'requires_js': first_challenge.get('requires_js', True),
+            'starter_code': first_challenge.get('starter_code', {}),
+            'hint': first_challenge.get('hint', ''),
+            'test_cases_count': len(first_challenge.get('test_cases', []))
+        }
+    }, room=match_id)
+
+@socketio.on('cancel_code_queue')
+def handle_cancel_code_queue():
+    """Handle player canceling matchmaking"""
+    sid = request.sid
+    code_queue[:] = [(s, u, r) for s, u, r in code_queue if s != sid]
+    emit('queue_status', {'status': 'cancelled'})
+
+@socketio.on('leave_code_battle')
+def handle_leave_code_battle(data):
+    """Handle player leaving an active battle"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+    
+    sid = request.sid
+    match_id = data.get('match_id')
+    
+    # Validate match exists
+    match_data = code_matches.get(match_id)
+    if not match_data:
+        return
+    
+    # Validate player is in match
+    if sid not in match_data['players']:
+        return
+    
+    # Get opponent's sid
+    opponent_sid = None
+    for player_sid in match_data['players'].values():
+        if isinstance(player_sid, dict):
+            continue
+        if player_sid != sid:
+            opponent_sid = player_sid
+            break
+    
+    # If we can't find opponent from players dict, check the keys
+    player_sids = [s for s in match_data['players'].keys()]
+    for s in player_sids:
+        if s != sid:
+            opponent_sid = s
+            break
+    
+    # Determine winner (opponent wins)
+    leaver_data = match_data['players'].get(sid, {})
+    opponent_data = match_data['players'].get(opponent_sid, {}) if opponent_sid else {}
+    
+    winner_sid = opponent_sid
+    winner_id = opponent_data.get('user_id') if opponent_data else None
+    loser_id = leaver_data.get('user_id') if leaver_data else None
+    
+    # Update ratings (leaver loses rating)
+    if winner_id and loser_id:
+        _update_code_ratings(winner_id, loser_id)
+    
+    # Notify opponent that player left
+    if opponent_sid:
+        opponent_name = opponent_data.get('username', 'Opponent') if opponent_data else 'Opponent'
+        emit('code_battle_end', {
+            'match_id': match_id,
+            'winner': opponent_sid,
+            'reason': 'opponent_left',
+            'message': f'Your opponent left the battle. You win!',
+            'scores': match_data.get('scores', {}),
+            'completed': match_data.get('completed', {})
+        }, room=opponent_sid)
+    
+    # Clean up match data
+    if match_id in code_matches:
+        del code_matches[match_id]
+    if match_id in active_matches:
+        del active_matches[match_id]
+    
+    # Leave the room
+    leave_room(match_id, sid=sid)
+    if opponent_sid:
+        leave_room(match_id, sid=opponent_sid)
+
+@socketio.on('submit_code_challenge')
+def handle_submit_code_challenge(data):
+    """Handle code challenge submission and validation"""
+    user_id = session.get('user_id')
+    if not user_id:
+        emit('error', {'message': 'Not authenticated'})
+        return
+    
+    sid = request.sid
+    match_id = data.get('match_id')
+    code_submission = data.get('code', {})  # {html: '', css: '', javascript: ''}
+    challenge_index = data.get('challenge_index', 0)
+    
+    # Validate match exists
+    match_data = code_matches.get(match_id)
+    if not match_data:
+        emit('error', {'message': 'Match not found'})
+        return
+    
+    # Validate player is in match
+    if sid not in match_data['players']:
+        emit('error', {'message': 'Not in this match'})
+        return
+    
+    # Get current challenge
+    if challenge_index >= len(match_data['challenges']):
+        emit('error', {'message': 'Invalid challenge index'})
+        return
+    
+    challenge = match_data['challenges'][challenge_index]
+    
+    # Run tests and validate code
+    test_results, passed_all = _validate_code_challenge(code_submission, challenge)
+    
+    # Calculate points earned
+    points_earned = 0
+    if passed_all:
+        points_earned = challenge.get('points_reward', 100)
+        match_data['scores'][sid] += points_earned
+        match_data['completed'][sid] += 1
+    
+    # Store submission
+    match_data['submissions'][sid].append({
+        'challenge_id': challenge['id'],
+        'challenge_index': challenge_index,
+        'code': code_submission,
+        'passed': passed_all,
+        'points': points_earned,
+        'timestamp': time.time()
+    })
+    
+    # Send results to submitter
+    emit('challenge_result', {
+        'challenge_index': challenge_index,
+        'passed': passed_all,
+        'points_earned': points_earned,
+        'total_score': match_data['scores'][sid],
+        'test_results': test_results,
+        'completed_challenges': match_data['completed'][sid]
+    }, room=sid)
+    
+    # Update opponent about progress
+    opponent_sid = [p for p in match_data['players'].keys() if p != sid][0]
+    emit('opponent_progress', {
+        'completed': match_data['completed'][sid],
+        'score': match_data['scores'][sid]
+    }, room=opponent_sid)
+    
+    # Check if match should end
+    _check_code_battle_completion(match_id)
+
+def _validate_code_challenge(code_submission, challenge):
+    """Validate submitted code against test cases"""
+    test_cases = challenge.get('test_cases', [])
+    results = []
+    passed_count = 0
+    
+    print(f"\n=== VALIDATING CODE CHALLENGE ===")
+    print(f"Challenge: {challenge.get('title')}")
+    print(f"Number of test cases: {len(test_cases)}")
+    print(f"Test cases structure: {json.dumps(test_cases, indent=2)}")
+    
+    for i, test_case in enumerate(test_cases):
+        test_type = test_case.get('type', test_case.get('test_type', 'function'))
+        expected = test_case.get('expected', test_case.get('output', ''))
+        
+        print(f"\n--- Test Case {i+1} ---")
+        print(f"Type: {test_type}")
+        print(f"Expected: {expected}")
+        print(f"Input: {test_case.get('input', 'N/A')}")
+        
+        try:
+            if test_type == 'function':
+                # JavaScript function test
+                js_code = code_submission.get('javascript', '')
+                result = _run_js_test(js_code, test_case, challenge)
+                passed = result['passed']
+                print(f"Result: {result}")
+                
+            elif test_type == 'html':
+                # HTML structure test
+                html_code = code_submission.get('html', '')
+                result = _validate_html_structure(html_code, test_case)
+                passed = result['passed']
+                
+            elif test_type == 'css':
+                # CSS style test
+                css_code = code_submission.get('css', '')
+                result = _validate_css_styles(css_code, test_case)
+                passed = result['passed']
+            
+            else:
+                result = {'passed': False, 'error': 'Unknown test type'}
+                passed = False
+            
+            if passed:
+                passed_count += 1
+            
+            results.append({
+                'test_number': i + 1,
+                'type': test_type,
+                'passed': passed,
+                'expected': expected,
+                'actual': result.get('actual', ''),
+                'error': result.get('error', '')
+            })
+            
+        except Exception as e:
+            print(f"Exception in test case {i+1}: {str(e)}")
+            results.append({
+                'test_number': i + 1,
+                'type': test_type,
+                'passed': False,
+                'error': str(e)
+            })
+    
+    passed_all = (passed_count == len(test_cases)) if test_cases else False
+    print(f"\n=== VALIDATION COMPLETE ===")
+    print(f"Passed: {passed_count}/{len(test_cases)}")
+    print(f"Results: {json.dumps(results, indent=2)}\n")
+    
+    return results, passed_all
+
+def _run_js_test(js_code, test_case, challenge):
+    """Execute JavaScript code test"""
+    try:
+        test_input = test_case.get('input', '')
+        expected_output = str(test_case.get('expected', test_case.get('output', '')))
+        
+        print(f"[_run_js_test] test_input: '{test_input}' (type: {type(test_input).__name__})")
+        print(f"[_run_js_test] expected_output: '{expected_output}'")
+        print(f"[_run_js_test] js_code length: {len(js_code)} chars")
+        
+        # Build the function call based on input format
+        function_call = None
+        
+        # Case 1: input is an array of arguments (old format: ["hello"] or [1, 2])
+        if isinstance(test_input, list):
+            print(f"[_run_js_test] Input is array format")
+            # Extract function name from js_code or test_case
+            import re
+            function_name = test_case.get('function_name', '')
+            if not function_name:
+                function_match = re.search(r'function\s+(\w+)\s*\(', js_code)
+                if function_match:
+                    function_name = function_match.group(1)
+            
+            if function_name:
+                # Convert array to function arguments
+                args = ', '.join(json.dumps(arg) for arg in test_input)
+                function_call = f"{function_name}({args})"
+                print(f"[_run_js_test] Converted array to: '{function_call}'")
+            else:
+                print(f"[_run_js_test] ERROR: Could not find function name")
+                return {'passed': False, 'error': 'No function name found'}
+        
+        # Case 2: input is a string
+        elif isinstance(test_input, str):
+            # Check if it's a full function call (has parentheses) or just arguments
+            if '(' in test_input:
+                # Already a function call like "reverseString('hello')"
+                function_call = test_input
+                print(f"[_run_js_test] Input is function call: '{function_call}'")
+            else:
+                # Just arguments like "1,2" - need to extract function name
+                import re
+                function_match = re.search(r'function\s+(\w+)\s*\(', js_code)
+                if function_match:
+                    function_name = function_match.group(1)
+                    function_call = f"{function_name}({test_input})"
+                    print(f"[_run_js_test] Converted args to: '{function_call}'")
+                else:
+                    print(f"[_run_js_test] WARNING: Could not find function name in code")
+                    return {'passed': False, 'error': 'No function name found'}
+        else:
+            print(f"[_run_js_test] ERROR: Unknown input format: {type(test_input).__name__}")
+            return {'passed': False, 'error': f'Invalid input format: {type(test_input).__name__}'}
+        
+        # Build test code
+        test_code = f"{js_code}\nconsole.log(JSON.stringify({function_call}));"
+        
+        print(f"[_run_js_test] Executing test code:\n{test_code}\n")
+        
+        # Run with Node.js
+        proc = subprocess.run(
+            ["node", "-e", test_code],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        print(f"[_run_js_test] Return code: {proc.returncode}")
+        print(f"[_run_js_test] stdout: '{proc.stdout}'")
+        print(f"[_run_js_test] stderr: '{proc.stderr}'")
+        
+        if proc.returncode != 0:
+            return {
+                'passed': False,
+                'actual': '',
+                'error': proc.stderr.strip() or 'Execution error'
+            }
+        
+        actual_output = proc.stdout.strip()
+        
+        # Parse and compare outputs (handle type coercion)
+        try:
+            # Parse actual output (this is JSON from console.log(JSON.stringify(...)))
+            actual_parsed = json.loads(actual_output)
+            
+            # Parse expected output - handle both string and already-parsed values
+            try:
+                expected_parsed = json.loads(expected_output)
+            except (json.JSONDecodeError, ValueError):
+                # If it fails to parse as JSON, try as number then fallback to string
+                try:
+                    expected_parsed = float(expected_output) if '.' in expected_output else int(expected_output)
+                except ValueError:
+                    expected_parsed = expected_output
+            
+            print(f"[_run_js_test] actual_parsed: {actual_parsed} (type: {type(actual_parsed).__name__})")
+            print(f"[_run_js_test] expected_parsed: {expected_parsed} (type: {type(expected_parsed).__name__})")
+            
+            # Direct comparison (handles same types)
+            if actual_parsed == expected_parsed:
+                passed = True
+            # Type-coerced comparison for numbers
+            elif isinstance(actual_parsed, (int, float)) or isinstance(expected_parsed, (int, float)):
+                try:
+                    passed = float(actual_parsed) == float(expected_parsed)
+                except (ValueError, TypeError):
+                    passed = str(actual_parsed) == str(expected_parsed)
+            # String comparison fallback
+            else:
+                passed = str(actual_parsed) == str(expected_parsed)
+            
+            print(f"[_run_js_test] Test passed: {passed}")
+            
+        except (json.JSONDecodeError, TypeError, ValueError) as e:
+            print(f"[_run_js_test] Parse error: {e}")
+            # Fallback to string comparison
+            passed = (str(actual_output).strip() == str(expected_output).strip())
+        
+        return {
+            'passed': passed,
+            'actual': actual_parsed if 'actual_parsed' in locals() else actual_output,
+            'expected': expected_output
+        }
+        
+    except subprocess.TimeoutExpired:
+        print("[_run_js_test] Timeout!")
+        return {'passed': False, 'error': 'Code execution timeout'}
+    except Exception as e:
+        print(f"[_run_js_test] Exception: {e}")
+        return {'passed': False, 'error': str(e)}
+
+def _validate_html_structure(html_code, test_case):
+    """Validate HTML structure (basic validation)"""
+    try:
+        selector = test_case.get('selector', '')
+        expected = test_case.get('expected', {})
+        
+        # Simple validation: check if selector text exists in HTML
+        if 'exists' in expected:
+            passed = selector.replace('.', '').replace('#', '') in html_code
+            return {'passed': passed, 'actual': 'Present' if passed else 'Not found'}
+        
+        if 'count' in expected:
+            # Count occurrences of class/id
+            search_term = selector.replace('.', 'class="').replace('#', 'id="')
+            count = html_code.count(search_term)
+            passed = (count == expected['count'])
+            return {'passed': passed, 'actual': count}
+        
+        # Default: just check if HTML contains the selector
+        passed = selector in html_code
+        return {'passed': passed, 'actual': 'Present' if passed else 'Not found'}
+        
+    except Exception as e:
+        return {'passed': False, 'error': str(e)}
+
+def _validate_css_styles(css_code, test_case):
+    """Validate CSS styles (basic validation)"""
+    try:
+        selector = test_case.get('selector', '')
+        expected = test_case.get('expected', {})
+        
+        # Simple validation: check if CSS property exists
+        for prop, value in expected.items():
+            prop_search = f"{prop}:".replace('_', '-')
+            if prop_search not in css_code:
+                return {'passed': False, 'actual': 'Property not found'}
+        
+        return {'passed': True, 'actual': 'Styles present'}
+        
+    except Exception as e:
+        return {'passed': False, 'error': str(e)}
+
+def _check_code_battle_completion(match_id):
+    """Check if code battle is complete and determine winner"""
+    match_data = code_matches.get(match_id)
+    if not match_data:
+        return
+    
+    players = list(match_data['players'].keys())
+    total_challenges = len(match_data['challenges'])
+    
+    # Check if both players completed all challenges
+    if all(match_data['completed'][p] >= total_challenges for p in players):
+        _end_code_battle(match_id, 'completed')
+        return
+    
+    # Check for timeout (10 minutes)
+    elapsed = time.time() - match_data['started_at']
+    if elapsed > 600:  # 10 minutes
+        _end_code_battle(match_id, 'timeout')
+        return
+
+def _end_code_battle(match_id, reason='completed'):
+    """End code battle and declare winner"""
+    match_data = code_matches.get(match_id)
+    if not match_data:
+        return
+    
+    players = list(match_data['players'].keys())
+    sid1, sid2 = players[0], players[1]
+    
+    score1 = match_data['scores'][sid1]
+    score2 = match_data['scores'][sid2]
+    
+    # Determine winner
+    if score1 > score2:
+        winner_sid = sid1
+        winner_name = match_data['players'][sid1]['username']
+    elif score2 > score1:
+        winner_sid = sid2
+        winner_name = match_data['players'][sid2]['username']
+    else:
+        # Tie: winner is who completed more challenges
+        if match_data['completed'][sid1] > match_data['completed'][sid2]:
+            winner_sid = sid1
+            winner_name = match_data['players'][sid1]['username']
+        elif match_data['completed'][sid2] > match_data['completed'][sid1]:
+            winner_sid = sid2
+            winner_name = match_data['players'][sid2]['username']
+        else:
+            # Perfect tie
+            winner_sid = None
+            winner_name = 'Draw'
+    
+    # Calculate duration
+    duration = int(time.time() - match_data['started_at'])
+    
+    # Prepare match summary
+    summary = {
+        'winner': winner_name,
+        'reason': reason,
+        'duration': duration,
+        'scores': {
+            match_data['players'][sid1]['username']: score1,
+            match_data['players'][sid2]['username']: score2
+        },
+        'completed': {
+            match_data['players'][sid1]['username']: match_data['completed'][sid1],
+            match_data['players'][sid2]['username']: match_data['completed'][sid2]
+        },
+        'total_challenges': len(match_data['challenges'])
+    }
+    
+    # Save to battle history
+    _save_code_battle_history(match_id, match_data, winner_sid, reason, duration)
+    
+    # Update player ratings
+    if winner_sid:
+        _update_code_ratings(match_data, winner_sid)
+    
+    # Notify both players
+    emit('code_battle_end', summary, room=match_id)
+    
+    # Cleanup
+    _finalize_match(match_id)
+
+def _save_code_battle_history(match_id, match_data, winner_sid, reason, duration):
+    """Save code battle results to database"""
+    try:
+        players = list(match_data['players'].keys())
+        sid1, sid2 = players[0], players[1]
+        
+        player1_id = match_data['players'][sid1]['user_id']
+        player2_id = match_data['players'][sid2]['user_id']
+        winner_id = match_data['players'][winner_sid]['user_id'] if winner_sid else None
+        
+        player1_score = match_data['scores'][sid1]
+        player2_score = match_data['scores'][sid2]
+        player1_completed = match_data['completed'][sid1]
+        player2_completed = match_data['completed'][sid2]
+        
+        challenges_used = [c['id'] for c in match_data['challenges']]
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO pvp_code_battle_history 
+            (match_id, player1_id, player2_id, winner_id, player1_score, player2_score,
+             player1_completed, player2_completed, challenges_used, duration, ended_reason)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            match_id, player1_id, player2_id, winner_id, player1_score, player2_score,
+            player1_completed, player2_completed, json.dumps(challenges_used),
+            duration, reason
+        ))
+        conn.commit()
+        
+    except Exception as e:
+        print(f'Error saving code battle history: {e}')
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+def _update_code_ratings(match_data, winner_sid):
+    """Update player ratings using ELO system"""
+    try:
+        players = list(match_data['players'].keys())
+        loser_sid = [p for p in players if p != winner_sid][0]
+        
+        winner_id = match_data['players'][winner_sid]['user_id']
+        loser_id = match_data['players'][loser_sid]['user_id']
+        
+        winner_rating = match_data['players'][winner_sid]['rating']
+        loser_rating = match_data['players'][loser_sid]['rating']
+        
+        # ELO calculation
+        K = 32  # K-factor
+        expected_winner = 1 / (1 + 10 ** ((loser_rating - winner_rating) / 400))
+        expected_loser = 1 / (1 + 10 ** ((winner_rating - loser_rating) / 400))
+        
+        new_winner_rating = int(winner_rating + K * (1 - expected_winner))
+        new_loser_rating = int(loser_rating + K * (0 - expected_loser))
+        
+        # Update database
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET code_rating = %s WHERE id = %s", (new_winner_rating, winner_id))
+        cur.execute("UPDATE users SET code_rating = %s WHERE id = %s", (new_loser_rating, loser_id))
+        conn.commit()
+        
+    except Exception as e:
+        print(f'Error updating code ratings: {e}')
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+@socketio.on('request_next_challenge')
+def handle_request_next_challenge(data):
+    """Send next challenge to player"""
+    match_id = data.get('match_id')
+    sid = request.sid
+    
+    match_data = code_matches.get(match_id)
+    if not match_data:
+        emit('error', {'message': 'Match not found'})
+        return
+    
+    # Increment challenge index
+    current_index = match_data.get('current_challenge_index', 0)
+    next_index = current_index + 1
+    
+    if next_index >= len(match_data['challenges']):
+        emit('no_more_challenges', {'message': 'All challenges completed'})
+        return
+    
+    match_data['current_challenge_index'] = next_index
+    next_challenge = match_data['challenges'][next_index]
+    
+    # Send next challenge
+    emit('next_challenge', {
+        'challenge_index': next_index,
+        'challenge': {
+            'id': next_challenge['id'],
+            'title': next_challenge['title'],
+            'description': next_challenge['description'],
+            'difficulty': next_challenge.get('difficulty', 'normal'),
+            'points': next_challenge.get('points_reward', 100),
+            'category': next_challenge.get('category', 'General'),
+            'time_limit': next_challenge.get('time_limit', 300),
+            'requires_html': next_challenge.get('requires_html', False),
+            'requires_css': next_challenge.get('requires_css', False),
+            'requires_js': next_challenge.get('requires_js', True),
+            'starter_code': next_challenge.get('starter_code', {}),
+            'hint': next_challenge.get('hint', ''),
+            'test_cases_count': len(next_challenge.get('test_cases', []))
+        },
+        'remaining': len(match_data['challenges']) - next_index - 1
+    }, room=sid)
+
 def run_js_code_against_tests(code, challenge):
     results = []
     passed_all = True
@@ -2791,93 +3587,55 @@ def load_all_quiz_questions():
                 conn.close()
         except Exception:
             pass
-            pass
 
 
-# Admin pages for PvP management
-@app.route('/admin/pvp')
-@login_required
-def admin_pvp():
-    if session.get('role') != 'admin':
-        return redirect(url_for('home'))
-    quiz_questions = load_all_quiz_questions()
-    return render_template('admin/pvp.html', quiz_questions=quiz_questions)
-
-
-@app.route('/admin/pvp/code/add', methods=['POST'])
-@login_required
-def admin_add_code_challenge():
-    if session.get('role') != 'admin':
-        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
-    
-    title = request.form.get('title', '').strip()
-    description = request.form.get('description', '').strip()
-    function_name = request.form.get('function_name', '').strip()
-    starter_code = request.form.get('starter_code', '').strip()
-    language = request.form.get('language') or 'javascript'
-    time_limit = int(request.form.get('time_limit') or 300)
-    
-    if not title or not function_name:
-        return jsonify({'success': False, 'message': 'Title and function name are required'}), 400
-    
-    # Build test cases from form inputs
-    test_cases = []
-    i = 0
-    while f'test_input_{i}' in request.form and f'test_output_{i}' in request.form:
-        test_input = request.form.get(f'test_input_{i}', '').strip()
-        test_output = request.form.get(f'test_output_{i}', '').strip()
-        
-        if test_input and test_output:
-            # Parse input as comma-separated values for function arguments
-            try:
-                # Split and parse input values
-                input_parts = [part.strip() for part in test_input.split(',')]
-                parsed_input = []
-                for part in input_parts:
-                    try:
-                        # Try to parse as number first
-                        if '.' in part:
-                            parsed_input.append(float(part))
-                        else:
-                            parsed_input.append(int(part))
-                    except ValueError:
-                        # If not a number, treat as string (remove quotes if present)
-                        if part.startswith('"') and part.endswith('"'):
-                            parsed_input.append(part[1:-1])
-                        elif part.startswith("'") and part.endswith("'"):
-                            parsed_input.append(part[1:-1])
-                        else:
-                            parsed_input.append(part)
-                
-                test_cases.append({
-                    "input": parsed_input,
-                    "output": test_output
-                })
-            except Exception:
-                # If parsing fails, use raw values
-                test_cases.append({
-                    "input": [test_input],
-                    "output": test_output
-                })
-        i += 1
-    
-    if not test_cases:
-        return jsonify({'success': False, 'message': 'At least one test case is required'}), 400
-    
+def load_all_code_challenges():
+    """Load all code challenges from database with proper formatting"""
     conn = None
     cur = None
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO pvp_code_challenges (title, description, function_name, starter_code, language, time_limit, test_cases) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-            (title, description, function_name, starter_code, language, time_limit, json.dumps(test_cases))
-        )
-        conn.commit()
-        return redirect(url_for('admin_pvp'))
+        cur = conn.cursor(dictionary=True)
+        cur.execute("""
+            SELECT * FROM pvp_code_challenges 
+            ORDER BY difficulty, category, id DESC
+        """)
+        rows = cur.fetchall() or []
+        challenges = []
+        for r in rows:
+            try:
+                test_cases = json.loads(r.get('test_cases', '[]'))
+            except Exception:
+                test_cases = []
+            
+            try:
+                starter_code = json.loads(r.get('starter_code', '{}'))
+            except Exception:
+                starter_code = {'html': '', 'css': '', 'javascript': r.get('starter_code', '')}
+            
+            challenges.append({
+                'id': r['id'],
+                'title': r['title'],
+                'description': r['description'],
+                'function_name': r.get('function_name', ''),
+                'starter_code': starter_code,
+                'language': r.get('language', 'javascript'),
+                'difficulty': r.get('difficulty', 'normal'),
+                'points_reward': r.get('points_reward', 100),
+                'category': r.get('category', 'general'),
+                'requires_html': bool(r.get('requires_html', False)),
+                'requires_css': bool(r.get('requires_css', False)),
+                'requires_js': bool(r.get('requires_js', True)),
+                'time_limit': r.get('time_limit', 300),
+                'test_cases': test_cases,
+                'hint': r.get('hint', ''),
+                'expected_approach': r.get('expected_approach', ''),
+                'created_at': r.get('created_at')
+            })
+        return challenges
     except Exception as e:
-        print('admin_add_code_challenge error:', str(e))
-        return jsonify({'success': False, 'message': 'DB error'}), 500
+        print('load_all_code_challenges error:', str(e))
+        return []
     finally:
         try:
             if cur:
@@ -2889,6 +3647,334 @@ def admin_add_code_challenge():
                 conn.close()
         except Exception:
             pass
+
+
+def select_battle_challenges(player1_rating, player2_rating):
+    """
+    Select 5 challenges for a code battle based on player ratings.
+    Returns a balanced mix of difficulties and technologies.
+    """
+    all_challenges = load_all_code_challenges()
+    if len(all_challenges) < 5:
+        # Not enough challenges, return what we have
+        return all_challenges[:5]
+    
+    avg_rating = (player1_rating + player2_rating) / 2
+    
+    # Categorize challenges by difficulty
+    easy = [c for c in all_challenges if c['difficulty'] == 'easy']
+    normal = [c for c in all_challenges if c['difficulty'] == 'normal']
+    intermediate = [c for c in all_challenges if c['difficulty'] == 'intermediate']
+    hard = [c for c in all_challenges if c['difficulty'] == 'hard']
+    
+    selected = []
+    
+    # Challenge 1: Easy warmup
+    if easy:
+        selected.append(random.choice(easy))
+    elif normal:
+        selected.append(random.choice(normal))
+    
+    # Challenge 2: Normal JavaScript
+    js_normal = [c for c in normal if c['requires_js'] and not c['requires_html']]
+    if js_normal:
+        selected.append(random.choice(js_normal))
+    elif normal:
+        selected.append(random.choice(normal))
+    
+    # Challenge 3: Normal HTML+CSS
+    html_normal = [c for c in normal if c['requires_html'] or c['requires_css']]
+    if html_normal:
+        selected.append(random.choice(html_normal))
+    elif normal:
+        selected.append(random.choice(normal))
+    
+    # Challenge 4: Intermediate
+    if intermediate:
+        selected.append(random.choice(intermediate))
+    elif normal:
+        selected.append(random.choice(normal))
+    
+    # Challenge 5: Hard or Intermediate based on rating
+    if avg_rating > 500 and hard:
+        selected.append(random.choice(hard))
+    elif intermediate:
+        selected.append(random.choice(intermediate))
+    elif normal:
+        selected.append(random.choice(normal))
+    
+    # Ensure we have 5 unique challenges
+    seen_ids = set()
+    unique_selected = []
+    for c in selected:
+        if c['id'] not in seen_ids:
+            unique_selected.append(c)
+            seen_ids.add(c['id'])
+    
+    # Fill with random if needed
+    while len(unique_selected) < 5 and all_challenges:
+        candidate = random.choice(all_challenges)
+        if candidate['id'] not in seen_ids:
+            unique_selected.append(candidate)
+            seen_ids.add(candidate['id'])
+    
+    return unique_selected[:5]
+
+
+# Admin pages for PvP management
+@app.route('/admin/pvp')
+@login_required
+def admin_pvp():
+    if session.get('role') != 'admin':
+        return redirect(url_for('home'))
+    
+    quiz_questions = load_all_quiz_questions()
+    code_challenges = load_all_code_challenges()
+    
+    return render_template(
+        'admin/pvp.html', 
+        quiz_questions=quiz_questions,
+        code_challenges=code_challenges
+    )
+
+
+@app.route('/admin/pvp/code/add', methods=['POST'])
+@login_required
+def admin_add_code_challenge():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    try:
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        difficulty = request.form.get('difficulty', 'normal')
+        category = request.form.get('category', 'general')
+        points_reward = int(request.form.get('points_reward', 100))
+        time_limit = int(request.form.get('time_limit', 300))
+        
+        requires_html = request.form.get('requires_html') == 'true'
+        requires_css = request.form.get('requires_css') == 'true'
+        requires_js = request.form.get('requires_js', 'true') == 'true'
+        
+        html_starter = request.form.get('html_starter', '')
+        css_starter = request.form.get('css_starter', '')
+        js_starter = request.form.get('js_starter', '')
+        
+        hint = request.form.get('hint', '')
+        expected_approach = request.form.get('expected_approach', '')
+        
+        if not title:
+            return jsonify({'success': False, 'message': 'Title is required'}), 400
+        
+        # Combine starter code into JSON
+        starter_code = json.dumps({
+            'html': html_starter,
+            'css': css_starter,
+            'javascript': js_starter
+        })
+        
+        # Parse test cases from form
+        test_cases = []
+        i = 0
+        while f'test_type_{i}' in request.form:
+            test_type = request.form.get(f'test_type_{i}')
+            expected = request.form.get(f'expected_{i}', '')
+            test_input = request.form.get(f'input_{i}', '')
+            
+            test_cases.append({
+                'type': test_type,
+                'test_type': test_type,
+                'input': test_input,
+                'expected': expected
+            })
+            
+            i += 1
+        
+        if not test_cases:
+            return jsonify({'success': False, 'message': 'At least one test case required'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO pvp_code_challenges 
+            (title, description, starter_code, language, difficulty, points_reward,
+             category, requires_html, requires_css, requires_js, time_limit,
+             test_cases, hint, expected_approach)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            title, description, starter_code, 'javascript', difficulty, points_reward,
+            category, requires_html, requires_css, requires_js, time_limit,
+            json.dumps(test_cases), hint, expected_approach
+        ))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Challenge created successfully'})
+    except Exception as e:
+        print('admin_add_code_challenge error:', str(e))
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        try:
+            if 'cur' in locals() and cur:
+                cur.close()
+            if 'conn' in locals() and conn:
+                conn.close()
+        except Exception:
+            pass
+
+
+@app.route('/admin/pvp/code/<int:challenge_id>', methods=['GET'])
+@login_required
+def admin_get_code_challenge(challenge_id):
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM pvp_code_challenges WHERE id = %s", (challenge_id,))
+        challenge = cur.fetchone()
+        
+        if not challenge:
+            return jsonify({'error': 'Challenge not found'}), 404
+        
+        # Parse JSON fields
+        if challenge.get('starter_code'):
+            starter_code = json.loads(challenge['starter_code'])
+            challenge['html_starter'] = starter_code.get('html', '')
+            challenge['css_starter'] = starter_code.get('css', '')
+            challenge['js_starter'] = starter_code.get('javascript', '')
+        
+        if challenge.get('test_cases'):
+            challenge['test_cases'] = json.loads(challenge['test_cases'])
+        
+        return jsonify(challenge)
+    except Exception as e:
+        print('admin_get_code_challenge error:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+@app.route('/admin/pvp/code/edit', methods=['POST'])
+@login_required
+def admin_edit_code_challenge():
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        challenge_id = request.form.get('id')
+        
+        # Parse test cases from JSON string
+        test_cases = json.loads(request.form.get('test_cases', '[]'))
+        
+        starter_code = json.dumps({
+            'html': request.form.get('html_starter', ''),
+            'css': request.form.get('css_starter', ''),
+            'javascript': request.form.get('js_starter', '')
+        })
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE pvp_code_challenges 
+            SET title = %s, description = %s, difficulty = %s, category = %s,
+                points_reward = %s, requires_html = %s,
+                requires_css = %s, requires_js = %s, starter_code = %s,
+                test_cases = %s, hint = %s, expected_approach = %s
+            WHERE id = %s
+        """, (
+            request.form.get('title'), 
+            request.form.get('description'), 
+            request.form.get('difficulty'), 
+            request.form.get('category'),
+            request.form.get('points_reward'), 
+            request.form.get('requires_html') == '1',
+            request.form.get('requires_css') == '1', 
+            request.form.get('requires_js') == '1', 
+            starter_code,
+            json.dumps(test_cases), 
+            request.form.get('hint', ''),
+            request.form.get('expected_approach', ''), 
+            challenge_id
+        ))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        print('admin_edit_code_challenge error:', str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+@app.route('/admin/pvp/code/<int:challenge_id>', methods=['PUT'])
+
+@login_required
+def admin_update_code_challenge(challenge_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False}), 403
+    
+    try:
+        data = request.get_json()
+        
+        starter_code = json.dumps({
+            'html': data.get('html_starter', ''),
+            'css': data.get('css_starter', ''),
+            'javascript': data.get('js_starter', '')
+        })
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE pvp_code_challenges 
+            SET title = %s, description = %s, difficulty = %s, category = %s,
+                points_reward = %s, time_limit = %s, requires_html = %s,
+                requires_css = %s, requires_js = %s, starter_code = %s,
+                test_cases = %s, hint = %s, expected_approach = %s
+            WHERE id = %s
+        """, (
+            data['title'], data['description'], data['difficulty'], data['category'],
+            data['points_reward'], data['time_limit'], data['requires_html'],
+            data['requires_css'], data['requires_js'], starter_code,
+            json.dumps(data['test_cases']), data.get('hint', ''),
+            data.get('expected_approach', ''), challenge_id
+        ))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        print('admin_update_code_challenge error:', str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+@app.route('/admin/pvp/code/<int:challenge_id>', methods=['DELETE'])
+@login_required
+def admin_delete_code_challenge(challenge_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False}), 403
+    
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM pvp_code_challenges WHERE id = %s", (challenge_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        print('admin_delete_code_challenge error:', str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
 
 
 @app.route('/admin/pvp/quiz/add', methods=['POST'])
@@ -2935,7 +4021,7 @@ def admin_add_quiz_question():
             (question, difficulty, json.dumps(choices), correct_choice_index, time_limit, explanation)
         )
         conn.commit()
-        return redirect(url_for('admin_pvp'))
+        return jsonify({'success': True, 'message': 'Question created successfully'})
     except Exception as e:
         print('admin_add_quiz_question error:', str(e))
         return jsonify({'success': False, 'message': 'DB error'}), 500
@@ -2952,7 +4038,38 @@ def admin_add_quiz_question():
             pass
 
 
+@app.route('/admin/pvp/quiz/<int:question_id>', methods=['GET'])
+@login_required
+def admin_get_quiz_question(question_id):
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT * FROM pvp_quiz_questions WHERE id = %s", (question_id,))
+        question = cur.fetchone()
+        
+        if not question:
+            return jsonify({'error': 'Question not found'}), 404
+        
+        # Parse choices JSON
+        if question.get('choices'):
+            question['choices'] = json.loads(question['choices'])
+        
+        return jsonify(question)
+    except Exception as e:
+        print('admin_get_quiz_question error:', str(e))
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
 @app.route('/admin/pvp/quiz/<int:question_id>', methods=['PUT'])
+
 @login_required
 def admin_update_quiz_question(question_id):
     if session.get('role') != 'admin':
