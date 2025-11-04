@@ -86,6 +86,8 @@
         /* list-style-type: none; */
         padding: 0;
         margin: 0;
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent-color) transparent;
       }
 
       /* Restore list styles for lesson content */
@@ -204,6 +206,30 @@
         left: 80px;
         width: calc(100% - 80px);
         transition: background-color 0.3s ease;
+      }
+
+      .inline-code {
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        padding: 2px 6px;
+        font-family: inherit;
+        color: #ffd166;
+        white-space: pre-wrap;
+      }
+      .ghost-btn {
+        background: transparent;
+        border: 2px solid var(--accent-color);
+        border-radius: 5px;
+        color: var(--accent-color);
+        font-family: "Luckiest Guy", cursive;
+        font-size: 20px;
+        padding: 10px 20px;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      .ghost-btn:hover,
+      .ghost-btn:focus {
+        background-color: var(--accent-color);
+        color: white;
       }
       .section-footer.has-result {
         background-color: #4d1e91;
@@ -497,20 +523,17 @@
         box-shadow: 0 0 0 1.5px #7e31ef;
       }
       .playground-output {
-        background: #23223a;
+        display: none;
+        flex-direction: column;
+        background: rgba(20, 18, 40, 0.95);
         border: 1px solid #39386b;
-        border-top: none;
-        min-height: 40px;
-        height: 100vh;
+        border-radius: 14px;
         color: #e0e0e0;
         font-family: "Fira Mono", "Consolas", "Menlo", monospace;
         font-size: 1rem;
-        margin-bottom: 10px;
-        /* max-width: 600px; */
-        margin-left: auto;
-        margin-right: auto;
+        margin: 12px auto 10px;
         box-shadow: none;
-        padding: 12px 16px;
+        overflow: hidden;
         transition: border-color 0.2s;
       }
       @media (max-width: 700px) {
@@ -523,6 +546,149 @@
         #playground-editor-container .CodeMirror {
           font-size: 0.98rem;
         }
+      }
+      #playground-output-content {
+        flex: 1 1 auto;
+        min-height: 220px;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        overflow: hidden;
+      }
+
+      #playground-output-content iframe {
+        flex: 1 1 auto;
+        width: 100%;
+        border: none;
+        display: block;
+        background: #ffffff;
+      }
+
+      #playground-debug-panel {
+        display: none;
+      }
+
+      .playground-debug-panel {
+        flex: 0 0 auto;
+      }
+
+      .debug-panel {
+        display: flex;
+        flex-direction: column;
+        background: rgba(17, 17, 26, 0.92);
+        border-top: 1px solid rgba(162, 89, 255, 0.35);
+      }
+
+      .debug-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: rgba(55, 21, 105, 0.6);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.9rem;
+        letter-spacing: 0.02em;
+      }
+
+      .debug-panel-header span {
+        font-weight: 600;
+        color: #f5f5f5;
+      }
+
+      .debug-clear-btn {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #f5f5f5;
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+      }
+
+      .debug-clear-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #ffffff;
+      }
+
+      .debug-panel-body {
+        flex: 1 1 auto;
+        padding: 12px 14px;
+        overflow-y: auto;
+        font-family: "Fira Code", monospace;
+        font-size: 0.85rem;
+        background: rgba(12, 12, 20, 0.65);
+      }
+
+      .debug-panel-body::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .debug-panel-body::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+      }
+
+      .debug-placeholder {
+        color: #8a8a8a;
+        font-size: 0.85rem;
+      }
+
+      .debug-entry {
+        margin-bottom: 10px;
+        color: #f5f5f5;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .debug-entry:last-child {
+        margin-bottom: 0;
+      }
+
+      .debug-entry-time {
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.75rem;
+        margin-right: 8px;
+      }
+
+      .debug-entry-text {
+        color: inherit;
+      }
+
+      .debug-entry-stack {
+        margin-top: 6px;
+        padding-left: 18px;
+        border-left: 2px solid rgba(255, 255, 255, 0.15);
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.75);
+        white-space: pre-wrap;
+      }
+
+      .debug-entry.debug-log .debug-entry-text {
+        color: #c9c9c9;
+      }
+
+      .debug-entry.debug-info .debug-entry-text {
+        color: #9ad5ff;
+      }
+
+      .debug-entry.debug-warn .debug-entry-text {
+        color: #ffd166;
+      }
+
+      .debug-entry.debug-error .debug-entry-text {
+        color: #ff6b6b;
+      }
+
+      .debug-entry.debug-debug .debug-entry-text {
+        color: #76baff;
       }
       .playground-loader {
         display: flex;
@@ -614,6 +780,9 @@
         font-size: 1.08rem;
         letter-spacing: 0.5px;
       }
+      .playground-output-header {
+        display: none;
+      }
       .playground-output-placeholder {
         color: #aaa;
         display: block;
@@ -667,23 +836,15 @@
         margin: 0 !important;
         border-radius: 0 !important;
         box-shadow: none !important;
-        font-size: 1.1rem;
-        overflow: auto;
         border-left: 2px solid #2d145c;
-        background: #23223a;
+        background: rgba(20, 18, 40, 0.95);
+        overflow: hidden;
       }
       .playground-fullscreen-wrapper.fullscreen .playground-output-header {
         display: block !important;
       }
-      #playground-output-content {
-        height: 100%;
-      }
       .playground-fullscreen-wrapper.fullscreen #playground-output-content {
-        flex: 1 1 0;
-        height: 100%;
-        overflow: auto;
-        display: flex;
-        flex-direction: column;
+        flex: 1 1 auto;
       }
       .playground-fullscreen-btn {
         position: absolute;
@@ -752,10 +913,10 @@
         /></a>
         <br />
       </div>
-      <div class="nav-item levels">
+      <!-- <div class="nav-item levels">
         <i class="fas fa-bars" aria-hidden="true"></i>
         <span>Levels</span>
-      </div>
+      </div> -->
       <div class="nav-item badges">
         <i class="fas fa-award" aria-hidden="true"></i>
         <span>Badges</span>
@@ -805,8 +966,27 @@
         >
           {{ chapter.title }}
         </div>
-        <!-- Exit button -->
-        <div style="flex: 1; text-align: right">
+        <!-- Comment and Exit buttons -->
+        <div
+          style="
+            flex: 1;
+            text-align: right;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            align-items: center;
+          "
+        >
+          <!-- Comments button -->
+          <button
+            class="btn btn-link text-white"
+            style="font-size: 1.5rem; text-decoration: none"
+            onclick="toggleCommentsDropdown()"
+            id="comments-btn"
+          >
+            <i class="fas fa-comments"></i>
+          </button>
+          <!-- Exit button -->
           <button
             class="btn btn-link text-white"
             style="font-size: 1.5rem; text-decoration: none"
@@ -817,8 +997,13 @@
         </div>
       </div>
       <div class="section-content" id="lesson-content-section">
-        {% set page = lesson_pages[current_page-1] %} {% if page.page_type ==
-        'text_image' %} {% if page.image_url %}
+        {% set page = lesson_pages[current_page-1] %}
+        <div
+          id="lesson-page-meta"
+          data-lesson-content-id="{{ page.id }}"
+          hidden
+        ></div>
+        {% if page.page_type == 'text_image' %} {% if page.image_url %}
         <img
           src="{{ page.image_url }}"
           alt="{{ page.title }}"
@@ -855,6 +1040,16 @@
         {% endif %} {% elif page.page_type == 'quiz' %}
         <div class="content">{{ page.content|safe }}</div>
         <form id="quiz-form">
+          <input
+            type="hidden"
+            id="correct-message"
+            value="{{ page.correct_message|default('', true)|e }}"
+          />
+          <input
+            type="hidden"
+            id="incorrect-message"
+            value="{{ page.incorrect_message|default('', true)|e }}"
+          />
           {% if page.choices %} {% for choice in page.choices %}
           <div class="form-check">
             <input
@@ -863,6 +1058,7 @@
               name="quiz_choice"
               id="choice{{ loop.index }}"
               value="{{ choice.id }}"
+              data-is-correct="{{ choice.is_correct|int }}"
             />
             <label class="form-check-label" for="choice{{ loop.index }}">
               {{ choice.choice_text }}
@@ -919,16 +1115,34 @@
               <i class="fas fa-expand"></i>
             </button>
           </div>
-          <div
-            id="playground-output"
-            class="playground-output"
-            style="display: none"
-          >
-            <div class="playground-output-header" style="display: none">
-              Output
-            </div>
+          <div id="playground-output" class="playground-output">
+            <div class="playground-output-header">Output</div>
             <div id="playground-output-content">
               <span class="playground-output-placeholder">No output yet</span>
+            </div>
+            <div
+              class="debug-panel playground-debug-panel"
+              id="playground-debug-panel"
+            >
+              <div class="debug-panel-header">
+                <span>Debug Console</span>
+                <button
+                  type="button"
+                  class="debug-clear-btn"
+                  id="playground-debug-clear"
+                >
+                  <i class="fas fa-trash" aria-hidden="true"></i>
+                  Clear
+                </button>
+              </div>
+              <div class="debug-panel-body" id="playground-debug-log">
+                <div
+                  class="debug-placeholder"
+                  id="playground-debug-placeholder"
+                >
+                  Console output from your JavaScript will appear here.
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -969,554 +1183,1105 @@
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="/static/badge-manager.js"></script>
     <script>
-      let currentPage = {{ current_page }};
-      const totalPages = {{ total_pages }};
-      const chapterId = {{ chapter.id }};
-      const level = "{{ chapter.level_title }}";
-      let quizChoices = null;  // Initialize as null, will be set after AJAX load
-      let confettiShown = false;
+        let currentPage = {{ current_page }};
+        const totalPages = {{ total_pages }};
+        const chapterId = {{ chapter.id }};
+        const level = "{{ chapter.level_title }}";
+        let quizChoices = [];
+        let confettiShown = false;
+        let currentPageMeta = null;
+        let quizMeta = null;
+        const quizResults = {};
+        const takeawayNotes = {};
+        let lessonPlaygroundFrameWindow = null;
 
-      // Hide loader when content is loaded with minimum 2 seconds
-      window.addEventListener('load', function() {
-        const loader = document.getElementById('loader-container');
-        const startTime = Date.now();
-        const minimumLoadTime = 2000; // 2 seconds in milliseconds
+        const lessonDebugPanel = document.getElementById('playground-debug-panel');
+        const lessonDebugLog = document.getElementById('playground-debug-log');
+        const lessonDebugPlaceholder = document.getElementById('playground-debug-placeholder');
+        const lessonDebugClearBtn = document.getElementById('playground-debug-clear');
 
-        function hideLoader() {
-          const elapsedTime = Date.now() - startTime;
-          const remainingTime = Math.max(0, minimumLoadTime - elapsedTime);
+        function lessonFormatConsoleArgs(args) {
+          if (!Array.isArray(args) || args.length === 0) {
+            return '';
+          }
 
-          setTimeout(() => {
-            if (loader) {
-              loader.style.display = 'none';
-            }
-          }, remainingTime);
+          return args
+            .map((arg) => {
+              if (typeof arg === 'string') {
+                return arg;
+              }
+              if (arg === null) {
+                return 'null';
+              }
+              if (arg === undefined) {
+                return 'undefined';
+              }
+              if (
+                typeof arg === 'number' ||
+                typeof arg === 'boolean' ||
+                typeof arg === 'bigint'
+              ) {
+                return String(arg);
+              }
+              if (arg instanceof Error) {
+                return arg.message || arg.toString();
+              }
+              if (typeof arg === 'function') {
+                return arg.toString();
+              }
+              try {
+                return JSON.stringify(arg, null, 2);
+              } catch (err) {
+                return Object.prototype.toString.call(arg);
+              }
+            })
+            .join(' ');
         }
 
-        hideLoader();
-      });
-
-      // Animate progress bar from previous to new value
-      function animateProgressBar(from, to) {
-        const progressBar = document.querySelector('.progress');
-        let start = null;
-        const duration = 200;
-        function step(timestamp) {
-          if (!start) start = timestamp;
-          const progress = Math.min((timestamp - start) / duration, 1);
-          const value = from + (to - from) * progress;
-          progressBar.style.width = `${value}%`;
-          if (progress < 1) {
-            requestAnimationFrame(step);
+        function clearLessonDebugConsole(showPlaceholder = true) {
+          if (!lessonDebugLog) {
+            return;
+          }
+          lessonDebugLog.querySelectorAll('.debug-entry').forEach((entry) => {
+            entry.remove();
+          });
+          if (lessonDebugPlaceholder) {
+            lessonDebugPlaceholder.style.display = showPlaceholder ? 'block' : 'none';
           }
         }
-        requestAnimationFrame(step);
-      }
 
-      // Initial progress bar animation
-      document.addEventListener('DOMContentLoaded', function() {
-        const progress = ((currentPage - 1) / totalPages) * 100;
-        animateProgressBar(0, progress);
-      });
+        function appendLessonDebugEntry(payload) {
+          if (!lessonDebugLog || !payload) {
+            return;
+          }
 
-      // Show/hide Previous button based on currentPage
-      function updatePrevButton() {
-        const prevBtn = document.getElementById('prev-btn');
-        if (currentPage > 1) {
-          prevBtn.style.display = '';
-        } else {
-          prevBtn.style.display = 'none';
-        }
-      }
-      document.addEventListener('DOMContentLoaded', updatePrevButton);
+          if (lessonDebugPlaceholder) {
+            lessonDebugPlaceholder.style.display = 'none';
+          }
 
-      // Quiz state for footer button
-      let quizAnswered = false;
-      let quizCorrect = false;
-      let quizOriginalNextText = null;
-      let quizPage = false;
+          const levelKey =
+            payload.level === 'table' ? 'log' : payload.level || 'log';
+          const entry = document.createElement('div');
+          entry.className = `debug-entry debug-${levelKey}`;
 
-      function updateQuizFooterButton() {
-        const nextBtn = document.getElementById('next-btn');
-        if (quizPage) {
-          if (!quizAnswered) {
-            nextBtn.textContent = 'Check';
-            nextBtn.disabled = !document.querySelector('input[name="quiz_choice"]:checked');
+          const timeSpan = document.createElement('span');
+          timeSpan.className = 'debug-entry-time';
+          timeSpan.textContent = new Date().toLocaleTimeString();
+          entry.appendChild(timeSpan);
+
+          const textSpan = document.createElement('span');
+          textSpan.className = 'debug-entry-text';
+          if (payload.type === 'console') {
+            const prefix = payload.level === 'table' ? '[table] ' : '';
+            textSpan.textContent = prefix + lessonFormatConsoleArgs(payload.args || []);
           } else {
-            nextBtn.textContent = quizOriginalNextText || 'Next';
-            nextBtn.disabled = false;
+            const segments = [];
+            if (payload.message) {
+              segments.push(payload.message);
+            }
+            if (payload.source) {
+              const origin = window.location.origin;
+              const cleanedSource = payload.source.startsWith(origin)
+                ? payload.source.slice(origin.length)
+                : payload.source;
+              const locationParts = [cleanedSource];
+              if (payload.lineno) {
+                locationParts.push(payload.lineno);
+              }
+              if (payload.colno) {
+                locationParts.push(payload.colno);
+              }
+              segments.push(`(${locationParts.join(':')})`);
+            }
+            textSpan.textContent = segments.join(' ');
           }
-        } else {
-          nextBtn.textContent = quizOriginalNextText || nextBtn.textContent;
-          nextBtn.disabled = false;
-        }
-      }
+          entry.appendChild(textSpan);
 
-      function footerNextAction() {
-        if (quizPage && !quizAnswered) {
-          checkQuizAnswer();
-        } else {
-          nextPage();
-        }
-      }
+          if (payload.stack) {
+            const stackEl = document.createElement('pre');
+            stackEl.className = 'debug-entry-stack';
+            stackEl.textContent = payload.stack;
+            entry.appendChild(stackEl);
+          }
 
-      // Quiz answer checking (client-side only, for demo)
-      function checkQuizAnswer() {
-        const form = document.getElementById('quiz-form');
-        const selected = form.querySelector('input[name="quiz_choice"]:checked');
-        const feedback = document.getElementById('quiz-feedback');
-        const footer = document.querySelector('.section-footer');
-
-        if (!selected) {
-          feedback.textContent = 'Please select an answer.';
-          feedback.style.color = 'orange';
-          return;
+          lessonDebugLog.appendChild(entry);
+          lessonDebugLog.scrollTop = lessonDebugLog.scrollHeight;
         }
 
-        // Reset previous highlights
-        form.querySelectorAll('.form-check-input').forEach(input => {
-          input.classList.remove('incorrect');
-          input.nextElementSibling.classList.remove('correct');
+        function installLessonDebugHooks(frameWindow) {
+          if (!frameWindow || frameWindow.__webscapeDebugInstalled) {
+            return;
+          }
+
+          const levels = ['log', 'info', 'warn', 'error', 'debug', 'table'];
+          const consoleHost = frameWindow.console || (frameWindow.console = {});
+
+          levels.forEach((level) => {
+            const original =
+              typeof consoleHost[level] === 'function'
+                ? consoleHost[level].bind(consoleHost)
+                : null;
+            consoleHost[level] = function (...args) {
+              appendLessonDebugEntry({ type: 'console', level, args });
+              if (original) {
+                try {
+                  original(...args);
+                } catch (err) {
+                  // Ignore console forwarding errors within sandbox
+                }
+              }
+            };
+          });
+
+          const originalClear =
+            typeof consoleHost.clear === 'function'
+              ? consoleHost.clear.bind(consoleHost)
+              : null;
+          consoleHost.clear = function () {
+            clearLessonDebugConsole(true);
+            if (originalClear) {
+              try {
+                originalClear();
+              } catch (err) {
+                // Ignore sandbox exceptions triggered by console.clear
+              }
+            }
+          };
+
+          frameWindow.addEventListener(
+            'error',
+            function (event) {
+              appendLessonDebugEntry({
+                type: 'error',
+                level: 'error',
+                message: event.message || 'Uncaught error',
+                source: event.filename || '',
+                lineno: event.lineno,
+                colno: event.colno,
+                stack:
+                  event.error && event.error.stack
+                    ? String(event.error.stack)
+                    : '',
+              });
+            },
+            false
+          );
+
+          frameWindow.addEventListener(
+            'unhandledrejection',
+            function (event) {
+              const reason = event.reason;
+              appendLessonDebugEntry({
+                type: 'error',
+                level: 'error',
+                message:
+                  (reason && reason.message) ||
+                  (typeof reason === 'string'
+                    ? reason
+                    : 'Unhandled promise rejection'),
+                stack:
+                  reason && reason.stack ? String(reason.stack) : '',
+              });
+            },
+            false
+          );
+
+          frameWindow.__webscapeDebugInstalled = true;
+          lessonPlaygroundFrameWindow = frameWindow;
+        }
+
+        if (lessonDebugClearBtn) {
+          lessonDebugClearBtn.addEventListener('click', function () {
+            if (
+              lessonPlaygroundFrameWindow &&
+              lessonPlaygroundFrameWindow.console &&
+              typeof lessonPlaygroundFrameWindow.console.clear === 'function'
+            ) {
+              try {
+                lessonPlaygroundFrameWindow.console.clear();
+                return;
+              } catch (err) {
+                // Ignore sandbox exceptions triggered by console.clear
+              }
+            }
+            clearLessonDebugConsole(true);
+          });
+        }
+
+        function escapeHtml(str) {
+          if (typeof str !== 'string') {
+            return '';
+          }
+          return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+
+        function formatTextWithInlineCode(str) {
+          if (!str) {
+            return '';
+          }
+
+          const PLACEHOLDER = '__INLINE_CODE__';
+          const codeSegments = [];
+          let index = 0;
+          const withPlaceholders = str.replace(/`([^`]+)`/g, (_, code) => {
+            const token = `${PLACEHOLDER}${index++}__`;
+            codeSegments.push(code);
+            return token;
+          });
+          const escaped = escapeHtml(withPlaceholders);
+          return codeSegments.reduce((result, code, idx) => {
+            const token = `${PLACEHOLDER}${idx}__`;
+            const escapedCode = escapeHtml(code);
+            return result.replace(token, `<code class="inline-code">${escapedCode}</code>`);
+          }, escaped);
+        }
+
+        function splitIntoBullets(text) {
+          if (!text) {
+            return [];
+          }
+          return text
+            .split(/\n+/)
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+        }
+
+        // Hide loader when content is loaded with minimum 2 seconds
+        window.addEventListener('load', function() {
+          const loader = document.getElementById('loader-container');
+          const startTime = Date.now();
+          const minimumLoadTime = 2000; // 2 seconds in milliseconds
+
+          function hideLoader() {
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = Math.max(0, minimumLoadTime - elapsedTime);
+
+            setTimeout(() => {
+              if (loader) {
+                loader.style.display = 'none';
+              }
+            }, remainingTime);
+          }
+
+          hideLoader();
         });
 
-        // Get the selected choice ID and compare with correct answer
-        const selectedId = selected.value;
-        console.log('Selected ID:', selectedId);
-        console.log('Quiz Choices:', quizChoices);
+        // Animate progress bar from previous to new value
+        function animateProgressBar(from, to) {
+          const progressBar = document.querySelector('.progress');
+          let start = null;
+          const duration = 200;
+          function step(timestamp) {
+            if (!start) start = timestamp;
+            const progress = Math.min((timestamp - start) / duration, 1);
+            const value = from + (to - from) * progress;
+            progressBar.style.width = `${value}%`;
+            if (progress < 1) {
+              requestAnimationFrame(step);
+            }
+          }
+          requestAnimationFrame(step);
+        }
 
-        // Find the correct choice
-        const correctChoice = quizChoices.find(c => c.is_correct);
-        console.log('Correct Choice:', correctChoice);
+        // Initial progress bar animation
+        document.addEventListener('DOMContentLoaded', function() {
+          const progress = ((currentPage - 1) / totalPages) * 100;
+          animateProgressBar(0, progress);
+        });
 
-        // Compare the selected ID with the correct choice ID
-        const isCorrect = correctChoice && selectedId === correctChoice.id.toString();
-        console.log('Is Correct:', isCorrect);
+        // Show/hide Previous button based on currentPage
+        function updatePrevButton() {
+          const prevBtn = document.getElementById('prev-btn');
+          if (currentPage > 1) {
+            prevBtn.style.display = '';
+          } else {
+            prevBtn.style.display = 'none';
+          }
+        }
+        document.addEventListener('DOMContentLoaded', updatePrevButton);
 
-        if (isCorrect) {
-          // Random feedback messages for correct answers
+        // Quiz state for footer button
+        let quizAnswered = false;
+        let quizCorrect = false;
+        let quizOriginalNextText = null;
+        let quizPage = false;
+
+        function updateQuizFooterButton() {
+          const nextBtn = document.getElementById('next-btn');
+          if (quizPage) {
+            if (!quizAnswered) {
+              nextBtn.textContent = 'Check';
+              nextBtn.disabled = !document.querySelector('input[name="quiz_choice"]:checked');
+            } else {
+              nextBtn.textContent = quizOriginalNextText || 'Next';
+              nextBtn.disabled = false;
+            }
+          } else {
+            nextBtn.textContent = quizOriginalNextText || nextBtn.textContent;
+            nextBtn.disabled = false;
+          }
+        }
+
+        function footerNextAction() {
+          if (quizPage && !quizAnswered) {
+            checkQuizAnswer();
+          } else {
+            nextPage();
+          }
+        }
+
+        // Quiz answer checking (client-side only, for demo)
+        function checkQuizAnswer() {
+          const form = document.getElementById('quiz-form');
+          const selected = form ? form.querySelector('input[name="quiz_choice"]:checked') : null;
+          const feedback = document.getElementById('quiz-feedback');
+          const footer = document.querySelector('.section-footer');
+
+          if (!form || !selected) {
+            if (feedback) {
+              feedback.textContent = 'Please select an answer.';
+              feedback.style.color = 'orange';
+            }
+            return;
+          }
+
+          if (feedback) {
+            feedback.style.color = '';
+          }
+
+          form.querySelectorAll('.form-check-input').forEach((inputEl) => {
+            inputEl.classList.remove('incorrect');
+            if (inputEl.nextElementSibling) {
+              inputEl.nextElementSibling.classList.remove('correct');
+            }
+          });
+
+          const selectedId = selected.value;
+          const selectedMeta = quizChoices.find((choice) => String(choice.id) === String(selectedId));
+          const correctMeta = quizChoices.find((choice) => choice.is_correct);
+          const isCorrect = selectedMeta ? Boolean(selectedMeta.is_correct) : false;
+
+          const correctMessageInput = document.getElementById('correct-message');
+          const incorrectMessageInput = document.getElementById('incorrect-message');
+          const customCorrect = quizMeta && quizMeta.correct_message
+            ? quizMeta.correct_message
+            : (correctMessageInput ? correctMessageInput.value : '');
+          const customIncorrect = quizMeta && quizMeta.incorrect_message
+            ? quizMeta.incorrect_message
+            : (incorrectMessageInput ? incorrectMessageInput.value : '');
+
+          const selectedLabel = selected.nextElementSibling ? selected.nextElementSibling.textContent.trim() : '';
+          const correctLabel = correctMeta && correctMeta.label
+            ? correctMeta.label
+            : (quizMeta && quizMeta.correct_choice ? quizMeta.correct_choice : '');
+
+          if (isCorrect) {
+            const correctMessages = [
+              'Perfect!', 'Excellent!', 'Brilliant!', 'Spot on!', 'Amazing!',
+              'Fantastic!', 'Outstanding!', 'Superb!', 'Wonderful!', 'Great job!',
+              'You got it!', "That's right!", 'Exactly!', 'Well done!', 'Impressive!'
+            ];
+            const randomMessage = correctMessages[Math.floor(Math.random() * correctMessages.length)];
+      const safeCustom = customCorrect ? `<div class="mt-2" style="color: #d3d3d3">${formatTextWithInlineCode(customCorrect)}</div>` : '';
+      const correctAnswerLine = correctLabel ? `<div class="mt-2" style="color: #d3d3d3">Correct answer: ${formatTextWithInlineCode(correctLabel)}</div>` : '';
+            if (feedback) {
+              feedback.innerHTML = `
+                <div style="display: flex; align-items: flex-end; gap: 10px; color: limegreen; font-size: 1.5rem;">
+                  <svg class="check-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation: checkBounce 0.6s ease-out;">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="limegreen" />
+                  </svg>
+                  <span>${escapeHtml(randomMessage)}</span>
+                </div>
+                ${safeCustom}
+                ${correctAnswerLine}
+              `;
+            }
+            quizCorrect = true;
+          } else {
+            const incorrectMessages = [
+              'Not quite.', "You'll get it next time.", 'Ouch, not really.', 'Not exactly.', 'Close!',
+              'Nahh!', 'Keep trying.', 'Not quite right.', 'Incorrect.', 'Not this time.',
+              "Oops, that's wrong.", 'Not quite there.', 'Try once more.', 'Not the one.', 'Nice try.'
+            ];
+            const randomMessage = incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
+            const whyLine = customIncorrect ? `<div class="mt-2" style="color: #d3d3d3">Why: ${formatTextWithInlineCode(customIncorrect)}</div>` : '';
+            const correctAnswerLine = correctLabel ? `<div class="mt-2" style="color: #d3d3d3">Correct answer: ${formatTextWithInlineCode(correctLabel)}</div>` : '';
+            if (feedback) {
+              feedback.innerHTML = `
+                <div style="display: flex; align-items: flex-end; gap: 10px; color: red; font-size: 1.5rem;">
+                  <svg class="wrong-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation: wrongShake 0.6s ease-out;">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="red" />
+                  </svg>
+                  <span>${escapeHtml(randomMessage)}</span>
+                </div>
+                ${correctAnswerLine}
+                ${whyLine}
+              `;
+            }
+            quizCorrect = false;
+            selected.classList.add('incorrect');
+          }
+
+          if (correctMeta) {
+            const correctInput = form.querySelector(`input[name="quiz_choice"][value="${correctMeta.id}"]`);
+            if (correctInput && correctInput.nextElementSibling) {
+              correctInput.nextElementSibling.classList.add('correct');
+            }
+          }
+
+          form.classList.add('quiz-answered');
+          form.querySelectorAll('input[name="quiz_choice"]').forEach((inputEl) => {
+            inputEl.disabled = true;
+          });
+
+          const summaryQuestion = quizMeta && quizMeta.question
+            ? quizMeta.question
+            : (currentPageMeta && currentPageMeta.plain_text)
+              ? currentPageMeta.plain_text
+              : `Question ${currentPage}`;
+          const quizKey = quizMeta && quizMeta.page_id
+            ? `quiz-${quizMeta.page_id}`
+            : `quiz-${currentPage}`;
+          quizResults[quizKey] = {
+            page_id: quizMeta && quizMeta.page_id ? quizMeta.page_id : null,
+            order: quizMeta && quizMeta.page_num ? quizMeta.page_num : currentPage,
+            question: summaryQuestion,
+            selected_choice: selectedLabel,
+            correct_choice: correctLabel,
+            is_correct: isCorrect,
+            correct_message: customCorrect,
+            incorrect_message: customIncorrect,
+            timestamp: Date.now()
+          };
+
+          quizAnswered = true;
+          footer.classList.add('has-result');
+          updateQuizFooterButton();
+        }
+
+        // Listen for quiz choice selection to enable the button
+        function setupQuizChoiceListeners() {
+          const quizChoicesInputs = document.querySelectorAll('input[name="quiz_choice"]');
+          quizChoicesInputs.forEach(input => {
+            input.addEventListener('change', function() {
+              updateQuizFooterButton();
+            });
+          });
+        }
+
+        // On initial load, if progress is 100, always start at page 1
+        document.addEventListener('DOMContentLoaded', function() {
+          const userCurrentProgressInput = document.getElementById('user-current-progress');
+          let userCurrentProgress = userCurrentProgressInput ? parseFloat(userCurrentProgressInput.value) : 0;
+          if (userCurrentProgress >= 100) {
+            currentPage = 1;
+          }
+          loadLessonPage(currentPage);
+          const nextBtn = document.getElementById('next-btn');
+          quizAnswered = false;
+          quizCorrect = false;
+          quizPage = false;
+          quizOriginalNextText = nextBtn.textContent;
+        });
+
+        // AJAX navigation for next/previous page
+        function loadLessonPage(pageNum) {
+          fetch(`/user/classic/${level}/${chapterId}/ajax?page=${pageNum}`)
+            .then(response => response.json())
+            .then(data => {
+              document.getElementById('lesson-content-section').innerHTML = data.html;
+              const pageMetaEl = document.getElementById('lesson-page-meta');
+              if (pageMetaEl && pageMetaEl.dataset.lessonContentId) {
+                const parsedId = parseInt(pageMetaEl.dataset.lessonContentId, 10);
+                if (!Number.isNaN(parsedId)) {
+                  window.currentLessonContentId = parsedId;
+                  console.log('[Comments Debug] Updated currentLessonContentId from DOM:', parsedId);
+                }
+              }
+              currentPageMeta = data.page_meta || null;
+              quizMeta = null;
+              if (currentPageMeta && currentPageMeta.quiz) {
+                quizMeta = currentPageMeta.quiz;
+                if (!quizMeta.question && currentPageMeta.plain_text) {
+                  quizMeta.question = currentPageMeta.plain_text;
+                }
+              } else if (data.quiz_meta) {
+                quizMeta = data.quiz_meta;
+              }
+
+              if (currentPageMeta && currentPageMeta.takeaway && currentPageMeta.takeaway.summary) {
+                const takeawayKey = currentPageMeta.page_id ? `takeaway-${currentPageMeta.page_id}` : `takeaway-${currentPage}`;
+                takeawayNotes[takeawayKey] = {
+                  order: currentPageMeta.page_num || currentPage,
+                  title: currentPageMeta.takeaway.title || `Page ${currentPage}`,
+                  summary: currentPageMeta.takeaway.summary,
+                  notes: currentPageMeta.takeaway.notes || ''
+                };
+              }
+
+              const prevProgress = ((currentPage - 1) / totalPages) * 100;
+              const newProgress = ((pageNum - 1) / totalPages) * 100;
+              animateProgressBar(prevProgress, newProgress);
+              currentPage = pageNum;
+              if (window.Prism) { Prism.highlightAll(); }
+              updatePrevButton();
+              // Quiz/next button logic
+              quizAnswered = false;
+              quizCorrect = false;
+              quizPage = false;
+              quizOriginalNextText = data.next_button_text || 'Next';
+              const nextBtn = document.getElementById('next-btn');
+              // Clear dynamic text result (quiz feedback)
+              document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
+              if (data.is_congrats) {
+                // Hide navigation/footer buttons
+                if (nextBtn) nextBtn.style.display = 'none';
+                const prevBtn = document.getElementById('prev-btn');
+                if (prevBtn) prevBtn.style.display = 'none';
+                document.querySelector('.section-footer').style.display = 'none';
+
+                const triggerConfetti = () => {
+                  if (!confettiShown) {
+                    const script = document.createElement('script');
+                    script.src = 'https://run.confettipage.com/here.js';
+                    script.setAttribute('data-confetticode', 'U2FsdGVkX1+nYz+H/kWOfHv3kjzg/+2AGyRBF7rTQDU0DZSB6Z1MMvOQ9Qz7PF1USOdIc0K2c2xa5XnayuJOiVvFkIPb8+tsxrqZiQj+lDhb67hlbGzZ64HoVrGt/Mf5SP5azO3Z2paXLPHHiMvAeG/Lr0xK7GQAmXnEndVnOWN23mqA/PFd7L+lkcBkLsQdbfuYANLjyLgNogu/8lyi7g4BrDiLLShJE0387OYmBq3CaG9JGvipunaU3JOwkdrt4a1cRdIGv35NR8ydMHeqNH+gqotRdeey5nG8XABIo40lvoYtD2YHY5C5g5UUoLYS0ShVJ8clsYrOlAg6xi/vbBQ6mBaqPYq2kwpdF7uBuLsShGiZB4ra2JzwnZterA4XBUvje+tth1u9ihMusYMGWDQ9LFrngpq5MRo5CchpgGAL0BFNt21QhnnCsNikcpVCqCW6py6YBm0XL5YMhbb94h4beflumTmrW6mD8kFYW4Ur6TvZsBHgzZShcpTNxEWnhjA3cEPg5YkxnFAJb45UcIfSFxYVzXwZ39iHO4MDTGbIvCWxJkCsdoncGB9YLwSczLTRL+/ItXeZ7eVhOtf9rILGISgCBoZRhQ1FJHhSlXZ9Um6WfIqAlt3c+XIJXLj1hBdMJNtuLWCf2rNHQ4m0mJOn3jhYcNu6GfDIqx7xTlZStyeNIevXpEi//+NzAyzA4IpJVUtbJnPSFr5K6fboAw==');
+                    document.body.appendChild(script);
+                    confettiShown = true;
+                  }
+                };
+
+                const showCompletionCelebration = () => {
+                  triggerConfetti();
+                  renderCompletionReport();
+                };
+
+                // Ensure progress is set to 100% and completed=1 before triggering confetti
+                const userCurrentProgressInput = document.getElementById('user-current-progress');
+                let userCurrentProgress = userCurrentProgressInput ? parseFloat(userCurrentProgressInput.value) : 0;
+                if (userCurrentProgress < 100) {
+                  fetch(`/user/classic/${level}/${chapterId}/progress`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ page_num: totalPages, total_pages: totalPages })
+                  }).then(response => response.json()).then(data => {
+                    if (data.success && userCurrentProgressInput) {
+                      userCurrentProgressInput.value = 100;
+                      // Check for badges awarded
+                      if (data.badges_awarded && data.badges_awarded.length > 0) {
+                        if (window.BadgeManager) {
+                          window.BadgeManager.showMultiple(data.badges_awarded);
+                        }
+                      }
+                      showCompletionCelebration();
+                    } else {
+                      showCompletionCelebration();
+                    }
+                  }).catch(() => {
+                    showCompletionCelebration();
+                  });
+                } else {
+                  showCompletionCelebration();
+                }
+                return;
+              } else {
+                document.querySelector('.section-footer').style.display = '';
+              }
+              if (document.getElementById('quiz-form')) {
+                quizPage = true;
+                nextBtn.textContent = 'Check';
+                nextBtn.disabled = true;
+                setupQuizChoiceListeners();
+                initializeQuizChoices();
+                if (quizMeta && !quizMeta.correct_choice) {
+                  const correctChoiceMeta = quizChoices.find((choice) => choice.is_correct);
+                  if (correctChoiceMeta) {
+                    quizMeta.correct_choice = correctChoiceMeta.label;
+                  }
+                }
+              } else {
+                nextBtn.textContent = quizOriginalNextText;
+                nextBtn.disabled = false;
+                quizMeta = null;
+              }
+              // Reset confetti flag if not on congrats page
+              confettiShown = false;
+              // After content is inserted, initialize CodeMirror if needed
+              initializePlaygroundEditor();
+
+              // Update comment manager with new lesson page ID
+              console.log('[Comments Debug] AJAX navigation completed');
+              console.log('[Comments Debug] currentPageMeta:', currentPageMeta);
+              console.log('[Comments Debug] window.commentManager exists:', !!window.commentManager);
+
+              if (window.commentManager && currentPageMeta && currentPageMeta.page_id) {
+                console.log('[Comments Debug] Updating to page_id:', currentPageMeta.page_id);
+                window.currentLessonContentId = currentPageMeta.page_id;
+                window.commentManager.updateLessonId(currentPageMeta.page_id);
+              } else {
+                console.warn('[Comments Debug] Cannot update comments:', {
+                  hasCommentManager: !!window.commentManager,
+                  hasPageMeta: !!currentPageMeta,
+                  hasPageId: currentPageMeta ? !!currentPageMeta.page_id : false
+                });
+              }
+            });
+        }
+
+        function nextPage() {
+          const userCurrentProgressInput = document.getElementById('user-current-progress');
+          let userCurrentProgress = userCurrentProgressInput ? parseFloat(userCurrentProgressInput.value) : 0;
+          const newProgress = ((currentPage) / totalPages) * 100;
+          if (currentPage < totalPages) {
+            // Only update progress if newProgress is greater than stored progress
+            if (newProgress > userCurrentProgress) {
+              fetch(`/user/classic/${level}/${chapterId}/progress`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  page_num: currentPage,
+                  total_pages: totalPages
+                })
+              }).then(response => response.json()).then(data => {
+                // Update stored progress if update was successful and progress increased
+                if (data.success && data.progress > userCurrentProgress) {
+                  if (userCurrentProgressInput) userCurrentProgressInput.value = data.progress;
+                }
+                // Check for badges awarded
+                if (data.badges_awarded && data.badges_awarded.length > 0) {
+                  if (window.BadgeManager) {
+                    window.BadgeManager.showMultiple(data.badges_awarded);
+                  }
+                }
+                // Move to next page via AJAX
+                document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
+                loadLessonPage(currentPage + 1);
+                // remove class has-result to section-footer
+                document.querySelector('.section-footer').classList.remove('has-result');
+              });
+            } else {
+              // Just move to next page without updating progress
+              document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
+              loadLessonPage(currentPage + 1);
+              document.querySelector('.section-footer').classList.remove('has-result');
+            }
+          } else {
+            // Chapter completed: show congrats page via AJAX
+            loadLessonPage(currentPage + 1);
+          }
+        }
+
+        function goPreviousPage() {
+          if (currentPage > 1) {
+            document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
+            loadLessonPage(currentPage - 1);
+          }
+          // remove class has-result to section-footer
+          document.querySelector('.section-footer').classList.remove('has-result');
+        }
+
+        function exitLesson() {
+          window.location.href = `/user/classic/${level}`;
+        }
+
+        // Playground code runner (HTML/JS only, for demo)
+        function runPlaygroundCode() {
+          var editorEl = document.getElementById('playground-editor');
+          var code = window.codeMirrorInstance
+            ? window.codeMirrorInstance.getValue()
+            : editorEl
+            ? editorEl.value
+            : '';
+
+          var output = document.getElementById('playground-output');
+          var outputContent = document.getElementById('playground-output-content');
+          if (!output || !outputContent) {
+            return;
+          }
+
+          output.style.display = 'flex';
+          lessonPlaygroundFrameWindow = null;
+          clearLessonDebugConsole(true);
+
+          if (lessonDebugPanel) {
+            lessonDebugPanel.style.display = 'flex';
+          }
+
+          outputContent.innerHTML =
+            '<div class="playground-loader" style="display: flex; align-items: center; justify-content: center; height: 60px;"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+          setTimeout(function () {
+            try {
+              outputContent.innerHTML = '';
+              var iframe = document.createElement('iframe');
+              iframe.setAttribute('title', 'Lesson playground output');
+              iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+              outputContent.appendChild(iframe);
+
+              lessonPlaygroundFrameWindow =
+                iframe.contentWindow ||
+                (iframe.contentDocument && iframe.contentDocument.defaultView) ||
+                null;
+
+              if (lessonPlaygroundFrameWindow) {
+                installLessonDebugHooks(lessonPlaygroundFrameWindow);
+              }
+
+              var doc =
+                iframe.contentDocument ||
+                (lessonPlaygroundFrameWindow && lessonPlaygroundFrameWindow.document);
+              if (!doc) {
+                throw new Error('Unable to prepare preview frame.');
+              }
+
+              doc.open();
+              doc.write(code);
+              doc.close();
+
+              if (lessonDebugPanel) {
+                lessonDebugPanel.style.display = 'flex';
+              }
+            } catch (e) {
+              outputContent.textContent = 'Error running code: ' + e;
+              appendLessonDebugEntry({
+                type: 'error',
+                level: 'error',
+                message: e && e.message ? e.message : String(e),
+                stack: e && e.stack ? String(e.stack) : '',
+              });
+            }
+          }, 700); // Simulate processing delay
+        }
+
+        function checkAnswer() {
+          const selectedChoice = document.querySelector('input[name="choice"]:checked');
+          if (!selectedChoice) {
+            alert("Please select an answer");
+            return;
+          }
+
+          const isCorrect = selectedChoice.value === "true";
+
+          // Random feedback messages
           const correctMessages = [
             "Perfect!", "Excellent!", "Brilliant!", "Spot on!", "Amazing!",
             "Fantastic!", "Outstanding!", "Superb!", "Wonderful!", "Great job!",
             "You got it!", "That's right!", "Exactly!", "Well done!", "Impressive!"
           ];
-          const randomMessage = correctMessages[Math.floor(Math.random() * correctMessages.length)];
-          // Get the correct message from the hidden input
-          const correctMessageInput = document.getElementById('correct-message');
-          const customMessage = correctMessageInput ? correctMessageInput.value : '';
 
-          feedback.innerHTML = `
-            <div style="display: flex; align-items: flex-end; gap: 10px; color: limegreen; font-size: 1.5rem; ">
-              <svg class="check-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation: checkBounce 0.6s ease-out;">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="limegreen"/>
-              </svg>
-              <span>${randomMessage}</span>
-            </div>
-            ${customMessage ? `<div class="mt-2" style="color: #d3d3d3">${customMessage}</div>` : ''}
-          `;
-          quizCorrect = true;
-        } else {
-          // Random feedback messages for incorrect answers
           const incorrectMessages = [
             "Not quite.", "You'll get it next time.", "Ouch, not really.", "Not exactly.", "Close!",
             "Nahh!", "Keep trying.", "Not quite right.", "Incorrect.", "Not this time.",
             "Oops, that's wrong.", "Not quite there.", "Try once more.", "Not the one.", "Nice try."
           ];
-          const randomMessage = incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
-          feedback.innerHTML = `
-            <div style="display: flex; align-items: flex-end; gap: 10px; color: red; font-size: 1.5rem">
-              <svg class="wrong-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation: wrongShake 0.6s ease-out;">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="red"/>
-              </svg>
-              <span>${randomMessage}</span>
-            </div>
+
+          // Get random message
+          const randomMessage = isCorrect
+            ? correctMessages[Math.floor(Math.random() * correctMessages.length)]
+            : incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
+
+          // Get custom message if available
+          const customMessage = isCorrect ? "{{ page.correct_message }}" : "";
+
+          // Show feedback message
+          const feedbackDiv = document.createElement("div");
+          feedbackDiv.className = `alert ${isCorrect ? "alert-success" : "alert-danger"} mt-3`;
+          feedbackDiv.innerHTML = `
+            <div style="color: ${isCorrect ? '#28a745' : '#dc3545'}">${randomMessage}</div>
+            ${customMessage ? `<div class="mt-2" style="color: #d3d3d3">${customMessage}</div>` : ''}
           `;
-            quizCorrect = false;
+          document.querySelector(".quiz-choices").appendChild(feedbackDiv);
 
-          // Highlight incorrect choice
-          selected.classList.add('incorrect');
+          // Disable all choices
+          document.querySelectorAll('input[name="choice"]').forEach((input) => {
+            input.disabled = true;
+          });
+          document.querySelector(".quiz-choices").classList.add("quiz-answered");
 
-          // Highlight correct answer
-          if (correctChoice) {
-            const correctInput = form.querySelector(`input[value="${correctChoice.id}"]`);
-            if (correctInput) {
-              correctInput.nextElementSibling.classList.add('correct');
+          // Show next button if correct
+          if (isCorrect) {
+            document.getElementById("next-btn").style.display = "block";
+          }
+        }
+
+        // Add this function to properly initialize quiz choices
+        function initializeQuizChoices() {
+          const quizForm = document.getElementById('quiz-form');
+          quizChoices = [];
+          if (!quizForm) {
+            return;
+          }
+
+          quizForm.querySelectorAll('input[name="quiz_choice"]').forEach((input) => {
+            const choiceId = input.value;
+            const attr = (input.getAttribute('data-is-correct') || '').toString();
+            const isCorrect = attr === '1' || attr.toLowerCase() === 'true';
+            const labelText = input.nextElementSibling ? input.nextElementSibling.textContent.trim() : '';
+            quizChoices.push({ id: choiceId, is_correct: isCorrect, label: labelText });
+          });
+
+          if (quizMeta && !quizMeta.correct_choice) {
+            const correctMeta = quizChoices.find((choice) => choice.is_correct);
+            if (correctMeta) {
+              quizMeta.correct_choice = correctMeta.label;
             }
           }
         }
 
-        // Disable all choices
-        form.classList.add('quiz-answered');
-        form.querySelectorAll('input[name="quiz_choice"]').forEach(input => {
-          input.disabled = true;
-        });
-
-        quizAnswered = true;
-        footer.classList.add('has-result');
-        updateQuizFooterButton();
-      }
-
-      // Listen for quiz choice selection to enable the button
-      function setupQuizChoiceListeners() {
-        const quizChoicesInputs = document.querySelectorAll('input[name="quiz_choice"]');
-        quizChoicesInputs.forEach(input => {
-          input.addEventListener('change', function() {
-            updateQuizFooterButton();
-          });
-        });
-      }
-
-      // On initial load, if progress is 100, always start at page 1
-      document.addEventListener('DOMContentLoaded', function() {
-        const userCurrentProgressInput = document.getElementById('user-current-progress');
-        let userCurrentProgress = userCurrentProgressInput ? parseFloat(userCurrentProgressInput.value) : 0;
-        if (userCurrentProgress >= 100) {
-          currentPage = 1;
+        function initializePlaygroundEditor() {
+          if (window.codeMirrorInstance && window.codeMirrorInstance.toTextArea) {
+            window.codeMirrorInstance.toTextArea();
+            window.codeMirrorInstance = null;
+          }
+          var textarea = document.getElementById('playground-editor');
+          if (textarea) {
+            var mode = document.getElementById('playground-language') ? document.getElementById('playground-language').value : 'htmlmixed';
+            window.codeMirrorInstance = CodeMirror.fromTextArea(textarea, {
+              mode: mode,
+              theme: 'material-darker',
+              lineNumbers: true,
+              autoCloseBrackets: true,
+              autoCloseTags: true,
+              matchTags: {bothTags: true},
+              matchBrackets: true,
+              styleActiveLine: true,
+              foldGutter: true,
+              gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+              extraKeys: {
+                'Ctrl-Space': 'autocomplete',
+                'Tab': function(cm) {
+                  if (cm.somethingSelected()) {
+                    cm.indentSelection('add');
+                  } else {
+                    cm.replaceSelection('  ', 'end');
+                  }
+                },
+                'Enter': 'newlineAndIndent'
+              },
+              hintOptions: {schemaInfo: CodeMirror.htmlSchema}
+            });
+            window.codeMirrorInstance.setSize('100%', '250px');
+            window.codeMirrorInstance.on('inputRead', function(cm, change) {
+              if (change.text[0] && /[a-zA-Z<]/.test(change.text[0])) {
+                cm.showHint();
+              }
+            });
+          }
+          if (lessonDebugPanel) {
+            lessonDebugPanel.style.display = 'none';
+          }
+          clearLessonDebugConsole(true);
+          setupPlaygroundFullscreen();
         }
-        loadLessonPage(currentPage);
-        const nextBtn = document.getElementById('next-btn');
-        quizAnswered = false;
-        quizCorrect = false;
-        quizPage = false;
-        quizOriginalNextText = nextBtn.textContent;
-      });
 
-      // AJAX navigation for next/previous page
-      function loadLessonPage(pageNum) {
-        fetch(`/user/classic/${level}/${chapterId}/ajax?page=${pageNum}`)
-          .then(response => response.json())
-          .then(data => {
-            document.getElementById('lesson-content-section').innerHTML = data.html;
-            const prevProgress = ((currentPage - 1) / totalPages) * 100;
-            const newProgress = ((pageNum - 1) / totalPages) * 100;
-            animateProgressBar(prevProgress, newProgress);
-            currentPage = pageNum;
-            if (window.Prism) { Prism.highlightAll(); }
-            updatePrevButton();
-            // Quiz/next button logic
-            quizAnswered = false;
-            quizCorrect = false;
-            quizPage = false;
-            quizOriginalNextText = data.next_button_text || 'Next';
-            const nextBtn = document.getElementById('next-btn');
-            // Clear dynamic text result (quiz feedback)
-            document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
-            if (data.is_congrats) {
-              // Hide navigation/footer buttons
-              if (nextBtn) nextBtn.style.display = 'none';
-              const prevBtn = document.getElementById('prev-btn');
-              if (prevBtn) prevBtn.style.display = 'none';
-              document.querySelector('.section-footer').style.display = 'none';
+        function changePlaygroundMode(mode) {
+          if (window.codeMirrorInstance) {
+            window.codeMirrorInstance.setOption('mode', mode);
+            window.codeMirrorInstance.focus();
+          }
+        }
 
-              const triggerConfetti = () => {
-                if (!confettiShown) {
-                  const script = document.createElement('script');
-                  script.src = 'https://run.confettipage.com/here.js';
-                  script.setAttribute('data-confetticode', 'U2FsdGVkX1+nYz+H/kWOfHv3kjzg/+2AGyRBF7rTQDU0DZSB6Z1MMvOQ9Qz7PF1USOdIc0K2c2xa5XnayuJOiVvFkIPb8+tsxrqZiQj+lDhb67hlbGzZ64HoVrGt/Mf5SP5azO3Z2paXLPHHiMvAeG/Lr0xK7GQAmXnEndVnOWN23mqA/PFd7L+lkcBkLsQdbfuYANLjyLgNogu/8lyi7g4BrDiLLShJE0387OYmBq3CaG9JGvipunaU3JOwkdrt4a1cRdIGv35NR8ydMHeqNH+gqotRdeey5nG8XABIo40lvoYtD2YHY5C5g5UUoLYS0ShVJ8clsYrOlAg6xi/vbBQ6mBaqPYq2kwpdF7uBuLsShGiZB4ra2JzwnZterA4XBUvje+tth1u9ihMusYMGWDQ9LFrngpq5MRo5CchpgGAL0BFNt21QhnnCsNikcpVCqCW6py6YBm0XL5YMhbb94h4beflumTmrW6mD8kFYW4Ur6TvZsBHgzZShcpTNxEWnhjA3cEPg5YkxnFAJb45UcIfSFxYVzXwZ39iHO4MDTGbIvCWxJkCsdoncGB9YLwSczLTRL+/ItXeZ7eVhOtf9rILGISgCBoZRhQ1FJHhSlXZ9Um6WfIqAlt3c+XIJXLj1hBdMJNtuLWCf2rNHQ4m0mJOn3jhYcNu6GfDIqx7xTlZStyeNIevXpEi//+NzAyzA4IpJVUtbJnPSFr5K6fboAw==');
-                  document.body.appendChild(script);
-                  confettiShown = true;
-                }
-              };
+        // Fullscreen logic
+        function setupPlaygroundFullscreen() {
+          var wrapper = document.getElementById('playground-fullscreen-wrapper');
+          var outer = document.getElementById('playground-editor-outer');
+          var output = document.getElementById('playground-output');
+          var btn = document.getElementById('playground-fullscreen-btn');
+          var editorHeader = outer.querySelector('.playground-header');
+          var outputHeader = output.querySelector('.playground-output-header');
+          var outputContent = document.getElementById('playground-output-content');
+          var debugPanel = document.getElementById('playground-debug-panel');
+          if (!wrapper || !btn) return;
+          btn.onclick = function() {
+            var isFullscreen = wrapper.classList.toggle('fullscreen');
+            if (isFullscreen) {
+              btn.innerHTML = '<i class="fas fa-compress"></i>';
+              output.style.display = 'flex';
+              wrapper.style.position = 'absolute';
+              wrapper.style.top = '0';
+              wrapper.style.left = '0';
+              wrapper.style.width = '100%';
+              wrapper.style.height = '100%';
+              if (editorHeader) editorHeader.style.display = 'block';
+              if (outputHeader) outputHeader.style.display = 'block';
+              if (debugPanel) debugPanel.style.display = 'flex';
+              if (outputContent && !outputContent.innerHTML.trim()) {
+                outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
+              }
+              // Resize CodeMirror
+              if (window.codeMirrorInstance) {
+                setTimeout(function() { window.codeMirrorInstance.refresh(); }, 200);
+              }
+            } else {
+              btn.innerHTML = '<i class="fas fa-expand"></i>';
+              output.style.display = 'none';
+              wrapper.style.position = '';
+              wrapper.style.top = '';
+              wrapper.style.left = '';
+              wrapper.style.width = '';
+              wrapper.style.height = '';
+              if (editorHeader) editorHeader.style.display = 'none';
+              if (outputHeader) outputHeader.style.display = 'none';
+              if (outputContent) outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
+              if (debugPanel) debugPanel.style.display = 'none';
+              clearLessonDebugConsole(true);
+              lessonPlaygroundFrameWindow = null;
+              // Resize CodeMirror
+              if (window.codeMirrorInstance) {
+                setTimeout(function() { window.codeMirrorInstance.refresh(); }, 200);
+              }
+            }
+          };
+          // On initial fullscreen, show placeholder if no output
+          if (wrapper.classList.contains('fullscreen') && outputContent && !outputContent.innerHTML.trim()) {
+            outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
+          }
+        }
 
-              // Ensure progress is set to 100% and completed=1 before triggering confetti
-              const userCurrentProgressInput = document.getElementById('user-current-progress');
-              let userCurrentProgress = userCurrentProgressInput ? parseFloat(userCurrentProgressInput.value) : 0;
-              if (userCurrentProgress < 100) {
-                fetch(`/user/classic/${level}/${chapterId}/progress`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ page_num: totalPages, total_pages: totalPages })
-                }).then(response => response.json()).then(data => {
-                  if (data.success && userCurrentProgressInput) {
-                    userCurrentProgressInput.value = 100;
-                    // Check for badges awarded
-                    if (data.badges_awarded && data.badges_awarded.length > 0) {
-                      if (window.BadgeManager) {
-                        window.BadgeManager.showMultiple(data.badges_awarded);
+          function renderCompletionReport() {
+            const container = document.querySelector('.congrats-summary');
+            if (!container) {
+              return;
+            }
+
+            const quizItems = Object.values(quizResults).sort((a, b) => (a.order || 0) - (b.order || 0));
+            const takeawayItems = Object.values(takeawayNotes).sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            const totalQuizzes = quizItems.length;
+            const correctCount = quizItems.filter((item) => item.is_correct).length;
+            const quizSummaryText = totalQuizzes
+              ? `You answered ${correctCount} of ${totalQuizzes} quizzes correctly.`
+              : 'No quiz attempts recorded yet.';
+
+            const quizListHtml = totalQuizzes
+              ? `<ol style="margin-top: 12px; padding-left: 20px;">${quizItems.map((item) => {
+                    const statusColor = item.is_correct ? '#28a745' : '#dc3545';
+                    const statusLabel = item.is_correct ? 'Correct' : 'Incorrect';
+                    const questionTitle = item.question || `Question ${item.order || ''}`;
+                    let detailHtml = '';
+                    if (item.is_correct) {
+                      if (item.correct_message) {
+                        detailHtml += `<div style="color: #d3d3d3;">${formatTextWithInlineCode(item.correct_message)}</div>`;
+                      }
+                      if (item.correct_choice) {
+                        detailHtml += `<div style="color: #d3d3d3;">Correct answer: ${formatTextWithInlineCode(item.correct_choice)}</div>`;
+                      }
+                    } else {
+                      if (item.correct_choice) {
+                        detailHtml += `<div style="color: #d3d3d3;">Correct answer: ${formatTextWithInlineCode(item.correct_choice)}</div>`;
+                      }
+                      if (item.incorrect_message) {
+                        detailHtml += `<div style="color: #d3d3d3;">Why: ${formatTextWithInlineCode(item.incorrect_message)}</div>`;
                       }
                     }
-                    triggerConfetti();
-                  }
-                });
+                    const questionTitleHtml = formatTextWithInlineCode(questionTitle);
+                    return `<li style="margin-bottom: 12px;">
+                      <div style="color: #ffffff; font-weight: 600;">${questionTitleHtml}</div>
+                      <div style="color: ${statusColor};">${statusLabel}</div>
+                      ${detailHtml}
+                    </li>`;
+                  }).join('')}</ol>`
+              : '<p style="color: #d3d3d3;">No quiz attempts recorded yet.</p>';
+
+            const takeawayHtml = takeawayItems.length
+              ? `<div class="takeaway-report" style="margin-top: 24px;">
+                   <h4 style="color: #ff69b4;">Key Takeaways</h4>
+                   ${takeawayItems.map((item) => {
+                     const bullets = splitIntoBullets(item.summary)
+                       .map((line) => `<li>${formatTextWithInlineCode(line)}</li>`)
+                       .join('');
+                     const notesHtml = item.notes
+                       ? `<p style="color: #d3d3d3; margin-top: 8px;">${formatTextWithInlineCode(item.notes)}</p>`
+                       : '';
+                     return `<div style="margin-top: 12px;">
+                       <h5 style="color: #ffffff;">${formatTextWithInlineCode(item.title)}</h5>
+                       ${bullets ? `<ul style="padding-left: 20px;">${bullets}</ul>` : ''}
+                       ${notesHtml}
+                     </div>`;
+                   }).join('')}
+                 </div>`
+              : '';
+
+            const recapMarkup = `
+              <div class="chapter-report" style="background: rgba(0, 0, 0, 0.35); border-radius: 12px; padding: 24px; color: #f3f3f3; text-align: left;">
+
+                <div class="quiz-report">
+                  <h4 style="color: #ff69b4;">Quiz Recap</h4>
+                  <p style="color: #d3d3d3;">${escapeHtml(quizSummaryText)}</p>
+                  ${quizListHtml}
+                </div>
+                ${takeawayHtml}
+              </div>
+            `;
+
+            let recapModal = document.getElementById('chapterRecapModal');
+            if (!recapModal) {
+              recapModal = document.createElement('div');
+              recapModal.className = 'modal fade chapter-recap-modal';
+              recapModal.id = 'chapterRecapModal';
+              recapModal.tabIndex = -1;
+              recapModal.setAttribute('aria-hidden', 'true');
+              recapModal.innerHTML = `
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                  <div class="modal-content" style="background: #240e44; border: 2px solid #a259ff; color: #f3f3f3;">
+                    <div class="modal-header border-0">
+                      <h5 class="modal-title">Chapter Recap</h5>
+                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;"></div>
+                    <div class="modal-footer border-0">
+                      <button type="button" class="btn end-btn" data-bs-dismiss="modal" style="font-size: 1rem; padding: 8px 18px;">Close</button>
+                    </div>
+                  </div>
+                </div>`;
+              document.body.appendChild(recapModal);
+            }
+
+            const modalBody = recapModal.querySelector('.modal-body');
+            if (modalBody) {
+              modalBody.innerHTML = recapMarkup;
+            }
+
+            let recapButton = container.querySelector('.view-recap-btn');
+            if (!recapButton) {
+              recapButton = document.createElement('button');
+              recapButton.type = 'button';
+              recapButton.className = 'btn ghost-btn view-recap-btn';
+              recapButton.style.marginRight = '12px';
+              recapButton.textContent = 'View Chapter Recap';
+
+              const cta = container.querySelector('.cta');
+              if (cta) {
+                cta.style.display = 'flex';
+                cta.style.gap = '12px';
+                cta.style.flexWrap = 'wrap';
+                cta.style.justifyContent = 'center';
+                cta.insertBefore(recapButton, cta.firstChild);
               } else {
-                triggerConfetti();
+                container.appendChild(recapButton);
               }
-              return;
-            } else {
-              document.querySelector('.section-footer').style.display = '';
             }
-            if (document.getElementById('quiz-form')) {
-              quizPage = true;
-              nextBtn.textContent = 'Check';
-              nextBtn.disabled = true;
-              setupQuizChoiceListeners();
-              initializeQuizChoices();
-            } else {
-              nextBtn.textContent = quizOriginalNextText;
-              nextBtn.disabled = false;
-            }
-            // Reset confetti flag if not on congrats page
-            confettiShown = false;
-            // After content is inserted, initialize CodeMirror if needed
-            initializePlaygroundEditor();
-          });
-      }
 
-      function nextPage() {
-        const userCurrentProgressInput = document.getElementById('user-current-progress');
-        let userCurrentProgress = userCurrentProgressInput ? parseFloat(userCurrentProgressInput.value) : 0;
-        const newProgress = ((currentPage) / totalPages) * 100;
-        if (currentPage < totalPages) {
-          // Only update progress if newProgress is greater than stored progress
-          if (newProgress > userCurrentProgress) {
-            fetch(`/user/classic/${level}/${chapterId}/progress`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                page_num: currentPage,
-                total_pages: totalPages
-              })
-            }).then(response => response.json()).then(data => {
-              // Update stored progress if update was successful and progress increased
-              if (data.success && data.progress > userCurrentProgress) {
-                if (userCurrentProgressInput) userCurrentProgressInput.value = data.progress;
-              }
-              // Check for badges awarded
-              if (data.badges_awarded && data.badges_awarded.length > 0) {
-                if (window.BadgeManager) {
-                  window.BadgeManager.showMultiple(data.badges_awarded);
-                }
-              }
-              // Move to next page via AJAX
-              document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
-              loadLessonPage(currentPage + 1);
-              // remove class has-result to section-footer
-              document.querySelector('.section-footer').classList.remove('has-result');
-            });
-          } else {
-            // Just move to next page without updating progress
-            document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
-            loadLessonPage(currentPage + 1);
-            document.querySelector('.section-footer').classList.remove('has-result');
-          }
-        } else {
-          // Chapter completed: show congrats page via AJAX
-          loadLessonPage(currentPage + 1);
-        }
-      }
-
-      function goPreviousPage() {
-        if (currentPage > 1) {
-          document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
-          loadLessonPage(currentPage - 1);
-        }
-        // remove class has-result to section-footer
-        document.querySelector('.section-footer').classList.remove('has-result');
-      }
-
-      function exitLesson() {
-        window.location.href = `/user/classic/${level}`;
-      }
-
-      // Playground code runner (HTML/JS only, for demo)
-      function runPlaygroundCode() {
-        var code = window.codeMirrorInstance ? window.codeMirrorInstance.getValue() : document.getElementById('playground-editor').value;
-        var output = document.getElementById('playground-output');
-        var outputContent = document.getElementById('playground-output-content');
-        // Show loader
-        output.style.display = '';
-        outputContent.innerHTML = '<div class="playground-loader" style="display: flex; align-items: center; justify-content: center; height: 60px;"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        setTimeout(function() {
-          try {
-            outputContent.innerHTML = '';
-            var iframe = document.createElement('iframe');
-            iframe.style.width = '100%';
-            iframe.style.height = '100%';
-            iframe.style.background = '#fff';
-            if (document.querySelector('.playground-fullscreen-wrapper.fullscreen')) {
-              iframe.style.height = '100%';
-            }
-            outputContent.appendChild(iframe);
-            var doc = iframe.contentDocument || iframe.contentWindow.document;
-            doc.open();
-            doc.write(code);
-            doc.close();
-          } catch (e) {
-            outputContent.textContent = 'Error running code: ' + e;
-          }
-        }, 700); // Simulate processing delay
-      }
-
-      function checkAnswer() {
-        const selectedChoice = document.querySelector('input[name="choice"]:checked');
-        if (!selectedChoice) {
-          alert("Please select an answer");
-          return;
-        }
-
-        const isCorrect = selectedChoice.value === "true";
-
-        // Random feedback messages
-        const correctMessages = [
-          "Perfect!", "Excellent!", "Brilliant!", "Spot on!", "Amazing!",
-          "Fantastic!", "Outstanding!", "Superb!", "Wonderful!", "Great job!",
-          "You got it!", "That's right!", "Exactly!", "Well done!", "Impressive!"
-        ];
-
-        const incorrectMessages = [
-          "Not quite.", "You'll get it next time.", "Ouch, not really.", "Not exactly.", "Close!",
-          "Nahh!", "Keep trying.", "Not quite right.", "Incorrect.", "Not this time.",
-          "Oops, that's wrong.", "Not quite there.", "Try once more.", "Not the one.", "Nice try."
-        ];
-
-        // Get random message
-        const randomMessage = isCorrect
-          ? correctMessages[Math.floor(Math.random() * correctMessages.length)]
-          : incorrectMessages[Math.floor(Math.random() * incorrectMessages.length)];
-
-        // Get custom message if available
-        const customMessage = isCorrect ? "{{ page.correct_message }}" : "";
-
-        // Show feedback message
-        const feedbackDiv = document.createElement("div");
-        feedbackDiv.className = `alert ${isCorrect ? "alert-success" : "alert-danger"} mt-3`;
-        feedbackDiv.innerHTML = `
-          <div style="color: ${isCorrect ? '#28a745' : '#dc3545'}">${randomMessage}</div>
-          ${customMessage ? `<div class="mt-2" style="color: #d3d3d3">${customMessage}</div>` : ''}
-        `;
-        document.querySelector(".quiz-choices").appendChild(feedbackDiv);
-
-        // Disable all choices
-        document.querySelectorAll('input[name="choice"]').forEach((input) => {
-          input.disabled = true;
-        });
-        document.querySelector(".quiz-choices").classList.add("quiz-answered");
-
-        // Show next button if correct
-        if (isCorrect) {
-          document.getElementById("next-btn").style.display = "block";
-        }
-      }
-
-      // Add this function to properly initialize quiz choices
-      function initializeQuizChoices() {
-        const quizForm = document.getElementById('quiz-form');
-        if (quizForm) {
-          quizChoices = [];  // Reset quizChoices array
-          quizForm.querySelectorAll('input[name="quiz_choice"]').forEach(input => {
-            const choiceId = input.value;
-            // Convert the data-is-correct attribute to a boolean
-            const isCorrect = input.getAttribute('data-is-correct') === '1';
-            quizChoices.push({ id: choiceId, is_correct: isCorrect });
-            console.log('Added choice:', { id: choiceId, is_correct: isCorrect });
-          });
-          console.log('Quiz choices initialized:', quizChoices);  // Debug log
-        }
-      }
-
-      function initializePlaygroundEditor() {
-        if (window.codeMirrorInstance && window.codeMirrorInstance.toTextArea) {
-          window.codeMirrorInstance.toTextArea();
-          window.codeMirrorInstance = null;
-        }
-        var textarea = document.getElementById('playground-editor');
-        if (textarea) {
-          var mode = document.getElementById('playground-language') ? document.getElementById('playground-language').value : 'htmlmixed';
-          window.codeMirrorInstance = CodeMirror.fromTextArea(textarea, {
-            mode: mode,
-            theme: 'material-darker',
-            lineNumbers: true,
-            autoCloseBrackets: true,
-            autoCloseTags: true,
-            matchTags: {bothTags: true},
-            matchBrackets: true,
-            styleActiveLine: true,
-            foldGutter: true,
-            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
-            extraKeys: {
-              'Ctrl-Space': 'autocomplete',
-              'Tab': function(cm) {
-                if (cm.somethingSelected()) {
-                  cm.indentSelection('add');
+            if (!recapButton.dataset.bound) {
+              recapButton.addEventListener('click', function() {
+                if (window.bootstrap && window.bootstrap.Modal) {
+                  const modalInstance = bootstrap.Modal.getOrCreateInstance(recapModal);
+                  modalInstance.show();
                 } else {
-                  cm.replaceSelection('  ', 'end');
+                  recapModal.style.display = 'block';
                 }
-              },
-              'Enter': 'newlineAndIndent'
-            },
-            hintOptions: {schemaInfo: CodeMirror.htmlSchema}
-          });
-          window.codeMirrorInstance.setSize('100%', '250px');
-          window.codeMirrorInstance.on('inputRead', function(cm, change) {
-            if (change.text[0] && /[a-zA-Z<]/.test(change.text[0])) {
-              cm.showHint();
-            }
-          });
-        }
-        setupPlaygroundFullscreen();
-      }
-
-      function changePlaygroundMode(mode) {
-        if (window.codeMirrorInstance) {
-          window.codeMirrorInstance.setOption('mode', mode);
-          window.codeMirrorInstance.focus();
-        }
-      }
-
-      // Fullscreen logic
-      function setupPlaygroundFullscreen() {
-        var wrapper = document.getElementById('playground-fullscreen-wrapper');
-        var outer = document.getElementById('playground-editor-outer');
-        var output = document.getElementById('playground-output');
-        var btn = document.getElementById('playground-fullscreen-btn');
-        var editorHeader = outer.querySelector('.playground-header');
-        var outputHeader = output.querySelector('.playground-output-header');
-        var outputContent = document.getElementById('playground-output-content');
-        if (!wrapper || !btn) return;
-        btn.onclick = function() {
-          var isFullscreen = wrapper.classList.toggle('fullscreen');
-          if (isFullscreen) {
-            btn.innerHTML = '<i class="fas fa-compress"></i>';
-            output.style.display = 'flex';
-            wrapper.style.position = 'absolute';
-            wrapper.style.top = '0';
-            wrapper.style.left = '0';
-            wrapper.style.width = '100%';
-            wrapper.style.height = '100%';
-            if (editorHeader) editorHeader.style.display = 'block';
-            if (outputHeader) outputHeader.style.display = 'block';
-            if (outputContent && !outputContent.innerHTML.trim()) {
-              outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
-            }
-            // Resize CodeMirror
-            if (window.codeMirrorInstance) {
-              setTimeout(function() { window.codeMirrorInstance.refresh(); }, 200);
-            }
-          } else {
-            btn.innerHTML = '<i class="fas fa-expand"></i>';
-            output.style.display = 'none';
-            wrapper.style.position = '';
-            wrapper.style.top = '';
-            wrapper.style.left = '';
-            wrapper.style.width = '';
-            wrapper.style.height = '';
-            if (editorHeader) editorHeader.style.display = 'none';
-            if (outputHeader) outputHeader.style.display = 'none';
-            if (outputContent) outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
-            // Resize CodeMirror
-            if (window.codeMirrorInstance) {
-              setTimeout(function() { window.codeMirrorInstance.refresh(); }, 200);
+              });
+              recapButton.dataset.bound = '1';
             }
           }
-        };
-        // On initial fullscreen, show placeholder if no output
-        if (wrapper.classList.contains('fullscreen') && outputContent && !outputContent.innerHTML.trim()) {
-          outputContent.innerHTML = '<span class="playground-output-placeholder">No output yet</span>';
-        }
-      }
 
-      document.addEventListener('DOMContentLoaded', setupPlaygroundFullscreen);
+        document.addEventListener('DOMContentLoaded', setupPlaygroundFullscreen);
     </script>
     <script>
       // --- Analytics Tracking ---
@@ -1666,6 +2431,214 @@
       document.addEventListener('DOMContentLoaded', function() {
         checkAndClearAnalyticsSession();
       });
+    </script>
+
+    <!-- Lesson Comments Side Panel (Bootstrap) -->
+    <!-- Backdrop Overlay -->
+    <div
+      id="comments-backdrop"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        display: none;
+        backdrop-filter: blur(2px);
+      "
+      onclick="toggleCommentsDropdown()"
+    ></div>
+
+    <!-- Side Panel -->
+    <div
+      id="lesson-comments-dropdown"
+      class="card shadow-lg"
+      style="
+        position: fixed;
+        top: 0;
+        right: -450px;
+        width: 450px;
+        height: 100vh;
+        background: rgba(36, 14, 68, 0.98);
+        border-left: 2px solid #7e31ef;
+        z-index: 1050;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        transition: right 0.3s ease-in-out;
+      "
+    >
+      <!-- Header -->
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+        style="
+          background: rgba(25, 24, 44, 0.9);
+          border-bottom: 2px solid #7e31ef;
+          padding: 1rem;
+        "
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i
+            class="fas fa-comments"
+            style="font-size: 1.2rem; color: #a259ff"
+          ></i>
+          <h5 class="mb-0 fw-bold" style="color: #a259ff">Discussion</h5>
+          <span
+            id="comment-total-badge"
+            class="badge rounded-pill"
+            style="background: #7e31ef"
+            >0</span
+          >
+        </div>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          onclick="toggleCommentsDropdown()"
+          aria-label="Close"
+        ></button>
+      </div>
+
+      <!-- Comments List (scrollable) -->
+      <div
+        id="lesson-comments-container"
+        class="card-body overflow-auto"
+        style="
+          flex: 1;
+          background: var(--color-bg-panel, rgba(36, 14, 68, 0.6));
+        "
+      >
+        <div
+          class="text-center py-4"
+          style="color: var(--color-text-muted, #8080a0)"
+        >
+          <div
+            class="spinner-border spinner-border-sm text-info mb-2"
+            role="status"
+          >
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mb-0">Loading comments...</p>
+        </div>
+      </div>
+
+      <!-- Input Form at Bottom -->
+      <div
+        class="card-footer"
+        style="
+          background: var(--color-bg-darker, rgba(25, 24, 44, 0.9));
+          border-top: 2px solid var(--color-border-primary, #7e31ef);
+        "
+      >
+        <div class="mb-2">
+          <textarea
+            id="new-comment-textarea"
+            class="form-control"
+            rows="2"
+            placeholder="Share your thoughts..."
+            maxlength="2000"
+            style="
+              background: var(--color-bg-card, rgba(25, 24, 44, 0.8));
+              border: 1px solid var(--color-border-primary, #7e31ef);
+              color: var(--color-text-primary, #e0e0e0);
+              resize: none;
+            "
+          ></textarea>
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <small style="color: var(--color-text-muted, #8080a0)">
+              <span id="char-count">0</span>/2000
+            </small>
+            <div>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                onclick="document.getElementById('new-comment-textarea').value = ''; document.getElementById('char-count').textContent = '0';"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-primary"
+                onclick="window.commentManager.submitComment();"
+                style="background: #7e31ef; border: none"
+              >
+                <i class="fas fa-paper-plane me-1"></i> Post
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      #lesson-comments-dropdown textarea::placeholder {
+        color: rgba(224, 210, 255, 0.85);
+      }
+    </style>
+
+    <!-- Load lesson comments script first -->
+    <script src="/static/lesson-comments.js"></script>
+
+    <!-- Lesson Comments Initialization Script -->
+    <script>
+      // Pass current user ID and lesson content ID to the comments manager
+      window.currentUserId = {{ session['user_id'] }};
+      window.currentLessonContentId = {{ lesson_pages[current_page-1].id }};
+
+      // Toggle comments side panel with slide animation
+      function toggleCommentsDropdown() {
+        const panel = document.getElementById('lesson-comments-dropdown');
+        const backdrop = document.getElementById('comments-backdrop');
+        const metaEl = document.getElementById('lesson-page-meta');
+        if (metaEl && metaEl.dataset.lessonContentId) {
+          const parsedId = parseInt(metaEl.dataset.lessonContentId, 10);
+          if (!Number.isNaN(parsedId)) {
+            window.currentLessonContentId = parsedId;
+          }
+        }
+
+        if (panel.style.right === '0px') {
+          // Close panel
+          panel.style.right = '-450px';
+          backdrop.style.display = 'none';
+        } else {
+          // Open panel
+          panel.style.right = '0px';
+          backdrop.style.display = 'block';
+
+          // Load comments when panel opens if needed for this page
+          if (window.commentManager) {
+            if (window.commentManager.lessonContentId !== window.currentLessonContentId) {
+              console.log('[Comments] Syncing manager to new lesson before loading', {
+                previous: window.commentManager.lessonContentId,
+                next: window.currentLessonContentId
+              });
+              window.commentManager.lessonContentId = window.currentLessonContentId;
+              window.commentManager.commentsLoaded = false;
+              window.commentManager.lastLoadedLessonId = null;
+              window.commentManager.isLoading = false;
+            }
+            const needsReload = !window.commentManager.commentsLoaded ||
+              window.commentManager.lastLoadedLessonId !== window.commentManager.lessonContentId;
+
+            if (needsReload) {
+              console.log('[Comments] Panel opened, loading comments for page:', window.currentLessonContentId);
+              window.commentManager.loadComments();
+            } else {
+              console.log('[Comments] Panel opened, comments already loaded for page:', window.currentLessonContentId);
+            }
+          }
+        }
+      }
+
+      // Initialize comment manager after DOM is ready
+      if (typeof LessonCommentManager !== 'undefined') {
+        window.commentManager = new LessonCommentManager(window.currentLessonContentId);
+      } else {
+        console.error('LessonCommentManager class not found!');
+      }
     </script>
   </body>
 </html>
