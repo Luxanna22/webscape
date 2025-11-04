@@ -43,6 +43,31 @@ except Exception:
 # Google Analytics Measurement ID
 GA_MEASUREMENT_ID = 'G-8N1JFLPGQ0'  # Measurement ID
 
+# Google Analytics Configuration
+GA_PROPERTY_ID = os.getenv('GA_PROPERTY_ID', '493879650')
+
+def get_ga_credentials_path():
+    """
+    Returns path to GA credentials file.
+    If GA_CREDENTIALS_JSON env var is set (base64-encoded), decodes and writes to temp file.
+    Otherwise, falls back to ga-credentials.json in current directory.
+    """
+    credentials_base64 = os.getenv('GA_CREDENTIALS_JSON')
+    
+    if credentials_base64:
+        # Decode base64 credentials and write to a temporary file
+        import tempfile
+        credentials_data = base64.b64decode(credentials_base64)
+        
+        # Create a persistent temp file for the credentials
+        temp_file = os.path.join(tempfile.gettempdir(), 'ga-credentials-temp.json')
+        with open(temp_file, 'wb') as f:
+            f.write(credentials_data)
+        return temp_file
+    else:
+        # Fallback to local file (for development)
+        return os.path.join(os.getcwd(), 'ga-credentials.json')
+
 # Configure upload settings
 UPLOAD_FOLDER = 'static/uploads/lesson_images'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -4279,8 +4304,7 @@ def admin_analytics_data():
     if session.get('role') != 'admin':
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
     try:
-        GA_PROPERTY_ID = '493879650'
-        CREDENTIALS_FILE = os.path.join(os.getcwd(), 'ga-credentials.json')
+        CREDENTIALS_FILE = get_ga_credentials_path()
         client = BetaAnalyticsDataClient.from_service_account_file(CREDENTIALS_FILE)
         from datetime import datetime
         import calendar
@@ -4332,8 +4356,7 @@ def admin_active_users():
     if session.get('role') != 'admin':
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
     try:
-        GA_PROPERTY_ID = '493879650'
-        CREDENTIALS_FILE = os.path.join(os.getcwd(), 'ga-credentials.json')
+        CREDENTIALS_FILE = get_ga_credentials_path()
         client = BetaAnalyticsDataClient.from_service_account_file(CREDENTIALS_FILE)
         request = RunReportRequest(
             property=f"properties/{GA_PROPERTY_ID}",
