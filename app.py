@@ -181,7 +181,7 @@ DEFAULT_RATING = max(int(os.getenv('DEFAULT_RATING', '100')), 0)
 RATING_XP_DIVISOR = max(int(os.getenv('RATING_XP_DIVISOR', '20')), 1)
 RATING_POINTS_DIVISOR = max(int(os.getenv('RATING_POINTS_DIVISOR', '10')), 1)
 RATING_CHAPTER_BONUS = max(int(os.getenv('RATING_CHAPTER_BONUS', '15')), 0)
-MATCHMAKING_MAX_DELTA = max(int(os.getenv('MATCHMAKING_MAX_DELTA', '0')), 0)
+MATCHMAKING_MAX_DELTA = max(int(os.getenv('MATCHMAKING_MAX_DELTA', '200')), 0)
 MATCHMAKING_FORCE_MATCH_SIZE = max(int(os.getenv('MATCHMAKING_FORCE_MATCH_SIZE', '4')), 1)
 
 
@@ -333,8 +333,14 @@ def _pop_best_match(queue: list, target_rating: int):
             best_index = idx
             best_diff = diff
 
-    if MATCHMAKING_MAX_DELTA and best_diff > MATCHMAKING_MAX_DELTA and len(queue) < MATCHMAKING_FORCE_MATCH_SIZE:
-        return None
+    # Enforce rating difference check:
+    # - If MATCHMAKING_MAX_DELTA is set (> 0), check if difference is within tolerance
+    # - Only allow mismatched ratings if queue is large enough (MATCHMAKING_FORCE_MATCH_SIZE)
+    if MATCHMAKING_MAX_DELTA > 0:
+        if best_diff > MATCHMAKING_MAX_DELTA:
+            # Rating difference too large - only match if queue is big enough to force a match
+            if len(queue) < MATCHMAKING_FORCE_MATCH_SIZE:
+                return None
 
     return queue.pop(best_index)
 
