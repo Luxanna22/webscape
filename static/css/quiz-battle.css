@@ -1,0 +1,437 @@
+/* static/css/quiz-battle.css */
+
+:root {
+    --quiz-bg: #371569;
+    --player-card-bg: #3a1464;
+    --timer-bar-bg: #4a4166;
+    --timer-bar-fill: #32ffda;
+    --score-color: #ffd700;
+    --question-text-color: #ffffff;
+    --choice-bg: #4a4166;
+    --choice-text-color: #e0e0e0;
+    --choice-hover-bg: #7e31ef;
+    --choice-correct-bg: #00ff88;
+    --choice-incorrect-bg: #ff4757;
+    --accent-color: #ff69b4;
+    --font-family: "Montserrat", sans-serif;
+}
+
+/* Fixed top timer bar like lesson progress */
+.quiz-timer-bar-fixed {
+    position: fixed;
+    top: 0;
+    left: 90px;
+    right: 0;
+    height: 6px;
+    background-color: var(--timer-bar-bg);
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.quiz-timer-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #ff66c4 0%, #ff4da6 100%);
+    transition: width 0.2s linear;
+    box-shadow: 0 0 10px rgba(255, 102, 196, 0.6);
+}
+
+@media (max-width: 575.98px) {
+    .quiz-timer-bar-fixed {
+        left: 60px;
+    }
+}
+
+.quiz-battle-container {
+    display: none;
+    width: 100%;
+    max-width: 1000px;
+    margin: 2rem auto;
+    font-family: var(--font-family);
+}
+
+.players-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    gap: 2rem;
+}
+
+.player-card {
+    background: linear-gradient(135deg, #3a1464 0%, #2d1050 100%);
+    border-radius: 15px;
+    padding: 1rem;
+    width: 30%;
+    display: flex;
+    align-items: center;
+    border: 2px solid #7e31ef;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(126, 49, 239, 0.3);
+}
+
+.player-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(126, 49, 239, 0.5);
+}
+
+.player-card.active-turn {
+    border-color: var(--timer-bar-fill);
+    box-shadow: 0 4px 20px rgba(50, 255, 218, 0.6);
+}
+
+/* Your player card - left aligned */
+#player-card-you {
+    flex-direction: row;
+}
+
+#player-card-you img {
+    margin-right: 1rem;
+    margin-left: 0;
+}
+
+/* Opponent card - right aligned (reversed) */
+#player-card-opponent {
+    flex-direction: row-reverse;
+}
+
+#player-card-opponent img {
+    margin-left: 1rem;
+    margin-right: 0;
+}
+
+#player-card-opponent .player-info {
+    text-align: right;
+}
+
+/* Player Status Indicators */
+.player-card {
+    position: relative;
+    overflow: visible;
+}
+
+/* Thinking dots indicator for answering status */
+.player-card.status-answering::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 80px;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: #ffd700;
+    border-radius: 50%;
+    animation: thinking-dots 1.4s ease-in-out infinite;
+    box-shadow:
+        12px 0 0 #ffd700,
+        24px 0 0 #ffd700;
+}
+
+/* Thinking dots for opponent (reversed layout) */
+#player-card-opponent.status-answering::before {
+    right: auto;
+    left: 80px;
+    box-shadow:
+        12px 0 0 #ffd700,
+        24px 0 0 #ffd700;
+}
+
+@keyframes thinking-dots {
+    0%, 100% {
+        opacity: 0.3;
+    }
+
+    33% {
+        opacity: 1;
+        box-shadow:
+            12px 0 0 rgba(255, 215, 0, 0.3),
+            24px 0 0 rgba(255, 215, 0, 0.3);
+    }
+
+    66% {
+        opacity: 0.3;
+        box-shadow:
+            12px 0 0 #ffd700,
+            24px 0 0 rgba(255, 215, 0, 0.3);
+    }
+}
+
+/* Subtle dim effect for answered status */
+.player-card.status-answered {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+/* Left status */
+.player-card.status-left {
+    opacity: 0.4;
+    filter: grayscale(100%) brightness(0.5);
+    border-color: #555;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.player-card.status-left::after {
+    content: '⚠️ LEFT';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    color: #ff4757;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    z-index: 10;
+    filter: brightness(1) saturate(1.5);
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
+}
+
+.player-card img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid #7e31ef;
+    box-shadow: 0 0 15px rgba(126, 49, 239, 0.5);
+}
+
+.player-info {
+    flex-grow: 1;
+}
+
+.player-name {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #fff;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Your name - Pink */
+#player-card-you .player-name {
+    color: #ff66c4;
+    text-shadow: 0 0 10px rgba(255, 102, 196, 0.5);
+}
+
+/* Opponent name - Red */
+#player-card-opponent .player-name {
+    color: #ff4757;
+    text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+}
+
+.player-score {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--score-color);
+    margin: 0;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.question-panel {
+    background: linear-gradient(135deg, #371569 0%, #2a0f52 100%);
+    padding: 2rem;
+    border-radius: 15px;
+    text-align: center;
+    border: 2px solid #7e31ef;
+    animation: fadeIn 0.5s ease-in;
+    box-shadow: 0 4px 20px rgba(126, 49, 239, 0.4);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Timer text replacing Quiz Battle title */
+.timer-text-title {
+    color: #ff66c4;
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0 0 1rem 0;
+    text-align: center;
+    font-family: "Luckiest Guy", cursive;
+    letter-spacing: 2px;
+}
+
+.timer-container {
+    margin-bottom: 1.5rem;
+}
+
+.timer-bar-wrapper {
+    width: 100%;
+    height: 12px;
+    background-color: var(--timer-bar-bg);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.timer-bar {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #32ffda 0%, #00d4aa 100%);
+    border-radius: 6px;
+    transition: width 0.2s linear;
+    box-shadow: 0 0 10px rgba(50, 255, 218, 0.5);
+}
+
+.timer-text {
+    color: var(--timer-bar-fill);
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-top: 0.5rem;
+    text-align: center;
+    text-shadow: 0 0 10px rgba(50, 255, 218, 0.5);
+}
+
+.question-number {
+    color: #32ffda;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.question-text {
+    color: var(--question-text-color);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    min-height: 70px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.choices-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.choice-btn {
+    background-color: #7e31ef;
+    color: #ffffff;
+    border: 2px solid #7e31ef;
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    box-shadow: 0 2px 8px rgba(126, 49, 239, 0.3);
+}
+
+.choice-btn:hover:not(:disabled) {
+    background-color: #ff66c4;
+    border-color: #ff66c4;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 102, 196, 0.5);
+}
+
+.choice-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Greyed out effect for non-selected buttons when answer is locked */
+.choice-btn:disabled:not(.selected) {
+    background-color: #3a3a3a;
+    border-color: #4a4a4a;
+    color: #aaa;
+    opacity: 0.6;
+    box-shadow: none;
+}
+
+/* Keep selected button visible when disabled */
+.choice-btn:disabled.selected {
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+.choice-btn.correct {
+    background: linear-gradient(135deg, #00ff88 0%, #00cc6e 100%);
+    border-color: #00ff88;
+    color: #000;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+    opacity: 1 !important;
+}
+
+.choice-btn.incorrect {
+    background: linear-gradient(135deg, #ff4757 0%, #cc3945 100%);
+    border-color: #ff4757;
+    color: white;
+    box-shadow: 0 0 20px rgba(255, 71, 87, 0.6);
+    opacity: 1 !important;
+}
+
+.choice-btn.selected {
+    border: 2px solid var(--accent-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.5);
+}
+
+.quiz-feedback {
+    margin-top: 1rem;
+    min-height: 40px;
+    color: #32ffda;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(50, 255, 218, 0.5);
+}
+
+.question-transition {
+    animation: slideOut 0.3s ease-out;
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+}
+
+@media (max-width: 768px) {
+    .players-info {
+        flex-direction: column;
+    }
+
+    .player-card {
+        width: 100%;
+    }
+
+    #player-card-opponent {
+        flex-direction: row;
+    }
+
+    #player-card-opponent img {
+        margin-left: 0;
+        margin-right: 1rem;
+    }
+
+    #player-card-opponent .player-info {
+        text-align: left;
+    }
+
+    .choices-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .question-text {
+        font-size: 1.2rem;
+    }
+
+    .player-score {
+        font-size: 1.5rem;
+    }
+}

@@ -1,0 +1,254 @@
+@import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Montserrat:wght@400;600;700&display=swap");
+
+:root {
+	--qc-background: radial-gradient(circle at top, #3f1b8c 0%, #160432 45%, #090019 100%);
+	--qc-surface: #2b0f57;
+	--qc-surface-dark: #200a40;
+	--qc-accent: #ff66c4;
+	--qc-accent-soft: #7642ff;
+	--qc-highlight: #f5c703;
+	--qc-text-primary: #f6f3ff;
+	--qc-text-secondary: #d5ccff;
+	--qc-shadow: 0 18px 40px rgba(12, 0, 28, 0.45);
+}
+
+.quiz-challenge-body {
+	margin: 0;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--qc-background);
+	color: var(--qc-text-primary);
+	font-family: "Montserrat", sans-serif;
+}
+
+.quiz-challenge {
+	width: min(1120px, 95vw);
+	padding: clamp(1.75rem, 3vw, 2.75rem);
+	background: var(--qc-surface);
+	border-radius: 30px;
+	box-shadow: var(--qc-shadow);
+	display: flex;
+	flex-direction: column;
+	gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.qc-top {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.9rem;
+}
+
+.qc-progress-track {
+	width: 100%;
+	height: 16px;
+	background: rgba(255, 255, 255, 0.07);
+	border-radius: 999px;
+	overflow: hidden;
+	box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.qc-progress-fill {
+	width: 0%;
+	height: 100%;
+	background: linear-gradient(90deg, #ff66c4 0%, #ff81d1 100%);
+	border-radius: inherit;
+	transition: width 0.4s ease;
+}
+
+.qc-top-timer {
+	font-family: "Luckiest Guy", cursive;
+	font-size: clamp(2rem, 4vw, 2.8rem);
+	color: var(--qc-highlight);
+	text-shadow: 0 4px 16px rgba(245, 199, 3, 0.4);
+	letter-spacing: 1px;
+}
+
+.qc-stage {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: clamp(1.25rem, 3vw, 2.5rem);
+	align-items: center;
+}
+
+.qc-player-card {
+	background: var(--qc-surface-dark);
+	border-radius: 26px;
+	padding: clamp(1.25rem, 2.2vw, 1.9rem) clamp(1rem, 1.8vw, 1.4rem);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.8rem;
+	position: relative;
+	text-align: center;
+	box-shadow: 0 12px 30px rgba(9, 0, 28, 0.3);
+}
+
+.qc-player-left::before,
+.qc-player-right::before {
+	content: "";
+	position: absolute;
+	top: 12px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 70%;
+	height: 4px;
+	border-radius: 999px;
+	background: linear-gradient(90deg, rgba(255, 102, 196, 0.35), rgba(118, 66, 255, 0.65));
+}
+
+.qc-player-left::before {
+	background: linear-gradient(90deg, rgba(255, 102, 196, 0.75), rgba(118, 66, 255, 0.45));
+}
+
+.qc-player-right::before {
+	background: linear-gradient(90deg, rgba(118, 66, 255, 0.45), rgba(255, 102, 196, 0.75));
+}
+
+.qc-avatar {
+	width: clamp(96px, 12vw, 118px);
+	height: clamp(96px, 12vw, 118px);
+	border-radius: 50%;
+	border: 6px solid rgba(255, 255, 255, 0.08);
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.35);
+	box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+
+.qc-avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.qc-player-name {
+	margin: 0;
+	font-family: "Luckiest Guy", cursive;
+	font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+	letter-spacing: 0.04em;
+	color: var(--qc-text-primary);
+	text-transform: uppercase;
+}
+
+.qc-player-points {
+	margin: 0;
+	font-size: clamp(1.05rem, 1.8vw, 1.2rem);
+	font-weight: 700;
+	color: var(--qc-text-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.qc-player-points .qc-label {
+	margin-right: 0.4rem;
+	color: rgba(255, 255, 255, 0.65);
+}
+
+.qc-player-points .qc-points-value {
+	color: var(--qc-highlight);
+	text-shadow: 0 3px 10px rgba(245, 199, 3, 0.35);
+}
+
+.qc-question-card {
+	background: linear-gradient(180deg, rgba(118, 66, 255, 0.85) 0%, rgba(87, 21, 176, 0.95) 100%);
+	border-radius: 24px;
+	padding: clamp(1.75rem, 3vw, 2.25rem);
+	text-align: center;
+	box-shadow: 0 16px 36px rgba(11, 0, 28, 0.5);
+}
+
+.qc-question-meta {
+	margin: 0 0 0.85rem;
+	font-size: 0.95rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+	color: rgba(255, 231, 111, 0.9);
+}
+
+.qc-question-text {
+	margin: 0;
+	font-size: clamp(1.5rem, 2.8vw, 2.2rem);
+	font-weight: 700;
+	line-height: 1.35;
+	color: var(--qc-text-primary);
+}
+
+.qc-choices {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: clamp(1rem, 2.4vw, 1.8rem);
+}
+
+.qc-choice {
+	background: linear-gradient(180deg, rgba(122, 64, 255, 0.98) 0%, rgba(93, 32, 202, 1) 100%);
+	border: none;
+	border-radius: 18px;
+	padding: clamp(1.1rem, 2vw, 1.4rem) clamp(1.4rem, 2.6vw, 2rem);
+	font-size: clamp(1rem, 2vw, 1.3rem);
+	font-family: "Luckiest Guy", cursive;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--qc-text-primary);
+	box-shadow: 0 14px 28px rgba(10, 0, 30, 0.45);
+	cursor: pointer;
+	transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.qc-choice:hover {
+	transform: translateY(-5px);
+	box-shadow: 0 20px 36px rgba(10, 0, 30, 0.55);
+	filter: brightness(1.08);
+}
+
+.qc-choice:active {
+	transform: translateY(0);
+	box-shadow: 0 10px 16px rgba(10, 0, 30, 0.4);
+}
+
+@media (max-width: 960px) {
+	.quiz-challenge {
+		border-radius: 24px;
+	}
+
+	.qc-stage {
+		grid-template-columns: 1fr;
+	}
+
+	.qc-player-card {
+		flex-direction: row;
+		justify-content: center;
+		gap: 1.5rem;
+	}
+
+	.qc-player-card::before {
+		display: none;
+	}
+
+	.qc-choices {
+		grid-template-columns: 1fr;
+	}
+
+	.qc-question-card {
+		order: -1;
+	}
+}
+
+@media (max-width: 640px) {
+	.quiz-challenge {
+		padding: 1.5rem;
+	}
+
+	.qc-top-timer {
+		font-size: 2.1rem;
+	}
+
+	.qc-choice {
+		letter-spacing: 0.04em;
+	}
+}
