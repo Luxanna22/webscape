@@ -25,6 +25,9 @@ import math
 import time
 import random
 import subprocess
+import re
+from datetime import datetime
+from html import escape, unescape
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Metric, Dimension, RunReportRequest
 import calendar
@@ -46,6 +49,108 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+HTML_BREAK_RE = re.compile(r'<\s*br\s*/?>', re.IGNORECASE)
+HTML_BLOCK_RE = re.compile(r'</?(p|li|div|h[1-6])\s*>', re.IGNORECASE)
+HTML_TAG_RE = re.compile(r'<[^>]+>')
+CODE_TAG_RE = re.compile(r'<code[^>]*>(.*?)</code>', re.IGNORECASE | re.DOTALL)
+BACKTICK_CODE_RE = re.compile(r'`([^`]+)`')
+
+
+def _format_duration_short(total_seconds):
+    try:
+        seconds = int(total_seconds or 0)
+    except (TypeError, ValueError):
+        seconds = 0
+    if seconds <= 0:
+        return "0m"
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if not parts:
+        parts.append(f"{seconds}s")
+    return " ".join(parts)
+
+
+def _format_relative_time(moment):
+    if not moment:
+        return ''
+    if not hasattr(moment, 'tzinfo'):
+        return ''
+    if moment.tzinfo is not None:
+        moment = moment.replace(tzinfo=None)
+    now = datetime.utcnow()
+    delta = now - moment
+    total_seconds = max(int(delta.total_seconds()), 0)
+    days = total_seconds // 86400
+    if days > 0:
+        if days == 1:
+            return "1 day ago"
+        if days < 7:
+            return f"{days} days ago"
+        weeks = days // 7
+        if weeks == 1:
+            return "1 week ago"
+        return f"{weeks} weeks ago"
+    hours = total_seconds // 3600
+    if hours > 0:
+        return f"{hours}h ago"
+    minutes = total_seconds // 60
+    if minutes > 0:
+        return f"{minutes}m ago"
+    if total_seconds > 0:
+        return f"{total_seconds}s ago"
+    return "just now"
+
+
+def render_inline_code_spans(value: str) -> str:
+    """Replace backtick-delimited segments with escaped inline code blocks."""
+    if not value:
+        return ''
+
+    def replace(match: re.Match) -> str:
+        inner = match.group(1)
+        return f'<code class="inline-code">{escape(inner)}</code>'
+
+    return BACKTICK_CODE_RE.sub(replace, value)
+
+
+def strip_html_to_text(value: str) -> str:
+    """Convert HTML content into a readable plain-text summary."""
+    if not value:
+        return ''
+
+    # Normalize backtick-wrapped inline code before stripping
+    captured_codes: list[str] = []
+
+    def extract_code(match: re.Match) -> str:
+        inner = match.group(1)
+        # Inner may already contain escaped entities; preserve by unescaping later
+        captured_codes.append(unescape(inner))
+        return f'`__CODE_SNIPPET_{len(captured_codes) - 1}__`'
+
+    value = CODE_TAG_RE.sub(extract_code, value)
+
+    # Normalize common block-level tags into line breaks before stripping everything else
+    text = HTML_BREAK_RE.sub('\n', value)
+    text = HTML_BLOCK_RE.sub('\n', text)
+    text = HTML_TAG_RE.sub('', text)
+    text = unescape(text)
+
+    # Restore captured inline code snippets
+    for index, snippet in enumerate(captured_codes):
+        placeholder = f'`__CODE_SNIPPET_{index}__`'
+        text = text.replace(placeholder, f'`{snippet}`')
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return '\n'.join(lines)
 
 DEFAULT_RATING = max(int(os.getenv('DEFAULT_RATING', '100')), 0)
 RATING_XP_DIVISOR = max(int(os.getenv('RATING_XP_DIVISOR', '20')), 1)
@@ -703,6 +808,8 @@ def user_lesson_content(level, chapter_id):
         lesson_pages = db_cursor.fetchall()
         # For quiz pages, fetch choices from lesson_choices
         for page in lesson_pages:
+            page['content'] = render_inline_code_spans(page.get('content', '') or '')
+            page['notes'] = render_inline_code_spans(page.get('notes', '') or '')
             if page.get('page_type') == 'quiz':
                 db_cursor.execute("SELECT id, choice_text, is_correct FROM lesson_choices WHERE lesson_content_id = %s", (page['id'],))
                 page['choices'] = db_cursor.fetchall()
@@ -917,6 +1024,382 @@ def update_lesson_progress(level, chapter_id):
         if 'db_connection' in locals():
             db_connection.close()
 
+# ============== LESSON COMMENTS API ROUTES ==============
+
+@app.route('/api/lessons/<int:lesson_content_id>/comments', methods=['GET'])
+@login_required
+def get_lesson_comments(lesson_content_id):
+    """Get all comments for a lesson page with replies and like counts"""
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Get all comments for this lesson page
+        db_cursor.execute("""
+            SELECT 
+                lc.id,
+                lc.user_id,
+                u.username,
+                lc.comment_text,
+                lc.created_at,
+                lc.updated_at,
+                (SELECT COUNT(*) FROM lesson_comment_likes WHERE comment_id = lc.id) AS like_count,
+                (SELECT COUNT(*) FROM lesson_comment_likes WHERE comment_id = lc.id AND user_id = %s) AS user_liked,
+                (SELECT COUNT(*) FROM lesson_comment_replies WHERE comment_id = lc.id) AS reply_count
+            FROM lesson_comments lc
+            JOIN users u ON lc.user_id = u.id
+            WHERE lc.lesson_content_id = %s
+            ORDER BY lc.created_at DESC
+        """, (session['user_id'], lesson_content_id))
+        
+        comments = db_cursor.fetchall()
+        
+        # Get replies for each comment
+        for comment in comments:
+            # Convert user_liked to boolean 'liked' for frontend
+            comment['liked'] = bool(comment.get('user_liked', 0))
+            
+            db_cursor.execute("""
+                SELECT 
+                    lcr.id,
+                    lcr.user_id,
+                    u.username,
+                    lcr.reply_text,
+                    lcr.created_at,
+                    (SELECT COUNT(*) FROM lesson_reply_likes WHERE reply_id = lcr.id) AS like_count,
+                    (SELECT COUNT(*) FROM lesson_reply_likes WHERE reply_id = lcr.id AND user_id = %s) AS user_liked
+                FROM lesson_comment_replies lcr
+                JOIN users u ON lcr.user_id = u.id
+                WHERE lcr.comment_id = %s
+                ORDER BY lcr.created_at ASC
+            """, (session['user_id'], comment['id']))
+            
+            replies = db_cursor.fetchall()
+            # Convert user_liked to boolean 'liked' for replies too
+            for reply in replies:
+                reply['liked'] = bool(reply.get('user_liked', 0))
+            comment['replies'] = replies
+        
+        db_cursor.close()
+        db_connection.close()
+        
+        return jsonify({'success': True, 'comments': comments})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/lessons/<int:lesson_content_id>/comments', methods=['POST'])
+@login_required
+def post_lesson_comment(lesson_content_id):
+    """Create a new comment on a lesson page"""
+    try:
+        data = request.json
+        comment_text = data.get('comment_text', '').strip()
+        
+        if not comment_text:
+            return jsonify({'success': False, 'error': 'Comment cannot be empty'}), 400
+        
+        if len(comment_text) > 2000:
+            return jsonify({'success': False, 'error': 'Comment is too long (max 2000 characters)'}), 400
+        
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Verify lesson content exists
+        db_cursor.execute("SELECT id FROM lesson_content WHERE id = %s", (lesson_content_id,))
+        if not db_cursor.fetchone():
+            db_cursor.close()
+            db_connection.close()
+            return jsonify({'success': False, 'error': 'Lesson not found'}), 404
+        
+        # Create comment
+        db_cursor.execute("""
+            INSERT INTO lesson_comments (lesson_content_id, user_id, comment_text)
+            VALUES (%s, %s, %s)
+        """, (lesson_content_id, session['user_id'], comment_text))
+        
+        comment_id = db_cursor.lastrowid
+        db_connection.commit()
+        
+        # Get the created comment with user info
+        db_cursor.execute("""
+            SELECT 
+                lc.id,
+                lc.user_id,
+                u.username,
+                lc.comment_text,
+                lc.created_at,
+                0 AS like_count,
+                0 AS user_liked,
+                0 AS reply_count
+            FROM lesson_comments lc
+            JOIN users u ON lc.user_id = u.id
+            WHERE lc.id = %s
+        """, (comment_id,))
+        
+        comment = db_cursor.fetchone()
+        comment['replies'] = []
+        
+        db_cursor.close()
+        db_connection.close()
+        
+        return jsonify({'success': True, 'comment': comment}), 201
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>', methods=['DELETE'])
+@login_required
+def delete_lesson_comment(comment_id):
+    """Delete a comment (only by comment author or admin)"""
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Get comment
+        db_cursor.execute("SELECT user_id FROM lesson_comments WHERE id = %s", (comment_id,))
+        comment = db_cursor.fetchone()
+        
+        if not comment:
+            db_cursor.close()
+            db_connection.close()
+            return jsonify({'success': False, 'error': 'Comment not found'}), 404
+        
+        # Check authorization
+        if comment['user_id'] != session['user_id'] and session.get('role') != 'admin':
+            db_cursor.close()
+            db_connection.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Delete comment (cascades to replies and likes)
+        db_cursor.execute("DELETE FROM lesson_comments WHERE id = %s", (comment_id,))
+        db_connection.commit()
+        
+        db_cursor.close()
+        db_connection.close()
+        
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>/replies', methods=['POST'])
+@login_required
+def post_comment_reply(comment_id):
+    """Add a reply to a comment"""
+    try:
+        data = request.json
+        reply_text = data.get('reply_text', '').strip()
+        
+        if not reply_text:
+            return jsonify({'success': False, 'error': 'Reply cannot be empty'}), 400
+        
+        if len(reply_text) > 1000:
+            return jsonify({'success': False, 'error': 'Reply is too long (max 1000 characters)'}), 400
+        
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Verify comment exists
+        db_cursor.execute("SELECT id FROM lesson_comments WHERE id = %s", (comment_id,))
+        if not db_cursor.fetchone():
+            db_cursor.close()
+            db_connection.close()
+            return jsonify({'success': False, 'error': 'Comment not found'}), 404
+        
+        # Create reply
+        db_cursor.execute("""
+            INSERT INTO lesson_comment_replies (comment_id, user_id, reply_text)
+            VALUES (%s, %s, %s)
+        """, (comment_id, session['user_id'], reply_text))
+        
+        reply_id = db_cursor.lastrowid
+        db_connection.commit()
+        
+        # Get the created reply with user info
+        db_cursor.execute("""
+            SELECT 
+                lcr.id,
+                lcr.user_id,
+                u.username,
+                lcr.reply_text,
+                lcr.created_at,
+                0 AS like_count,
+                0 AS user_liked
+            FROM lesson_comment_replies lcr
+            JOIN users u ON lcr.user_id = u.id
+            WHERE lcr.id = %s
+        """, (reply_id,))
+        
+        reply = db_cursor.fetchone()
+        
+        db_cursor.close()
+        db_connection.close()
+        
+        return jsonify({'success': True, 'reply': reply}), 201
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/replies/<int:reply_id>', methods=['DELETE'])
+@login_required
+def delete_comment_reply(reply_id):
+    """Delete a reply (only by reply author or admin)"""
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Get reply
+        db_cursor.execute("SELECT user_id FROM lesson_comment_replies WHERE id = %s", (reply_id,))
+        reply = db_cursor.fetchone()
+        
+        if not reply:
+            db_cursor.close()
+            db_connection.close()
+            return jsonify({'success': False, 'error': 'Reply not found'}), 404
+        
+        # Check authorization
+        if reply['user_id'] != session['user_id'] and session.get('role') != 'admin':
+            db_cursor.close()
+            db_connection.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Delete reply (cascades to likes)
+        db_cursor.execute("DELETE FROM lesson_comment_replies WHERE id = %s", (reply_id,))
+        db_connection.commit()
+        
+        db_cursor.close()
+        db_connection.close()
+        
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/comments/<int:comment_id>/like', methods=['POST'])
+@login_required
+def like_comment(comment_id):
+    """Like/unlike a comment"""
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Verify comment exists
+        db_cursor.execute("SELECT id FROM lesson_comments WHERE id = %s", (comment_id,))
+        if not db_cursor.fetchone():
+            db_cursor.close()
+            db_connection.close()
+            return jsonify({'success': False, 'error': 'Comment not found'}), 404
+        
+        # Check if user already liked this comment
+        db_cursor.execute("""
+            SELECT id FROM lesson_comment_likes 
+            WHERE comment_id = %s AND user_id = %s
+        """, (comment_id, session['user_id']))
+        
+        existing_like = db_cursor.fetchone()
+        
+        if existing_like:
+            # Unlike
+            db_cursor.execute("""
+                DELETE FROM lesson_comment_likes 
+                WHERE comment_id = %s AND user_id = %s
+            """, (comment_id, session['user_id']))
+            liked = False
+        else:
+            # Like
+            db_cursor.execute("""
+                INSERT INTO lesson_comment_likes (comment_id, user_id)
+                VALUES (%s, %s)
+            """, (comment_id, session['user_id']))
+            liked = True
+        
+        db_connection.commit()
+        
+        # Get updated like count
+        db_cursor.execute("""
+            SELECT COUNT(*) as like_count FROM lesson_comment_likes 
+            WHERE comment_id = %s
+        """, (comment_id,))
+        
+        result = db_cursor.fetchone()
+        like_count = result['like_count'] if result else 0
+        
+        db_cursor.close()
+        db_connection.close()
+        
+        return jsonify({'success': True, 'liked': liked, 'like_count': like_count}), 200
+    except Exception as e:
+        print(f"[ERROR] like_comment failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        if 'db_connection' in locals():
+            try:
+                db_connection.rollback()
+                db_connection.close()
+            except Exception:
+                pass
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/replies/<int:reply_id>/like', methods=['POST'])
+@login_required
+def like_reply(reply_id):
+    """Like/unlike a reply"""
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Verify reply exists
+        db_cursor.execute("SELECT id FROM lesson_comment_replies WHERE id = %s", (reply_id,))
+        if not db_cursor.fetchone():
+            db_cursor.close()
+            db_connection.close()
+            return jsonify({'success': False, 'error': 'Reply not found'}), 404
+        
+        # Check if user already liked this reply
+        db_cursor.execute("""
+            SELECT id FROM lesson_reply_likes 
+            WHERE reply_id = %s AND user_id = %s
+        """, (reply_id, session['user_id']))
+        
+        existing_like = db_cursor.fetchone()
+        
+        if existing_like:
+            # Unlike
+            db_cursor.execute("""
+                DELETE FROM lesson_reply_likes 
+                WHERE reply_id = %s AND user_id = %s
+            """, (reply_id, session['user_id']))
+            liked = False
+        else:
+            # Like
+            db_cursor.execute("""
+                INSERT INTO lesson_reply_likes (reply_id, user_id)
+                VALUES (%s, %s)
+            """, (reply_id, session['user_id']))
+            liked = True
+        
+        db_connection.commit()
+        
+        # Get updated like count
+        db_cursor.execute("""
+            SELECT COUNT(*) as like_count FROM lesson_reply_likes 
+            WHERE reply_id = %s
+        """, (reply_id,))
+        
+        result = db_cursor.fetchone()
+        like_count = result['like_count'] if result else 0
+        
+        db_cursor.close()
+        db_connection.close()
+        
+        return jsonify({'success': True, 'liked': liked, 'like_count': like_count}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============== END LESSON COMMENTS API ROUTES ==============
+
 # Update the startChapter function in chapter_list.html
 @app.route('/user/classic/<level>/<int:chapter_id>/start')
 @login_required
@@ -970,7 +1453,203 @@ def admin_dashboard():
 def admin_users():
     if session.get('role') != 'admin':
         return redirect(url_for('home'))
-    return render_template('admin/users.html')
+    
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Fetch all users with their basic info and stats
+        db_cursor.execute("""
+            SELECT 
+                u.id, 
+                u.username, 
+                u.email, 
+                u.created_at,
+                u.role,
+                u.avatar_path,
+                COALESCE(us.xp, 0) as xp,
+                COALESCE(us.level, 1) as level,
+                COALESCE(us.points, 0) as points,
+                COALESCE(us.rating, 1200) as rating,
+                COALESCE(l.total_score, 0) as leaderboard_score
+            FROM users u
+            LEFT JOIN user_stats us ON u.id = us.user_id
+            LEFT JOIN leaderboards l ON u.id = l.user_id
+            ORDER BY u.created_at DESC
+        """)
+        users = db_cursor.fetchall()
+        
+        # Determine active/inactive status based on recent activity
+        for user in users:
+            db_cursor.execute("""
+                SELECT MAX(last_visited) as last_active
+                FROM lesson_page_analytics
+                WHERE user_id = %s
+            """, (user['id'],))
+            activity = db_cursor.fetchone()
+            
+            if activity and activity['last_active']:
+                last_active = activity['last_active']
+                if last_active.tzinfo is not None:
+                    last_active = last_active.replace(tzinfo=None)
+                days_inactive = (datetime.utcnow() - last_active).days
+                user['status'] = 'Active' if days_inactive < 7 else 'Inactive'
+                user['last_active'] = last_active
+            else:
+                user['status'] = 'Inactive'
+                user['last_active'] = None
+        
+        return render_template('admin/users.html', users=users)
+    except Exception as e:
+        print(f"Error in admin_users: {str(e)}")
+        return render_template('admin/users.html', users=[])
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
+
+@app.route('/admin/users/<int:user_id>')
+@login_required
+def admin_user_details(user_id):
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor(dictionary=True)
+        
+        # Fetch user info
+        db_cursor.execute("""
+            SELECT id, username, email, avatar_path, google_id, created_at, role
+            FROM users WHERE id = %s
+        """, (user_id,))
+        user = db_cursor.fetchone()
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Fetch user badges
+        db_cursor.execute('''
+            SELECT b.id, b.name, b.description, b.icon, ub.earned_at
+            FROM user_badges ub
+            JOIN badges b ON ub.badge_id = b.id
+            WHERE ub.user_id = %s
+            ORDER BY ub.earned_at DESC
+        ''', (user_id,))
+        badges = db_cursor.fetchall()
+        
+        # Learning progress metrics
+        db_cursor.execute("SELECT COUNT(*) AS total FROM chapters")
+        total_chapters = int((db_cursor.fetchone() or {}).get('total') or 0)
+        
+        db_cursor.execute("""
+            SELECT
+                COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0) AS completed,
+                COALESCE(SUM(CASE WHEN completed = 0 AND progress > 0 THEN 1 ELSE 0 END), 0) AS in_progress,
+                COALESCE(SUM(progress), 0) AS total_progress
+            FROM user_progress
+            WHERE user_id = %s
+        """, (user_id,))
+        progress_row = db_cursor.fetchone() or {}
+        
+        completed_chapters = int(progress_row.get('completed') or 0)
+        in_progress_chapters = int(progress_row.get('in_progress') or 0)
+        progress_sum = float(progress_row.get('total_progress') or 0.0)
+        overall_percent = min(progress_sum / total_chapters, 100.0) if total_chapters else 0.0
+        
+        # Engagement metrics
+        db_cursor.execute("""
+            SELECT
+                COALESCE(SUM(time_spent), 0) AS total_time,
+                COALESCE(COUNT(DISTINCT DATE(last_visited)), 0) AS active_days,
+                COALESCE(COUNT(DISTINCT chapter_id), 0) AS chapters_visited,
+                MAX(last_visited) AS last_visited
+            FROM lesson_page_analytics
+            WHERE user_id = %s
+        """, (user_id,))
+        engagement_row = db_cursor.fetchone() or {}
+        
+        total_time_spent = int(float(engagement_row.get('total_time') or 0))
+        active_days = int(engagement_row.get('active_days') or 0)
+        chapters_visited = int(engagement_row.get('chapters_visited') or 0)
+        last_active_dt = engagement_row.get('last_visited')
+        avg_daily_seconds = total_time_spent // active_days if active_days else 0
+        
+        # Score metrics
+        db_cursor.execute("""
+            SELECT xp, level, points, rating FROM user_stats WHERE user_id = %s
+        """, (user_id,))
+        stats_row = db_cursor.fetchone()
+        
+        xp = int((stats_row.get('xp') or 0) if stats_row else 0)
+        level = int((stats_row.get('level') or 1) if stats_row else 1)
+        points = int((stats_row.get('points') or 0) if stats_row else 0)
+        rating = int((stats_row.get('rating') or 1200) if stats_row else 1200)
+        
+        # Fetch user rank
+        db_cursor.execute('''
+            SELECT user_id, total_score FROM leaderboards ORDER BY total_score DESC
+        ''')
+        leaderboard = db_cursor.fetchall()
+        user_rank = None
+        for idx, entry in enumerate(leaderboard, 1):
+            if entry['user_id'] == user_id:
+                user_rank = idx
+                break
+        
+        print(f"DEBUG: User {user_id} rank: {user_rank}")
+        print(f"DEBUG: User rank type: {type(user_rank)}")
+        
+        # Format data for response
+        response_data = {
+            'user': {
+                'id': user['id'],
+                'username': user['username'],
+                'email': user['email'],
+                'avatar_path': user['avatar_path'],
+                'created_at': user['created_at'].strftime('%b %d, %Y') if user['created_at'] else '',
+                'role': user['role']
+            },
+            'badges': [{
+                'name': b['name'],
+                'description': b['description'],
+                'icon': b['icon'],
+                'earned_at': b['earned_at'].strftime('%b %d, %Y') if b['earned_at'] else ''
+            } for b in badges],
+            'progress': {
+                'completed_chapters': completed_chapters,
+                'in_progress_chapters': in_progress_chapters,
+                'total_chapters': total_chapters,
+                'overall_percent': round(overall_percent, 1),
+                'bar_width': max(0, min(int(round(overall_percent)), 100))
+            },
+            'engagement': {
+                'total_time_label': _format_duration_short(total_time_spent),
+                'active_days': active_days,
+                'avg_daily_label': _format_duration_short(avg_daily_seconds),
+                'chapters_visited': chapters_visited,
+                'last_active_label': last_active_dt.strftime('%b %d, %Y %I:%M %p') if last_active_dt else 'Never',
+                'last_active_relative': _format_relative_time(last_active_dt) if last_active_dt else 'Never'
+            },
+            'scores': {
+                'xp': xp,
+                'level': level,
+                'points': points,
+                'rating': rating,
+                'rank': user_rank or 'Unranked'
+            }
+        }
+        
+        return jsonify(response_data)
+    except Exception as e:
+        print(f"Error in admin_user_details: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if 'db_cursor' in locals():
+            db_cursor.close()
+        if 'db_connection' in locals():
+            db_connection.close()
 
 @app.route('/admin/levels')
 @login_required
@@ -1375,13 +2054,13 @@ def get_username_by_user_id(user_id):
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor(dictionary=True)
         
-        query = "SELECT username FROM users WHERE id = %s"
+        query = "SELECT username, avatar_path FROM users WHERE id = %s"
         db_cursor.execute(query, (user_id,))
         result = db_cursor.fetchone()
-        return result['username'] if result else f'Player{user_id}'
+        return result if result else {'username': f'Player{user_id}', 'avatar_path': None}
     except Exception as e:
         print("Database error:", str(e))
-        return f'Player{user_id}'
+        return {'username': f'Player{user_id}', 'avatar_path': None}
     finally:
         if 'db_cursor' in locals():
             db_cursor.close()
@@ -1440,20 +2119,30 @@ def handle_queue(data):
             join_room(room, socket_id)
             join_room(room, opponent_socket)
 
-            opponent_username = get_username_by_user_id(opponent_user_id)
-            current_username = get_username_by_user_id(user_id)
+            opponent_user = get_username_by_user_id(opponent_user_id)
+            current_user = get_username_by_user_id(user_id)
 
             emit('match_found', {
                 'opponent': {
-                    'name': opponent_username,
-                    'rating': opponent_rating
+                    'name': opponent_user.get('username', 'Opponent'),
+                    'rating': opponent_rating,
+                    'avatar': opponent_user.get('avatar_path')
+                },
+                'you': {
+                    'name': current_user.get('username', 'You'),
+                    'avatar': current_user.get('avatar_path')
                 }
             }, room=socket_id)
 
             emit('match_found', {
                 'opponent': {
-                    'name': current_username,
-                    'rating': user_rating
+                    'name': current_user.get('username', 'Opponent'),
+                    'rating': user_rating,
+                    'avatar': current_user.get('avatar_path')
+                },
+                'you': {
+                    'name': opponent_user.get('username', 'You'),
+                    'avatar': opponent_user.get('avatar_path')
                 }
             }, room=opponent_socket)
         else:
@@ -1505,22 +2194,38 @@ def handle_start_match():
             if match_id in quiz_matches:
                 break
             questions = load_all_quiz_questions()
-            question = random.choice(questions) if questions else DEFAULT_QUIZ_QUESTION
+            if not questions:
+                questions = [DEFAULT_QUIZ_QUESTION] * 5
+            # Select 5 random questions for the match
+            selected_questions = random.sample(questions, min(5, len(questions)))
+            if len(selected_questions) < 5:
+                # Pad with more questions if needed
+                while len(selected_questions) < 5:
+                    selected_questions.append(random.choice(questions) if questions else DEFAULT_QUIZ_QUESTION)
+            
             quiz_matches[match_id] = {
-                'question': question,
+                'questions': selected_questions,
+                'current_question_index': 0,
                 'start_time': time.time(),
+                'question_start_time': time.time(),
                 'answers': {},
-                'winner': None,
-                'answer_times': {}
+                'answer_times': {},
+                'scores': {p: 0 for p in players},
+                'total_questions': 5
             }
+            
+            # Send the first question
+            first_question = selected_questions[0]
             emit('quiz_question_start', {
                 'question': {
-                    'id': question.get('id', 0),
-                    'question': question['question'],
-                    'choices': question['choices'],
-                    'time_limit': question.get('time_limit', 45),
-                    'explanation': question.get('explanation')
-                }
+                    'id': first_question.get('id', 0),
+                    'question': first_question['question'],
+                    'choices': first_question['choices'],
+                    'time_limit': first_question.get('time_limit', 20),
+                    'explanation': first_question.get('explanation')
+                },
+                'question_number': 1,
+                'total_questions': 5
             }, room=match_id)
             break
 
@@ -1584,46 +2289,206 @@ def handle_submit_quiz_answer(data):
         players = info.get('players', [])
         if socket_id in players and match_id in quiz_matches:
             qm = quiz_matches[match_id]
-            question = qm['question']
+            current_idx = qm['current_question_index']
+            question = qm['questions'][current_idx]
+            question_start_time = qm.get('question_start_time', time.time())
+            
+            # Record answer
             qm['answers'][socket_id] = answer_index
-            qm['answer_times'][socket_id] = time.time()
-            # if both answered, decide
-            if len(qm['answers']) >= 2 and not qm['winner']:
+            answer_time = time.time()
+            qm['answer_times'][socket_id] = answer_time
+            
+            # Notify opponent that this player has answered
+            opponent = [p for p in players if p != socket_id][0]
+            emit('player_status', {
+                'player': 'opponent',
+                'status': 'answered'
+            }, room=opponent)
+            
+            # Wait for both players to answer
+            if len(qm['answers']) >= 2:
                 correct_index = question.get('correct_index')
-                winner = None
+                time_limit = question.get('time_limit', 20)
+                
+                # Calculate scores with speed multiplier
+                for p in players:
+                    if qm['answers'].get(p) == correct_index:
+                        # Calculate time taken (in seconds)
+                        time_taken = qm['answer_times'][p] - question_start_time
+                        
+                        # Speed multiplier system:
+                        # 0-5 seconds: 2.0x multiplier (300 points)
+                        # 5-10 seconds: 1.5x multiplier (225 points)
+                        # 10-15 seconds: 1.25x multiplier (187.5 points)
+                        # 15-20 seconds: 1.0x multiplier (150 points)
+                        base_points = 150
+                        if time_taken <= 5:
+                            multiplier = 2.0
+                        elif time_taken <= 10:
+                            multiplier = 1.5
+                        elif time_taken <= 15:
+                            multiplier = 1.25
+                        else:
+                            multiplier = 1.0
+                        
+                        points_earned = int(base_points * multiplier)
+                        qm['scores'][p] += points_earned
+                        
+                        # Store the points earned for this round
+                        if 'round_points' not in qm:
+                            qm['round_points'] = {}
+                        qm['round_points'][p] = {
+                            'points': points_earned,
+                            'multiplier': multiplier,
+                            'time_taken': time_taken
+                        }
+                
+                # Determine round winner (who answered correctly first)
+                round_winner = None
                 correct_entries = [
                     (p, qm['answer_times'].get(p, float('inf')))
                     for p in players
                     if qm['answers'].get(p) == correct_index
                 ]
                 if correct_entries:
-                    winner = min(correct_entries, key=lambda item: item[1])[0]
-                qm['winner'] = winner
+                    round_winner = min(correct_entries, key=lambda item: item[1])[0]
+                
                 correct_choice = None
                 if isinstance(question.get('choices'), list) and 0 <= correct_index < len(question['choices']):
                     correct_choice = question['choices'][correct_index]
-                # emit result
+                
+                # Emit results to both players
                 for p in players:
+                    opponent = [player for player in players if player != p][0]
+                    player_round_data = qm.get('round_points', {}).get(p, {'points': 0, 'multiplier': 0, 'time_taken': 0})
+                    
                     emit('quiz_result', {
                         'your_answer': qm['answers'].get(p),
-                        'correct_index': question.get('correct_index'),
+                        'opponent_answer': qm['answers'].get(opponent),
+                        'correct_index': correct_index,
                         'correct_choice': correct_choice,
                         'explanation': question.get('explanation'),
-                        'winner': (p == winner)
+                        'round_winner': (p == round_winner),
+                        'your_score': qm['scores'][p],
+                        'opponent_score': qm['scores'][opponent],
+                        'opponent_correct': (qm['answers'].get(opponent) == correct_index),
+                        'points_earned': player_round_data['points'],
+                        'multiplier': player_round_data['multiplier'],
+                        'time_taken': round(player_round_data['time_taken'], 2)
                     }, room=p)
-                winner_id = socket_to_user.get(winner) if winner else None
-                winner_name = get_username_by_user_id(winner_id) if winner_id else 'Draw'
-                summary = {
-                    'overview': f"{winner_name} answered correctly fastest." if winner else 'No player answered correctly.',
-                    'details': question.get('question')
-                }
-                emit('match_end', {
-                    'winner': winner_name,
-                    'mode': 'quiz',
-                    'summary': summary
-                }, room=match_id)
-                _finalize_match(match_id)
+                
+                # Move to next question or end match
+                qm['current_question_index'] += 1
+                qm['answers'] = {}
+                qm['answer_times'] = {}
+                qm['round_points'] = {}
+                
+                if qm['current_question_index'] < qm['total_questions']:
+                    # Send next question after a delay
+                    def send_next_question():
+                        if match_id in quiz_matches:
+                            next_idx = quiz_matches[match_id]['current_question_index']
+                            next_question = quiz_matches[match_id]['questions'][next_idx]
+                            quiz_matches[match_id]['question_start_time'] = time.time()
+                            emit('quiz_question_start', {
+                                'question': {
+                                    'id': next_question.get('id', 0),
+                                    'question': next_question['question'],
+                                    'choices': next_question['choices'],
+                                    'time_limit': next_question.get('time_limit', 20),
+                                    'explanation': next_question.get('explanation')
+                                },
+                                'question_number': next_idx + 1,
+                                'total_questions': qm['total_questions']
+                            }, room=match_id)
+                    
+                    socketio.sleep(3)  # 3 second delay before next question
+                    send_next_question()
+                else:
+                    # Match ended - determine final winner
+                    scores_list = [(p, qm['scores'][p]) for p in players]
+                    scores_list.sort(key=lambda x: x[1], reverse=True)
+                    
+                    if scores_list[0][1] > scores_list[1][1]:
+                        winner_socket = scores_list[0][0]
+                        winner_id = socket_to_user.get(winner_socket)
+                        winner_user = get_username_by_user_id(winner_id) if winner_id else None
+                        winner_name = winner_user.get('username', 'Unknown') if winner_user else 'Unknown'
+                    else:
+                        winner_name = 'Draw'
+                    
+                    summary = {
+                        'overview': f"Final Score: {scores_list[0][1]} - {scores_list[1][1]}",
+                        'details': f"{winner_name} wins!" if winner_name != 'Draw' else "It's a tie!"
+                    }
+                    
+                    emit('match_end', {
+                        'winner': winner_name,
+                        'mode': 'quiz',
+                        'summary': summary,
+                        'final_scores': {p: qm['scores'][p] for p in players}
+                    }, room=match_id)
+                    
+                    _finalize_match(match_id)
             break
+
+@socketio.on('surrender')
+def handle_surrender(data):
+    """Handle player surrendering/leaving the battle"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+    
+    sid = request.sid
+    
+    # Find the match this player is in
+    match_id = None
+    for room_id, info in active_matches.items():
+        if sid in info.get('players', []):
+            match_id = room_id
+            break
+    
+    if match_id:
+        # Get match data
+        match_info = active_matches.get(match_id, {})
+        mode = match_info.get('mode', 'quiz')
+        qm = quiz_matches.get(match_id) if mode == 'quiz' else None
+        cm = code_matches.get(match_id) if mode == 'code' else None
+        match_data = qm or cm
+        
+        if match_info and 'players' in match_info:
+            players = match_info['players']
+            opponent = [p for p in players if p != sid]
+            
+            if opponent:
+                opponent_sid = opponent[0]
+                opponent_id = socket_to_user.get(opponent_sid)
+                opponent_user = get_username_by_user_id(opponent_id) if opponent_id else None
+                opponent_name = opponent_user.get('username', 'Opponent') if opponent_user else 'Opponent'
+                
+                # Notify opponent that player has left
+                emit('player_status', {
+                    'player': 'opponent',
+                    'status': 'left'
+                }, room=opponent_sid)
+                
+                # Notify opponent that they won
+                emit('match_end', {
+                    'winner': opponent_name,
+                    'mode': mode,
+                    'summary': {
+                        'overview': 'Opponent surrendered',
+                        'details': f'{opponent_name} wins by forfeit!'
+                    },
+                    'surrendered': True
+                }, room=match_id)
+        
+        # Clean up match
+        _finalize_match(match_id)
+    
+    # Also remove from queues if they're waiting
+    code_queue[:] = [(s, u, r) for s, u, r in code_queue if s != sid]
+    quiz_queue[:] = [(s, u, r) for s, u, r in quiz_queue if s != sid]
 
 def run_js_code_against_tests(code, challenge):
     results = []
@@ -1863,7 +2728,7 @@ def load_all_quiz_questions():
     try:
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM pvp_quiz_questions ORDER BY id DESC")
+        cur.execute("SELECT * FROM pvp_quiz_questions ORDER BY difficulty, id DESC")
         rows = cur.fetchall() or []
         questions = []
         for r in rows:
@@ -1874,6 +2739,7 @@ def load_all_quiz_questions():
             questions.append({
                 'id': r['id'],
                 'question': r['question'],
+                'difficulty': r.get('difficulty', 'normal'),
                 'choices': choices,
                 'correct_index': int(r['correct_index']),
                 'time_limit': int(r.get('time_limit') or 45),
@@ -1894,6 +2760,7 @@ def load_all_quiz_questions():
                 conn.close()
         except Exception:
             pass
+            pass
 
 
 # Admin pages for PvP management
@@ -1902,9 +2769,8 @@ def load_all_quiz_questions():
 def admin_pvp():
     if session.get('role') != 'admin':
         return redirect(url_for('home'))
-    code_challenges = load_all_code_challenges()
     quiz_questions = load_all_quiz_questions()
-    return render_template('admin/pvp.html', code_challenges=code_challenges, quiz_questions=quiz_questions)
+    return render_template('admin/pvp.html', quiz_questions=quiz_questions)
 
 
 @app.route('/admin/pvp/code/add', methods=['POST'])
@@ -2001,12 +2867,17 @@ def admin_add_quiz_question():
         return jsonify({'success': False, 'message': 'Unauthorized'}), 403
     
     question = request.form.get('question', '').strip()
+    difficulty = request.form.get('difficulty', 'normal').strip()
     correct_choice_index = int(request.form.get('correct_choice') or 0)
     time_limit = int(request.form.get('time_limit') or 45)
     explanation = request.form.get('explanation', '').strip()
     
     if not question:
         return jsonify({'success': False, 'message': 'Question text is required'}), 400
+    
+    # Validate difficulty
+    if difficulty not in ['easy', 'normal', 'intermediate', 'hard']:
+        difficulty = 'normal'
     
     # Build choices from form inputs
     choices = []
@@ -2029,8 +2900,8 @@ def admin_add_quiz_question():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO pvp_quiz_questions (question, choices, correct_index, time_limit, explanation) VALUES (%s,%s,%s,%s,%s)",
-            (question, json.dumps(choices), correct_choice_index, time_limit, explanation)
+            "INSERT INTO pvp_quiz_questions (question, difficulty, choices, correct_index, time_limit, explanation) VALUES (%s,%s,%s,%s,%s,%s)",
+            (question, difficulty, json.dumps(choices), correct_choice_index, time_limit, explanation)
         )
         conn.commit()
         return redirect(url_for('admin_pvp'))
@@ -2048,6 +2919,64 @@ def admin_add_quiz_question():
                 conn.close()
         except Exception:
             pass
+
+
+@app.route('/admin/pvp/quiz/<int:question_id>', methods=['PUT'])
+@login_required
+def admin_update_quiz_question(question_id):
+    if session.get('role') != 'admin':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.get_json()
+        question = data.get('question', '').strip()
+        difficulty = data.get('difficulty', 'normal').strip()
+        time_limit = int(data.get('time_limit', 45))
+        choices = data.get('choices', [])
+        correct_index = int(data.get('correct_index', 0))
+        explanation = data.get('explanation', '').strip()
+        
+        if not question:
+            return jsonify({'success': False, 'error': 'Question text is required'}), 400
+        
+        # Validate difficulty
+        if difficulty not in ['easy', 'normal', 'intermediate', 'hard']:
+            difficulty = 'normal'
+        
+        if len(choices) < 2:
+            return jsonify({'success': False, 'error': 'At least 2 choices are required'}), 400
+        
+        if correct_index >= len(choices):
+            return jsonify({'success': False, 'error': 'Invalid correct choice index'}), 400
+        
+        conn = None
+        cur = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE pvp_quiz_questions SET question=%s, difficulty=%s, choices=%s, correct_index=%s, time_limit=%s, explanation=%s WHERE id=%s",
+                (question, difficulty, json.dumps(choices), correct_index, time_limit, explanation, question_id)
+            )
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Question updated successfully'})
+        except Exception as e:
+            print('admin_update_quiz_question error:', str(e))
+            return jsonify({'success': False, 'error': 'Database error'}), 500
+        finally:
+            try:
+                if cur:
+                    cur.close()
+            except Exception:
+                pass
+            try:
+                if conn:
+                    conn.close()
+            except Exception:
+                pass
+    except Exception as e:
+        print('admin_update_quiz_question error:', str(e))
+        return jsonify({'success': False, 'error': 'Invalid request'}), 400
 
 # Call this when the app starts
 _log_db_startup_info()
@@ -2218,6 +3147,7 @@ def add_lesson_content():
         next_button_text = request.form.get('next_button_text', 'Next')
         page_type = request.form.get('page_type', 'text_image')  # Default to text_image
         correct_message = request.form.get('correct_message', '')
+        incorrect_message = request.form.get('incorrect_message', '')
         notes = request.form.get('notes', '')
         
         if not content:  # Only content is required
@@ -2246,9 +3176,21 @@ def add_lesson_content():
         # Insert new lesson content
         cursor.execute("""
             INSERT INTO lesson_content 
-            (chapter_id, page_num, title, content, code_example, image_url, next_button_text, page_type, correct_message, notes) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (chapter_id, page_num, title, content, code_example, image_url, next_button_text, page_type, correct_message, notes))
+            (chapter_id, page_num, title, content, code_example, image_url, next_button_text, page_type, correct_message, incorrect_message, notes) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            chapter_id,
+            page_num,
+            title,
+            content,
+            code_example,
+            image_url,
+            next_button_text,
+            page_type,
+            correct_message,
+            incorrect_message,
+            notes,
+        ))
         lesson_content_id = cursor.lastrowid
 
         # If quiz, insert choices
@@ -2323,6 +3265,7 @@ def update_lesson_content(page_id):
         new_page_num = int(request.form.get('page_num', 1))
         page_type = request.form.get('page_type', 'text_image')  # Default to text_image
         correct_message = request.form.get('correct_message', '')
+        incorrect_message = request.form.get('incorrect_message', '')
         notes = request.form.get('notes', '')
         if not content:  # Only content is required
             return jsonify({"success": False, "message": "Content is required"}), 400
@@ -2397,9 +3340,21 @@ def update_lesson_content(page_id):
                 cursor.execute("""
                     UPDATE lesson_content 
                     SET title = %s, content = %s, code_example = %s, 
-                        image_url = %s, next_button_text = %s, page_num = %s, page_type = %s, correct_message = %s, notes = %s
+                        image_url = %s, next_button_text = %s, page_num = %s, page_type = %s, correct_message = %s, incorrect_message = %s, notes = %s
                     WHERE id = %s
-                """, (title, content, code_example, image_url, next_button_text, new_page_num, page_type, correct_message, notes, page_id))
+                """, (
+                    title,
+                    content,
+                    code_example,
+                    image_url,
+                    next_button_text,
+                    new_page_num,
+                    page_type,
+                    correct_message,
+                    incorrect_message,
+                    notes,
+                    page_id,
+                ))
                 conn.commit()
             except Exception as e:
                 conn.rollback()
@@ -2409,9 +3364,20 @@ def update_lesson_content(page_id):
             cursor.execute("""
                 UPDATE lesson_content 
                 SET title = %s, content = %s, code_example = %s, 
-                    image_url = %s, next_button_text = %s, page_type = %s, correct_message = %s, notes = %s
+                    image_url = %s, next_button_text = %s, page_type = %s, correct_message = %s, incorrect_message = %s, notes = %s
                 WHERE id = %s
-            """, (title, content, code_example, image_url, next_button_text, page_type, correct_message, notes, page_id))
+            """, (
+                title,
+                content,
+                code_example,
+                image_url,
+                next_button_text,
+                page_type,
+                correct_message,
+                incorrect_message,
+                notes,
+                page_id,
+            ))
             conn.commit()
 
         # If quiz, update choices
@@ -2538,7 +3504,7 @@ def user_lesson_content_ajax(level, chapter_id):
         db_cursor.execute(
             """
             SELECT id, page_num, title, content, code_example, image_url, next_button_text,
-                   page_type, correct_message, notes
+                   page_type, correct_message, incorrect_message, notes
             FROM lesson_content
             WHERE chapter_id = %s AND page_num = %s
             LIMIT 1
@@ -2556,6 +3522,11 @@ def user_lesson_content_ajax(level, chapter_id):
             page['code_example'] = ''
         if page.get('notes') is None:
             page['notes'] = ''
+        if page.get('incorrect_message') is None:
+            page['incorrect_message'] = ''
+
+        page['content'] = render_inline_code_spans(page.get('content', '') or '')
+        page['notes'] = render_inline_code_spans(page.get('notes', '') or '')
 
         if page.get('page_type') == 'quiz':
             db_cursor.execute(
@@ -2566,7 +3537,40 @@ def user_lesson_content_ajax(level, chapter_id):
         else:
             page['choices'] = []
 
+        page_meta = {
+            'page_id': page['id'],
+            'page_num': page['page_num'],
+            'title': page.get('title') or '',
+            'page_type': page.get('page_type'),
+        }
+        plain_text = strip_html_to_text(page.get('content', ''))
+        if plain_text:
+            page_meta['plain_text'] = plain_text
+
+        quiz_meta = None
+        if page_meta['page_type'] == 'quiz':
+            choices = page.get('choices') or []
+            correct_choice = next((choice for choice in choices if choice.get('is_correct')), None)
+            quiz_meta = {
+                'page_id': page['id'],
+                'page_num': page['page_num'],
+                'question': plain_text or page_meta['title'] or f"Question {page['page_num']}",
+                'correct_choice': correct_choice.get('choice_text') if correct_choice else '',
+                'correct_message': page.get('correct_message') or '',
+                'incorrect_message': page.get('incorrect_message') or '',
+            }
+            page_meta['quiz'] = quiz_meta
+        else:
+            title_lower = (page_meta['title'] or '').lower()
+            if page_meta['page_type'] in ('text_image', 'text_code') and 'takeaway' in title_lower:
+                page_meta['takeaway'] = {
+                    'title': page_meta['title'] or f"Page {page['page_num']}",
+                    'summary': plain_text,
+                    'notes': strip_html_to_text(page.get('notes', '')) if page.get('notes') else ''
+                }
+
         html = render_template_string('''
+<div id="lesson-page-meta" data-lesson-content-id="{{ page.id }}" hidden></div>
 {% if page.page_type == 'text_image' %}
   {% if page.image_url %}
   <img src="{{ page.image_url }}" alt="{{ page.title }}" style="width: auto; height: 200px; text-align: center; display: block; margin: 0 auto 20px auto;" />
@@ -2580,7 +3584,8 @@ def user_lesson_content_ajax(level, chapter_id):
 {% elif page.page_type == 'quiz' %}
   <div>{{ page.content|safe }}</div>
   <form id="quiz-form">
-    <input type="hidden" id="correct-message" value="{{ page.correct_message|e }}" />
+        <input type="hidden" id="correct-message" value="{{ page.correct_message|default('', true)|e }}" />
+        <input type="hidden" id="incorrect-message" value="{{ page.incorrect_message|default('', true)|e }}" />
     {% if page.choices %}
       {% for choice in page.choices %}
         <div class="form-check">
@@ -2613,7 +3618,7 @@ def user_lesson_content_ajax(level, chapter_id):
         </div>
       </div>
       <div id="playground-editor-container">
-        <textarea id="playground-editor">{{ page.code_example|default('', true) }}</textarea>
+                <textarea id="playground-editor">{{ page.code_example|default('', true) }}</textarea>
       </div>
       <button id="playground-fullscreen-btn" class="playground-fullscreen-btn" title="Fullscreen" type="button">
         <i class="fas fa-expand"></i>
@@ -2772,7 +3777,9 @@ def user_lesson_content_ajax(level, chapter_id):
             'html': html,
             'next_button_text': page.get('next_button_text', 'Next'),
             'is_quiz_page': is_quiz_page,
-            'is_congrats': False
+            'is_congrats': False,
+            'quiz_meta': quiz_meta,
+            'page_meta': page_meta
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -2805,6 +3812,32 @@ def proxy_gpt4o():
 @login_required
 def account():
     user_id = session['user_id']
+    performance = {
+        'progress': {
+            'overall_percent': 0.0,
+            'overall_percent_label': '0',
+            'overall_percent_display': 0,
+            'bar_width': 0,
+            'completed_chapters': 0,
+            'in_progress_chapters': 0,
+            'total_chapters': 0,
+        },
+        'engagement': {
+            'total_time_seconds': 0,
+            'total_time_label': '0m',
+            'active_days': 0,
+            'avg_daily_label': '0m',
+            'chapters_visited': 0,
+            'last_active_label': None,
+            'last_active_relative': '',
+        },
+        'scores': {
+            'xp': 0,
+            'points': 0,
+            'rating': DEFAULT_RATING,
+            'level': 1,
+        },
+    }
     try:
         db_connection = get_db_connection()
         db_cursor = db_connection.cursor(dictionary=True)
@@ -2823,6 +3856,108 @@ def account():
         ''', (user_id,))
         badges = db_cursor.fetchall()
 
+        # Learning progress metrics
+        total_chapters = 0
+        try:
+            db_cursor.execute("SELECT COUNT(*) AS total FROM chapters")
+            total_row = db_cursor.fetchone() or {}
+            total_chapters = int(total_row.get('total') or 0)
+        except mysql_errors.ProgrammingError:
+            total_chapters = 0
+
+        try:
+            db_cursor.execute(
+                """
+                SELECT
+                    COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0) AS completed,
+                    COALESCE(SUM(CASE WHEN completed = 0 AND progress > 0 THEN 1 ELSE 0 END), 0) AS in_progress,
+                    COALESCE(SUM(progress), 0) AS total_progress
+                FROM user_progress
+                WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            progress_row = db_cursor.fetchone() or {}
+        except mysql_errors.ProgrammingError:
+            progress_row = {}
+
+        completed_chapters = int(progress_row.get('completed') or 0)
+        in_progress_chapters = int(progress_row.get('in_progress') or 0)
+        progress_sum = float(progress_row.get('total_progress') or 0.0)
+        overall_percent = 0.0
+        if total_chapters:
+            overall_percent = min(progress_sum / total_chapters, 100.0)
+        overall_percent_label = f"{overall_percent:.1f}"
+        if overall_percent_label.endswith('.0'):
+            overall_percent_label = overall_percent_label[:-2]
+        if not overall_percent_label:
+            overall_percent_label = '0'
+        bar_width = max(0, min(int(round(overall_percent)), 100))
+        performance['progress'].update({
+            'total_chapters': total_chapters,
+            'completed_chapters': completed_chapters,
+            'in_progress_chapters': in_progress_chapters,
+            'overall_percent': overall_percent,
+            'overall_percent_label': overall_percent_label,
+            'overall_percent_display': int(round(overall_percent)),
+            'bar_width': bar_width,
+        })
+
+        # Engagement metrics
+        try:
+            db_cursor.execute(
+                """
+                SELECT
+                    COALESCE(SUM(time_spent), 0) AS total_time,
+                    COALESCE(COUNT(DISTINCT DATE(last_visited)), 0) AS active_days,
+                    COALESCE(COUNT(DISTINCT chapter_id), 0) AS chapters_visited,
+                    MAX(last_visited) AS last_visited
+                FROM lesson_page_analytics
+                WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            engagement_row = db_cursor.fetchone() or {}
+        except mysql_errors.ProgrammingError:
+            engagement_row = {}
+
+        total_time_spent = int(float(engagement_row.get('total_time') or 0))
+        active_days = int(engagement_row.get('active_days') or 0)
+        chapters_visited = int(engagement_row.get('chapters_visited') or 0)
+        last_active_dt = engagement_row.get('last_visited')
+        try:
+            last_active_label = last_active_dt.strftime("%b %d, %Y %I:%M %p") if last_active_dt else None
+        except Exception:
+            last_active_label = None
+        avg_daily_seconds = total_time_spent // active_days if active_days else 0
+        performance['engagement'].update({
+            'total_time_seconds': total_time_spent,
+            'total_time_label': _format_duration_short(total_time_spent),
+            'active_days': active_days,
+            'avg_daily_label': _format_duration_short(avg_daily_seconds),
+            'chapters_visited': chapters_visited,
+            'last_active_label': last_active_label,
+            'last_active_relative': _format_relative_time(last_active_dt),
+        })
+
+        # Score metrics
+        try:
+            db_cursor.execute(
+                "SELECT xp, level, points, rating FROM user_stats WHERE user_id = %s",
+                (user_id,),
+            )
+            stats_row = db_cursor.fetchone()
+        except mysql_errors.ProgrammingError:
+            stats_row = None
+        if stats_row:
+            rating_value = int(stats_row.get('rating') or DEFAULT_RATING)
+            performance['scores'].update({
+                'xp': int(stats_row.get('xp') or 0),
+                'level': int(stats_row.get('level') or 1),
+                'points': int(stats_row.get('points') or 0),
+                'rating': rating_value if rating_value > 0 else DEFAULT_RATING,
+            })
+
         # Fetch user rank (by points, from leaderboards)
         db_cursor.execute('''
             SELECT user_id, total_score FROM leaderboards ORDER BY total_score DESC
@@ -2836,10 +3971,16 @@ def account():
                 user_points = entry['total_score']
                 break
 
-        return render_template('account.html', user=user, badges=badges, user_rank=user_rank, user_points=user_points)
+        if user_points:
+            try:
+                performance['scores']['points'] = max(performance['scores']['points'], int(user_points))
+            except Exception:
+                pass
+
+        return render_template('account.html', user=user, badges=badges, user_rank=user_rank, user_points=user_points, performance=performance)
     except Exception as e:
         print("Account page error:", str(e))
-        return render_template('account.html', user=None, badges=[], user_rank=None, user_points=0)
+        return render_template('account.html', user=None, badges=[], user_rank=None, user_points=0, performance=performance)
     finally:
         if 'db_cursor' in locals():
             db_cursor.close()
