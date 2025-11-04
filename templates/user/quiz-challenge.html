@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Quiz Challenge - WebScape</title>
+		<link
+			rel="preconnect"
+			href="https://fonts.googleapis.com"
+		/>
+		<link
+			rel="preconnect"
+			href="https://fonts.gstatic.com"
+			crossorigin
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Montserrat:wght@400;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link
+			rel="stylesheet"
+			href="{{ url_for('static', filename='css/quiz-challenge.css') }}"
+		/>
+	</head>
+	<body class="quiz-challenge-body">
+		{% set left_player = match_state.left_player if match_state is defined and match_state.left_player is defined else {} %}
+		{% set right_player = match_state.right_player if match_state is defined and match_state.right_player is defined else {} %}
+		{% set round_info = match_state.round if match_state is defined and match_state.round is defined else {} %}
+
+			<main
+				class="quiz-challenge"
+				data-question-index="{{ round_info.current|default(2, true) }}"
+				data-question-total="{{ round_info.total|default(5, true) }}"
+				data-round-progress="{{ round_info.progress|default(0.4, true) }}"
+			>
+			<header class="qc-top">
+						<div class="qc-progress-track">
+							<div
+											class="qc-progress-fill"
+											data-progress="{{ (round_info.progress|default(0.4, true) * 100)|round(1) }}"
+							></div>
+				</div>
+				<div class="qc-top-timer" id="qc-round-time">
+										{{ round_info.remaining|default(17, true) }}
+				</div>
+			</header>
+
+			<section class="qc-stage">
+				<article class="qc-player-card qc-player-left">
+					<figure class="qc-avatar">
+						<img
+										src="{{ left_player.avatar_url|default(url_for('static', filename='images/html-logo.png'), true) }}"
+										alt="{{ left_player.username|default('Player One', true) }} avatar"
+						/>
+					</figure>
+					<h2 class="qc-player-name">
+									{{ left_player.display_name|default(left_player.username, true)|default('Lux', true) }}
+					</h2>
+					<p class="qc-player-points">
+						<span class="qc-label">Points:</span>
+						<span class="qc-points-value" data-side="left">
+										{{ left_player.points|default(250, true) }}
+						</span>
+					</p>
+				</article>
+
+				<div class="qc-question-card">
+					<p class="qc-question-meta">
+									Question {{ round_info.current|default(2, true) }}/{{ round_info.total|default(5, true) }}
+					</p>
+					<h1 class="qc-question-text" id="qc-question-text">
+									{{ round_info.prompt|default('What is HTML stands for?', true) }}
+					</h1>
+				</div>
+
+				<article class="qc-player-card qc-player-right">
+					<figure class="qc-avatar">
+						<img
+										src="{{ right_player.avatar_url|default(url_for('static', filename='images/javascript.png'), true) }}"
+										alt="{{ right_player.username|default('Player Two', true) }} avatar"
+						/>
+					</figure>
+					<h2 class="qc-player-name">
+									{{ right_player.display_name|default(right_player.username, true)|default('LeBlanc', true) }}
+					</h2>
+					<p class="qc-player-points">
+						<span class="qc-label">Points:</span>
+						<span class="qc-points-value" data-side="right">
+										{{ right_player.points|default(0, true) }}
+						</span>
+					</p>
+				</article>
+			</section>
+
+			<section class="qc-choices" id="qc-choices">
+							{% set choices = round_info.choices|default(['Choice A', 'Choice A', 'Choice B', 'Choice B'], true) %}
+				{% for choice in choices %}
+					<button class="qc-choice" type="button" data-choice-index="{{ loop.index0 }}">
+						{{ choice }}
+					</button>
+				{% endfor %}
+			</section>
+		</main>
+
+		<script src="{{ url_for('static', filename='quiz-challenge.js') }}" defer></script>
+	</body>
+</html>
