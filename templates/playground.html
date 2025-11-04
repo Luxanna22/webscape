@@ -180,12 +180,179 @@
       .live-output {
         width: 50%;
         height: 100%;
+      }
+
+      .editor {
         overflow-y: auto;
       }
 
       .live-output {
-        background: #f0f0f0;
-        color: black;
+        background: #0f0f13;
+        color: #f5f5f5;
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+      }
+
+      .live-output iframe {
+        flex: 1 1 auto;
+        width: 100%;
+        border: none;
+        background: #ffffff;
+      }
+
+      .debug-panel {
+        display: flex;
+        flex-direction: column;
+        background: rgba(17, 17, 26, 0.9);
+        border-top: 1px solid rgba(162, 89, 255, 0.35);
+        max-height: 40%;
+        min-height: 140px;
+      }
+
+      .debug-panel.collapsed {
+        min-height: 0;
+      }
+
+      .debug-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: rgba(55, 21, 105, 0.6);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.9rem;
+        letter-spacing: 0.02em;
+      }
+
+      .debug-panel-header span {
+        font-weight: 600;
+        color: #f5f5f5;
+      }
+
+      .debug-panel-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .debug-clear-btn {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #f5f5f5;
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+      }
+
+      .debug-clear-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #ffffff;
+      }
+
+      .debug-toggle-btn {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #f5f5f5;
+        width: 32px;
+        height: 28px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+      }
+
+      .debug-toggle-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #ffffff;
+      }
+
+      .debug-panel-body {
+        flex: 1 1 auto;
+        padding: 12px 14px;
+        overflow-y: auto;
+        font-family: "Fira Code", monospace;
+        font-size: 0.85rem;
+        background: rgba(12, 12, 20, 0.65);
+      }
+
+      .debug-panel-body::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .debug-panel-body::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+      }
+
+      .debug-panel.collapsed .debug-panel-body {
+        display: none;
+      }
+
+      .debug-placeholder {
+        color: #8a8a8a;
+        font-size: 0.85rem;
+      }
+
+      .debug-entry {
+        margin-bottom: 10px;
+        color: #f5f5f5;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .debug-entry:last-child {
+        margin-bottom: 0;
+      }
+
+      .debug-entry-time {
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.75rem;
+        margin-right: 8px;
+      }
+
+      .debug-entry-text {
+        color: inherit;
+      }
+
+      .debug-entry-stack {
+        margin-top: 6px;
+        padding-left: 18px;
+        border-left: 2px solid rgba(255, 255, 255, 0.15);
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.75);
+        white-space: pre-wrap;
+      }
+
+      .debug-entry.debug-log .debug-entry-text {
+        color: #c9c9c9;
+      }
+
+      .debug-entry.debug-info .debug-entry-text {
+        color: #9ad5ff;
+      }
+
+      .debug-entry.debug-warn .debug-entry-text {
+        color: #ffd166;
+      }
+
+      .debug-entry.debug-error .debug-entry-text {
+        color: #ff6b6b;
+      }
+
+      .debug-entry.debug-debug .debug-entry-text {
+        color: #76baff;
       }
 
       .code-editor {
@@ -585,8 +752,37 @@ function changeColor() {
           <iframe
             id="output-frame"
             sandbox="allow-scripts allow-same-origin"
-            style="width: 100%; height: 100%; border: none"
+            title="Playground live preview"
           ></iframe>
+          <div class="debug-panel" id="debug-panel">
+            <div class="debug-panel-header">
+              <span>Debug Console</span>
+              <div class="debug-panel-actions">
+                <button
+                  type="button"
+                  class="debug-toggle-btn"
+                  id="debug-toggle-btn"
+                  aria-expanded="true"
+                  aria-label="Collapse debug console"
+                >
+                  <i class="fas fa-chevron-up" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
+                  class="debug-clear-btn"
+                  id="clear-debug-btn"
+                >
+                  <i class="fas fa-trash" aria-hidden="true"></i>
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div class="debug-panel-body" id="debug-log">
+              <div class="debug-placeholder" id="debug-placeholder">
+                Console output from your JavaScript will appear here.
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="modal-overlay" id="modalOverlay"></div>
@@ -653,9 +849,267 @@ function changeColor() {
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         const outputFrame = document.getElementById("output-frame");
+        if (!outputFrame) {
+          return;
+        }
+
         const baseTag = document.createElement("base");
         baseTag.href = "about:blank";
-        outputFrame.contentDocument.head.appendChild(baseTag);
+        if (outputFrame.contentDocument && outputFrame.contentDocument.head) {
+          outputFrame.contentDocument.head.appendChild(baseTag);
+        }
+
+        const debugPanel = document.getElementById("debug-panel");
+        const debugLog = document.getElementById("debug-log");
+        const debugPlaceholder = document.getElementById("debug-placeholder");
+        const clearDebugBtn = document.getElementById("clear-debug-btn");
+        const debugToggleBtn = document.getElementById("debug-toggle-btn");
+
+        let activeOutputWindow = outputFrame.contentWindow || null;
+        let debugPanelCollapsed = false;
+
+        function setDebugPanelCollapsed(collapsed) {
+          debugPanelCollapsed = !!collapsed;
+          if (debugPanel) {
+            debugPanel.classList.toggle("collapsed", debugPanelCollapsed);
+          }
+          if (debugToggleBtn) {
+            debugToggleBtn.setAttribute(
+              "aria-expanded",
+              (!debugPanelCollapsed).toString()
+            );
+            debugToggleBtn.setAttribute(
+              "aria-label",
+              debugPanelCollapsed
+                ? "Expand debug console"
+                : "Collapse debug console"
+            );
+            debugToggleBtn.innerHTML = debugPanelCollapsed
+              ? '<i class="fas fa-chevron-down" aria-hidden="true"></i>'
+              : '<i class="fas fa-chevron-up" aria-hidden="true"></i>';
+          }
+        }
+
+        function formatConsoleArgs(args) {
+          if (!Array.isArray(args) || args.length === 0) {
+            return "";
+          }
+
+          return args
+            .map((arg) => {
+              if (typeof arg === "string") {
+                return arg;
+              }
+              if (arg === null) {
+                return "null";
+              }
+              if (arg === undefined) {
+                return "undefined";
+              }
+              if (
+                typeof arg === "number" ||
+                typeof arg === "boolean" ||
+                typeof arg === "bigint"
+              ) {
+                return String(arg);
+              }
+              if (arg instanceof Error) {
+                return arg.message || arg.toString();
+              }
+              if (typeof arg === "function") {
+                return arg.toString();
+              }
+              try {
+                return JSON.stringify(arg, null, 2);
+              } catch (err) {
+                return Object.prototype.toString.call(arg);
+              }
+            })
+            .join(" ");
+        }
+
+        function clearDebugConsole(showPlaceholder = true) {
+          if (!debugLog) {
+            return;
+          }
+          debugLog.querySelectorAll(".debug-entry").forEach((entry) => {
+            entry.remove();
+          });
+          if (debugPlaceholder) {
+            debugPlaceholder.style.display = showPlaceholder ? "block" : "none";
+          }
+        }
+
+        function appendDebugEntry(payload) {
+          if (!debugLog || !payload) {
+            return;
+          }
+
+          if (debugPlaceholder) {
+            debugPlaceholder.style.display = "none";
+          }
+
+          const levelKey =
+            payload.level === "table" ? "log" : payload.level || "log";
+          const entry = document.createElement("div");
+          entry.className = `debug-entry debug-${levelKey}`;
+
+          const timeSpan = document.createElement("span");
+          timeSpan.className = "debug-entry-time";
+          timeSpan.textContent = new Date().toLocaleTimeString();
+          entry.appendChild(timeSpan);
+
+          const textSpan = document.createElement("span");
+          textSpan.className = "debug-entry-text";
+
+          if (payload.type === "console") {
+            const prefix = payload.level === "table" ? "[table] " : "";
+            textSpan.textContent =
+              prefix + formatConsoleArgs(payload.args || []);
+          } else {
+            const segments = [];
+            if (payload.message) {
+              segments.push(payload.message);
+            }
+            if (payload.source) {
+              const origin = window.location.origin;
+              const cleanedSource = payload.source.startsWith(origin)
+                ? payload.source.slice(origin.length)
+                : payload.source;
+              const locationParts = [cleanedSource];
+              if (payload.lineno) {
+                locationParts.push(payload.lineno);
+              }
+              if (payload.colno) {
+                locationParts.push(payload.colno);
+              }
+              segments.push(`(${locationParts.join(":")})`);
+            }
+            textSpan.textContent = segments.join(" ");
+          }
+
+          entry.appendChild(textSpan);
+
+          if (payload.stack) {
+            const stackEl = document.createElement("pre");
+            stackEl.className = "debug-entry-stack";
+            stackEl.textContent = payload.stack;
+            entry.appendChild(stackEl);
+          }
+
+          debugLog.appendChild(entry);
+          debugLog.scrollTop = debugLog.scrollHeight;
+        }
+
+        function installFrameDebugging(frameWindow) {
+          if (!frameWindow || frameWindow.__webscapeDebugInstalled) {
+            return;
+          }
+
+          const levels = ["log", "info", "warn", "error", "debug", "table"];
+          const consoleHost = frameWindow.console || (frameWindow.console = {});
+
+          levels.forEach((level) => {
+            const original =
+              typeof consoleHost[level] === "function"
+                ? consoleHost[level].bind(consoleHost)
+                : null;
+            consoleHost[level] = function (...args) {
+              appendDebugEntry({ type: "console", level, args });
+              if (original) {
+                try {
+                  original(...args);
+                } catch (err) {
+                  // Suppress console forwarding errors inside sandboxed iframe
+                }
+              }
+            };
+          });
+
+          const originalClear =
+            typeof consoleHost.clear === "function"
+              ? consoleHost.clear.bind(consoleHost)
+              : null;
+          consoleHost.clear = function () {
+            clearDebugConsole(true);
+            if (originalClear) {
+              try {
+                originalClear();
+              } catch (err) {
+                // Ignore sandbox errors during clear
+              }
+            }
+          };
+
+          frameWindow.addEventListener(
+            "error",
+            function (event) {
+              appendDebugEntry({
+                type: "error",
+                level: "error",
+                message: event.message || "Uncaught error",
+                source: event.filename || "",
+                lineno: event.lineno,
+                colno: event.colno,
+                stack:
+                  event.error && event.error.stack
+                    ? String(event.error.stack)
+                    : "",
+              });
+            },
+            false
+          );
+
+          frameWindow.addEventListener(
+            "unhandledrejection",
+            function (event) {
+              const reason = event.reason;
+              appendDebugEntry({
+                type: "error",
+                level: "error",
+                message:
+                  (reason && reason.message) ||
+                  (typeof reason === "string"
+                    ? reason
+                    : "Unhandled promise rejection"),
+                stack: reason && reason.stack ? String(reason.stack) : "",
+              });
+            },
+            false
+          );
+
+          frameWindow.__webscapeDebugInstalled = true;
+          activeOutputWindow = frameWindow;
+        }
+
+        if (clearDebugBtn) {
+          clearDebugBtn.addEventListener("click", function () {
+            if (
+              activeOutputWindow &&
+              activeOutputWindow.console &&
+              typeof activeOutputWindow.console.clear === "function"
+            ) {
+              try {
+                activeOutputWindow.console.clear();
+                return;
+              } catch (err) {
+                // ignore sandbox exceptions during manual clear
+              }
+            }
+            clearDebugConsole(true);
+          });
+        }
+
+        if (debugToggleBtn) {
+          debugToggleBtn.addEventListener("click", function () {
+            setDebugPanelCollapsed(!debugPanelCollapsed);
+          });
+        }
+
+        setDebugPanelCollapsed(false);
+
+        installFrameDebugging(activeOutputWindow);
+        clearDebugConsole(true);
 
         // Initialize CodeMirror editors
         const htmlEditor = CodeMirror.fromTextArea(
@@ -798,6 +1252,8 @@ function changeColor() {
 
         // Update the live output with sanitized and validated HTML
         function updateOutput() {
+          clearDebugConsole(true);
+
           const htmlCode = htmlEditor.getValue();
           const cssCode = cssEditor.getValue();
           const jsCode = jsEditor.getValue();
@@ -805,21 +1261,35 @@ function changeColor() {
           const validatedHTML = validateHTML(htmlCode);
           const sanitizedHTML = sanitizeHTML(validatedHTML);
 
-          const outputDoc = outputFrame.contentDocument;
-          outputDoc.open();
-          outputDoc.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <style>${cssCode}</style>
-              </head>
-              <body>
-                ${sanitizedHTML}
-                <script>${jsCode}<\/script>
-              </body>
-            </html>
-          `);
-          outputDoc.close();
+          const outputWindow = outputFrame.contentWindow || null;
+          if (outputWindow) {
+            installFrameDebugging(outputWindow);
+          }
+
+          try {
+            const outputDoc = outputFrame.contentDocument;
+            outputDoc.open();
+            outputDoc.write(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <style>${cssCode}</style>
+                </head>
+                <body>
+                  ${sanitizedHTML}
+                  <script>${jsCode}<\/script>
+                </body>
+              </html>
+            `);
+            outputDoc.close();
+          } catch (error) {
+            appendDebugEntry({
+              type: "error",
+              level: "error",
+              message: (error && error.message) || "Failed to render preview",
+              stack: error && error.stack ? String(error.stack) : "",
+            });
+          }
         }
 
         // Add event listeners to all editors
