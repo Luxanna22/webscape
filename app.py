@@ -2541,33 +2541,8 @@ def handle_code_battle_queue(data):
     
     sid = request.sid
     
-    # Get user's rating from database
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor(dictionary=True)
-        cur.execute("""
-            SELECT username, code_rating 
-            FROM users 
-            WHERE id = %s
-        """, (user_id,))
-        user_data = cur.fetchone()
-        
-        if not user_data:
-            emit('error', {'message': 'User not found'})
-            return
-            
-        rating = user_data.get('code_rating', 1000)
-        username = user_data.get('username', 'Player')
-        
-    except Exception as e:
-        print(f'Error fetching user rating: {e}')
-        rating = 1000
-        username = 'Player'
-    finally:
-        if 'cur' in locals() and cur:
-            cur.close()
-        if 'conn' in locals() and conn:
-            conn.close()
+    # Get user's rating from user_stats table (same as quiz battles)
+    rating = get_user_rating(user_id)
     
     # Store socket-to-user mapping
     socket_to_user[sid] = user_id
@@ -2589,21 +2564,38 @@ def handle_code_battle_queue(data):
     _try_match_code_players()
 
 def _try_match_code_players():
-    """Attempt to match players in code battle queue"""
+    """Attempt to match players in code battle queue with fair rating-based matching"""
     if len(code_queue) < 2:
         return
     
-    # Simple matchmaking: match first two players (can be enhanced with rating-based matching)
-    sid1, uid1, rating1 = code_queue.pop(0)
-    sid2, uid2, rating2 = code_queue.pop(0)
+    # Try to find a fair match by checking each player in queue
+    matched_pair = None
     
-    # Rating-based matching: ensure players are within 200 rating points
-    rating_diff = abs(rating1 - rating2)
-    if rating_diff > 200 and len(code_queue) > 0:
-        # Put higher rated player back and try next
-        code_queue.insert(0, (sid2, uid2, rating2))
-        code_queue.append((sid1, uid1, rating1))
+    for i in range(len(code_queue)):
+        sid1, uid1, rating1 = code_queue[i]
+        
+        # Create a temporary queue without the current player
+        temp_queue = [code_queue[j] for j in range(len(code_queue)) if j != i]
+        
+        # Try to find a fair match for this player
+        opponent = _pop_best_match(temp_queue, rating1)
+        
+        if opponent:
+            # Found a fair match!
+            sid2, uid2, rating2 = opponent
+            
+            # Remove both players from the actual queue
+            code_queue[:] = [entry for entry in code_queue if entry[0] not in (sid1, sid2)]
+            
+            matched_pair = ((sid1, uid1, rating1), (sid2, uid2, rating2))
+            break
+    
+    if not matched_pair:
+        # No fair matches found, everyone stays in queue
         return
+    
+    # Unpack the matched pair
+    (sid1, uid1, rating1), (sid2, uid2, rating2) = matched_pair
     
     # Create match room
     match_id = f"code_battle_{uid1}_{uid2}_{int(time.time())}"
