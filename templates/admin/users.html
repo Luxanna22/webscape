@@ -501,6 +501,139 @@
         background: #ff40b5;
         color: #fff;
       }
+
+      /* User Details Modal Styles */
+      .user-modal-content {
+        background-color: #32124b;
+        border: 2px solid #a64eff;
+        border-radius: 16px;
+      }
+
+      .performance-panel-modal {
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        border-radius: 18px;
+        padding: 1.75rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      }
+
+      .performance-panel-modal:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      }
+
+      .metric-title {
+        font-family: "Anton", sans-serif;
+        text-transform: uppercase;
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+        color: #d1d1d3;
+      }
+
+      .metric-primary {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 2.6rem;
+        color: var(--accent-color);
+        line-height: 1.1;
+      }
+
+      .metric-subtitle {
+        font-size: 0.9rem;
+        color: #b9b9bd;
+        letter-spacing: 0.05em;
+      }
+
+      .progress-track {
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #ff66c4 0%, #7e31ef 100%);
+        transition: width 0.4s ease;
+      }
+
+      .metric-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.95rem;
+        color: #e0e0e0;
+      }
+
+      .metric-row span:last-child {
+        font-weight: 600;
+        color: #ffffff;
+      }
+
+      .metric-note {
+        font-size: 0.85rem;
+        color: #cfcfd4;
+      }
+
+      .metric-note-sub {
+        color: #9f9fbd;
+        font-size: 0.8rem;
+      }
+
+      .badge-card-modal {
+        background-color: #2d145c;
+        border: 2px solid #7e31ef;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: transform 0.2s ease;
+      }
+
+      .badge-card-modal:hover {
+        transform: translateY(-5px);
+        border-color: #ff66c4;
+      }
+
+      .badge-icon-modal {
+        font-size: 3rem;
+        color: #ff66c4;
+        margin-bottom: 0.8rem;
+      }
+
+      .badge-name-modal {
+        font-family: "Anton", sans-serif;
+        font-size: 1.2rem;
+        color: #fff;
+        margin-bottom: 0.5rem;
+      }
+
+      .badge-desc-modal {
+        font-size: 0.9rem;
+        color: #bfbfbf;
+        margin-bottom: 0.5rem;
+      }
+
+      .badge-earned-modal {
+        font-size: 0.85rem;
+        color: #8a8a8f;
+        font-style: italic;
+      }
+
+      .text-pink {
+        color: #ff66c4;
+      }
+
+      @media (max-width: 768px) {
+        .modal-xl {
+          max-width: 95%;
+        }
+      }
     </style>
   </head>
   <body>
@@ -560,7 +693,12 @@
                   <div class="header-flex">
                     <span class="table-title">Registered Users</span>
                     <div class="search-bar">
-                      <input type="text" placeholder="Search User" />
+                      <input
+                        type="text"
+                        id="userSearchInput"
+                        placeholder="Search User"
+                        onkeyup="filterUsers()"
+                      />
                       <span class="search-icon"
                         ><i class="fas fa-search"></i
                       ></span>
@@ -577,33 +715,341 @@
               </tr>
             </thead>
             <tbody>
-              <!-- Example row, replace with your backend loop -->
-              <tr>
-                <td>21</td>
-                <td>Luxinnamon</td>
-                <td>11-7-2024</td>
-                <td><span class="status active">Active</span></td>
-                <td><a href="#" class="btn-manage">Manage</a></td>
+              {% if users %} {% for user in users %}
+              <tr data-user-id="{{ user.id }}">
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>
+                  {{ user.created_at.strftime('%m-%d-%Y') if user.created_at
+                  else 'N/A' }}
+                </td>
+                <td>
+                  <span
+                    class="status {% if user.status == 'Active' %}active{% else %}inactive{% endif %}"
+                    >{{ user.status }}</span
+                  >
+                </td>
+                <td>
+                  <a
+                    href="#"
+                    class="btn-manage"
+                    onclick="viewUserDetails({{ user.id }}); return false;"
+                    >Manage</a
+                  >
+                </td>
               </tr>
+              {% endfor %} {% else %}
               <tr>
-                <td>2</td>
-                <td>LeBlanc</td>
-                <td>5-17-2024</td>
-                <td><span class="status active">Active</span></td>
-                <td><a href="#" class="btn-manage">Manage</a></td>
+                <td
+                  colspan="5"
+                  style="text-align: center; padding: 2rem; color: #bfbfbf"
+                >
+                  No users found
+                </td>
               </tr>
-              <tr>
-                <td>4</td>
-                <td>Katarina</td>
-                <td>12-2-2025</td>
-                <td><span class="status inactive">Inactive</span></td>
-                <td><a href="#" class="btn-manage">Manage</a></td>
-              </tr>
-              <!-- More rows... -->
+              {% endif %}
             </tbody>
           </table>
         </div>
       </div>
     </div>
+
+    <!-- User Details Modal -->
+    <div
+      class="modal fade"
+      id="userDetailsModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content user-modal-content">
+          <div
+            class="modal-header"
+            style="
+              background: #32124b;
+              border-radius: 16px 16px 0 0;
+              border-bottom: 3px solid #7e31ef;
+            "
+          >
+            <h3
+              class="modal-title"
+              style="
+                font-family: 'Luckiest Guy', cursive;
+                color: #ff66c4;
+                font-size: 2rem;
+              "
+            >
+              User Details
+            </h3>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body" style="background: #32124b; padding: 2rem">
+            <div id="userDetailsContent">
+              <div class="text-center">
+                <div class="spinner-border text-pink" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Filter users by search input
+      function filterUsers() {
+        const input = document.getElementById("userSearchInput");
+        const filter = input.value.toLowerCase();
+        const table = document.querySelector(".custom-user-table tbody");
+        const rows = table.getElementsByTagName("tr");
+
+        for (let i = 0; i < rows.length; i++) {
+          const usernameCell = rows[i].getElementsByTagName("td")[1];
+          const idCell = rows[i].getElementsByTagName("td")[0];
+
+          if (usernameCell || idCell) {
+            const username = usernameCell
+              ? usernameCell.textContent || usernameCell.innerText
+              : "";
+            const id = idCell ? idCell.textContent || idCell.innerText : "";
+
+            if (
+              username.toLowerCase().indexOf(filter) > -1 ||
+              id.toLowerCase().indexOf(filter) > -1
+            ) {
+              rows[i].style.display = "";
+            } else {
+              rows[i].style.display = "none";
+            }
+          }
+        }
+      }
+
+      // View user details in modal
+      function viewUserDetails(userId) {
+        const modal = new bootstrap.Modal(
+          document.getElementById("userDetailsModal")
+        );
+        const contentDiv = document.getElementById("userDetailsContent");
+
+        // Show loading state
+        contentDiv.innerHTML = `
+          <div class="text-center">
+            <div class="spinner-border text-pink" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        `;
+
+        modal.show();
+
+        // Fetch user details
+        fetch("/admin/users/" + userId)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              contentDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+              return;
+            }
+
+            console.log("User data received:", data);
+            console.log("Rank value:", data.scores.rank);
+            console.log("Rank type:", typeof data.scores.rank);
+
+            // Render user details
+            contentDiv.innerHTML = renderUserDetails(data);
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            contentDiv.innerHTML = `<div class="alert alert-danger">Failed to load user details</div>`;
+          });
+      }
+
+      function renderUserDetails(data) {
+        const user = data.user;
+        const badges = data.badges;
+        const progress = data.progress;
+        const engagement = data.engagement;
+        const scores = data.scores;
+
+        return `
+          <div class="container-fluid">
+            <!-- User Header -->
+            <div class="row align-items-center mb-4">
+              <div class="col-auto">
+                <div style="position: relative; width: 120px; height: 120px;">
+                  <svg width="120" height="120" style="position: absolute; top: 0; left: 0;">
+                    <circle cx="60" cy="60" r="58" fill="none" stroke="#7e31ef" stroke-width="3"/>
+                  </svg>
+                  ${
+                    user.avatar_path
+                      ? `<img src="${user.avatar_path}" 
+                         alt="${user.username}" 
+                         style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; position: absolute; top: 5px; left: 5px;"/>`
+                      : `<div style="width: 110px; height: 110px; border-radius: 50%; background: #2d145c; position: absolute; top: 5px; left: 5px; display: flex; align-items: center; justify-content: center;">
+                      <i class="fas fa-user" style="font-size: 3rem; color: #7e31ef;"></i>
+                    </div>`
+                  }
+                </div>
+              </div>
+              <div class="col">
+                <div style="font-size: 2rem; font-family: 'Luckiest Guy', cursive; color: #ff66c4;">
+                  ${user.username}
+                </div>
+                <div style="font-size: 1.1rem; color: #bfbfbf; margin-top: 0.3rem;">
+                  <i class="fas fa-envelope"></i> ${user.email}
+                </div>
+                <div style="font-size: 1.1rem; color: #bfbfbf; margin-top: 0.3rem;">
+                  <i class="fas fa-calendar-alt"></i> Joined: ${user.created_at}
+                </div>
+                <div style="font-size: 1.1rem; color: #bfbfbf; margin-top: 0.3rem;">
+                  <i class="fas fa-user-tag"></i> Role: <span style="color: ${
+                    user.role === "admin" ? "#ff66c4" : "#fff"
+                  }; font-weight: bold;">${user.role.toUpperCase()}</span>
+                </div>
+              </div>
+              <div class="col-auto">
+                <div style="text-align: center;">
+                  <div style="font-size: 3rem; font-family: 'Luckiest Guy', cursive; color: #ff66c4;">
+                    ${
+                      typeof scores.rank === "number"
+                        ? "#" + scores.rank
+                        : scores.rank
+                    }
+                  </div>
+                  <div style="font-size: 1rem; color: #bfbfbf;">Global Rank</div>
+                </div>
+              </div>
+            </div>
+
+            <hr style="border-color: #7e31ef; height: 2px; margin: 2rem 0; border-width: 2px;" />
+
+            <!-- Performance Metrics -->
+            <div class="row g-4 mt-3">
+              <!-- Learning Progress -->
+              <div class="col-lg-4 col-md-6">
+                <div class="performance-panel-modal">
+                  <div class="metric-title">Learning Progress</div>
+                  <div class="metric-primary">${progress.overall_percent}%</div>
+                  <div class="metric-subtitle">Overall completion</div>
+                  <div class="progress-track">
+                    <div class="progress-fill" style="width: ${
+                      progress.bar_width
+                    }%"></div>
+                  </div>
+                  <div class="metric-row">
+                    <span>Completed</span>
+                    <span>${progress.completed_chapters} / ${
+          progress.total_chapters
+        }</span>
+                  </div>
+                  <div class="metric-row">
+                    <span>In progress</span>
+                    <span>${progress.in_progress_chapters}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Engagement -->
+              <div class="col-lg-4 col-md-6">
+                <div class="performance-panel-modal">
+                  <div class="metric-title">Engagement</div>
+                  <div class="metric-primary">${
+                    engagement.total_time_label
+                  }</div>
+                  <div class="metric-subtitle">Time spent learning</div>
+                  <div class="metric-row">
+                    <span>Active days</span>
+                    <span>${engagement.active_days}</span>
+                  </div>
+                  <div class="metric-row">
+                    <span>Avg per active day</span>
+                    <span>${engagement.avg_daily_label}</span>
+                  </div>
+                  <div class="metric-row">
+                    <span>Chapters visited</span>
+                    <span>${engagement.chapters_visited}</span>
+                  </div>
+                  <div class="metric-note">
+                    Last active: ${engagement.last_active_label}
+                    ${
+                      engagement.last_active_label !== "Never"
+                        ? `<span class="metric-note-sub">(${engagement.last_active_relative})</span>`
+                        : ""
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Scores & Stats -->
+              <div class="col-lg-4 col-md-6">
+                <div class="performance-panel-modal">
+                  <div class="metric-title">Performance Scores</div>
+                  <div class="metric-primary">${scores.rating}</div>
+                  <div class="metric-subtitle">Matchmaking rating</div>
+                  <div class="metric-row">
+                    <span>Level</span>
+                    <span>${scores.level}</span>
+                  </div>
+                  <div class="metric-row">
+                    <span>XP</span>
+                    <span>${scores.xp}</span>
+                  </div>
+                  <div class="metric-row">
+                    <span>Points</span>
+                    <span>${scores.points}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Badges Section -->
+            <div class="row mt-4">
+              <div class="col-12">
+                <h4 style="font-family: 'Anton', sans-serif; color: #ff66c4; font-size: 1.5rem; margin-bottom: 1.5rem;">
+                  <i class="fas fa-award"></i> Badges Earned (${badges.length})
+                </h4>
+                ${
+                  badges.length > 0
+                    ? `
+                  <div class="row g-3">
+                    ${badges
+                      .map(
+                        (badge) => `
+                      <div class="col-lg-3 col-md-4 col-sm-6">
+                        <div class="badge-card-modal">
+                          <div class="badge-icon-modal">
+                            <i class="fas fa-${badge.icon}"></i>
+                          </div>
+                          <div class="badge-name-modal">${badge.name}</div>
+                          <div class="badge-desc-modal">${badge.description}</div>
+                          <div class="badge-earned-modal">Earned: ${badge.earned_at}</div>
+                        </div>
+                      </div>
+                    `
+                      )
+                      .join("")}
+                  </div>
+                `
+                    : `
+                  <div style="text-align: center; padding: 2rem; color: #8a8a8f;">
+                    <i class="fas fa-medal" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                    <p>No badges earned yet</p>
+                  </div>
+                `
+                }
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    </script>
   </body>
 </html>
