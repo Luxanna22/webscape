@@ -355,6 +355,9 @@
         .btn-login {
           margin-right: 10px;
         }
+        .performance-panel {
+          padding: 1.2rem;
+        }
       }
 
       .card {
@@ -382,6 +385,72 @@
         font-size: 0.9rem;
         text-align: left;
         color: #8a8a8f;
+      }
+      .performance-panel {
+        background-color: #371569;
+        border: 3px solid #7e31ef;
+        border-radius: 18px;
+        padding: 1.75rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      }
+      .performance-panel:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      }
+      .metric-title {
+        font-family: "Anton", sans-serif;
+        text-transform: uppercase;
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+        color: #d1d1d3;
+      }
+      .metric-primary {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 2.6rem;
+        color: var(--accent-color);
+        line-height: 1.1;
+      }
+      .metric-subtitle {
+        font-size: 0.9rem;
+        color: #b9b9bd;
+        letter-spacing: 0.05em;
+      }
+      .progress-track {
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #ff66c4 0%, #7e31ef 100%);
+        transition: width 0.4s ease;
+      }
+      .metric-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.95rem;
+        color: #e0e0e0;
+      }
+      .metric-row span:last-child {
+        font-weight: 600;
+        color: #ffffff;
+      }
+      .metric-note {
+        font-size: 0.85rem;
+        color: #cfcfd4;
+      }
+      .metric-note-sub {
+        color: #9f9fbd;
+        font-size: 0.8rem;
       }
       .btn-pink {
         background-color: var(--accent-color);
@@ -554,6 +623,87 @@
             border-width: 3px;
           "
         />
+        <div class="row g-4 mt-4">
+          <div class="col-lg-4 col-md-6">
+            <div class="performance-panel h-100">
+              <div class="metric-title">Learning Progress</div>
+              <div class="metric-primary">
+                {{ performance.progress.overall_percent_label }}%
+              </div>
+              <div class="metric-subtitle">Overall completion</div>
+              <div class="progress-track">
+                <div
+                  class="progress-fill"
+                  style="width: {{ performance.progress.bar_width }}%;"
+                ></div>
+              </div>
+              <div class="metric-row">
+                <span>Completed</span>
+                <span>
+                  {{ performance.progress.completed_chapters }} / {% if
+                  performance.progress.total_chapters %} {{
+                  performance.progress.total_chapters }} {% else %} -- {% endif
+                  %}
+                </span>
+              </div>
+              <div class="metric-row">
+                <span>In progress</span>
+                <span>{{ performance.progress.in_progress_chapters }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6">
+            <div class="performance-panel h-100">
+              <div class="metric-title">Engagement</div>
+              <div class="metric-primary">
+                {{ performance.engagement.total_time_label }}
+              </div>
+              <div class="metric-subtitle">Time spent learning</div>
+              <div class="metric-row">
+                <span>Active days</span>
+                <span>{{ performance.engagement.active_days }}</span>
+              </div>
+              <div class="metric-row">
+                <span>Avg per active day</span>
+                <span>{{ performance.engagement.avg_daily_label }}</span>
+              </div>
+              <div class="metric-row">
+                <span>Chapters visited</span>
+                <span>{{ performance.engagement.chapters_visited }}</span>
+              </div>
+              <div class="metric-note">
+                Last active: {% if performance.engagement.last_active_label %}
+                {{ performance.engagement.last_active_label }} {% if
+                performance.engagement.last_active_relative %}
+                <span class="metric-note-sub"
+                  >({{ performance.engagement.last_active_relative }})</span
+                >
+                {% endif %} {% else %}
+                <span class="metric-note-sub">No activity yet</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6">
+            <div class="performance-panel h-100">
+              <div class="metric-title">Performance Scores</div>
+              <div class="metric-primary">{{ performance.scores.rating }}</div>
+              <div class="metric-subtitle">Matchmaking rating</div>
+              <div class="metric-row">
+                <span>Level</span>
+                <span>{{ performance.scores.level }}</span>
+              </div>
+              <div class="metric-row">
+                <span>XP</span>
+                <span>{{ performance.scores.xp }}</span>
+              </div>
+              <div class="metric-row">
+                <span>Points</span>
+                <span>{{ performance.scores.points }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="row text-center mt-4 align-items-stretch">
           <div
             class="col-lg-3 col-md-4 mb-4 d-flex flex-column align-items-center"
