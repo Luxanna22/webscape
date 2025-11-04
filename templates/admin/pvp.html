@@ -631,6 +631,35 @@
           font-size: 0.8rem;
         }
       }
+      /* Toast Notifications */
+      .toast-container {
+        z-index: 9999 !important;
+      }
+
+      .toast {
+        min-width: 300px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+      }
+
+      .toast.bg-success {
+        background: linear-gradient(135deg, #32ffda, #28a745) !important;
+      }
+
+      .toast.bg-danger {
+        background: linear-gradient(135deg, #ff4d6d, #dc3545) !important;
+      }
+
+      .toast-body {
+        font-weight: 500;
+        font-size: 0.95rem;
+        padding: 0.75rem 1rem;
+      }
+
+      .toast .btn-close {
+        padding: 0.5rem;
+      }
     </style>
   </head>
   <body>
@@ -985,6 +1014,879 @@
             </div>
           </form>
         </div>
+
+        <!-- CODE CHALLENGES SECTION -->
+        <hr class="section-divider my-5" />
+
+        <!-- Code Challenges List Section -->
+        <div class="questions-section mb-4">
+          <div class="section-header">
+            <h2 class="section-title">
+              <i class="fas fa-code"></i>
+              Code Challenge Bank
+            </h2>
+            <span class="question-count">
+              {% if code_challenges %}{{ code_challenges|length }}{% else %}0{%
+              endif %} Challenges
+            </span>
+          </div>
+
+          <!-- Filter Tabs Row 1: Difficulty -->
+          <div class="difficulty-tabs mb-2">
+            <button
+              class="difficulty-tab active"
+              onclick="filterCodeChallenges('all', 'difficulty', this)"
+            >
+              <i class="fas fa-list me-1"></i> All
+            </button>
+            <button
+              class="difficulty-tab easy"
+              onclick="filterCodeChallenges('easy', 'difficulty', this)"
+            >
+              <i class="fas fa-smile me-1"></i> Easy
+            </button>
+            <button
+              class="difficulty-tab normal"
+              onclick="filterCodeChallenges('normal', 'difficulty', this)"
+            >
+              <i class="fas fa-meh me-1"></i> Normal
+            </button>
+            <button
+              class="difficulty-tab intermediate"
+              onclick="filterCodeChallenges('intermediate', 'difficulty', this)"
+            >
+              <i class="fas fa-frown me-1"></i> Intermediate
+            </button>
+            <button
+              class="difficulty-tab hard"
+              onclick="filterCodeChallenges('hard', 'difficulty', this)"
+            >
+              <i class="fas fa-skull me-1"></i> Hard
+            </button>
+          </div>
+
+          <!-- Filter Tabs Row 2: Tech Stack -->
+          <div class="difficulty-tabs">
+            <button
+              class="difficulty-tab"
+              onclick="filterCodeChallenges('html', 'tech', this)"
+            >
+              <i class="fab fa-html5 me-1"></i> HTML
+            </button>
+            <button
+              class="difficulty-tab"
+              onclick="filterCodeChallenges('css', 'tech', this)"
+            >
+              <i class="fab fa-css3-alt me-1"></i> CSS
+            </button>
+            <button
+              class="difficulty-tab"
+              onclick="filterCodeChallenges('js', 'tech', this)"
+            >
+              <i class="fab fa-js me-1"></i> JavaScript
+            </button>
+            <button
+              class="difficulty-tab"
+              onclick="filterCodeChallenges('full-stack', 'tech', this)"
+            >
+              <i class="fas fa-layer-group me-1"></i> Full Stack
+            </button>
+          </div>
+
+          <!-- Code Challenges List -->
+          <div class="questions-list" id="codeChallengesList">
+            {% if code_challenges %} {% for c in code_challenges %}
+            <div
+              class="question-card code-challenge-card"
+              data-difficulty="{{ c.difficulty|default('normal') }}"
+              data-challenge-id="{{ c.id }}"
+              data-requires-html="{{ c.requires_html|int }}"
+              data-requires-css="{{ c.requires_css|int }}"
+              data-requires-js="{{ c.requires_js|int }}"
+            >
+              <div class="question-header">
+                <div class="question-text">
+                  <i class="fas fa-code me-2"></i>{{ c.title }}
+                </div>
+                <div class="question-badges">
+                  <span
+                    class="difficulty-badge {{ c.difficulty|default('normal') }}"
+                  >
+                    {{ c.difficulty|default('normal')|upper }}
+                  </span>
+                  <span class="badge bg-secondary">
+                    <i class="fas fa-trophy me-1"></i>{{
+                    c.points_reward|default(100) }} pts
+                  </span>
+                  <button
+                    class="btn-edit"
+                    onclick="openEditCodeModal({{ c.id }})"
+                    title="Edit Challenge"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button
+                    class="btn-remove"
+                    onclick="deleteCodeChallenge({{ c.id }})"
+                    title="Delete Challenge"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="question-meta">
+                <!-- Category -->
+                {% if c.category %}
+                <div class="meta-item">
+                  <i class="fas fa-tag"></i>
+                  <span>{{ c.category }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Tech Stack Icons -->
+                <div class="meta-item">
+                  <i class="fas fa-tools"></i>
+                  <span>
+                    {% if c.requires_html %}<i
+                      class="fab fa-html5 text-danger"
+                      title="HTML"
+                    ></i
+                    >{% endif %} {% if c.requires_css %}<i
+                      class="fab fa-css3-alt text-primary"
+                      title="CSS"
+                    ></i
+                    >{% endif %} {% if c.requires_js %}<i
+                      class="fab fa-js text-warning"
+                      title="JavaScript"
+                    ></i
+                    >{% endif %}
+                  </span>
+                </div>
+
+                <!-- Test Cases Count -->
+                <div class="meta-item">
+                  <i class="fas fa-vial"></i>
+                  <span>
+                    {% if c.test_cases %} {{ c.test_cases|length }} test{{ 's'
+                    if c.test_cases|length != 1 else '' }} {% else %} 0 tests {%
+                    endif %}
+                  </span>
+                </div>
+
+                <!-- ID -->
+                <div class="meta-item">
+                  <i class="fas fa-hashtag"></i>
+                  <span>ID: {{ c.id }}</span>
+                </div>
+
+                <!-- Has Hint -->
+                {% if c.hint %}
+                <div class="meta-item">
+                  <i class="fas fa-lightbulb"></i>
+                  <span>Has hint</span>
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Description Preview -->
+              {% if c.description %}
+              <div class="challenge-description">
+                <small class="text-muted">
+                  {{ c.description[:120] }}{% if c.description|length > 120
+                  %}...{% endif %}
+                </small>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %} {% else %}
+            <div class="empty-state">
+              <i class="fas fa-code"></i>
+              <p class="empty-state-text">No code challenges created yet</p>
+              <p class="text-muted">
+                Create your first challenge using the form below
+              </p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Add New Code Challenge Form -->
+        <div class="form-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <i class="fas fa-plus-circle"></i>
+              Add New Code Challenge
+            </h2>
+          </div>
+
+          <form
+            method="post"
+            action="/admin/pvp/code/add"
+            id="codeForm"
+            enctype="multipart/form-data"
+          >
+            <!-- Challenge Title -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="fas fa-heading me-2"></i>Challenge Title
+              </label>
+              <input
+                type="text"
+                name="title"
+                class="form-control"
+                placeholder="e.g., Build a Responsive Card Component"
+                required
+              />
+            </div>
+
+            <!-- Challenge Description -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="fas fa-align-left me-2"></i>Description
+              </label>
+              <textarea
+                name="description"
+                class="form-control"
+                placeholder="Describe what the student needs to accomplish..."
+                rows="4"
+                required
+              ></textarea>
+            </div>
+
+            <!-- Difficulty, Category, Points -->
+            <div class="row mb-4">
+              <div class="col-md-4">
+                <label class="form-label">
+                  <i class="fas fa-signal me-2"></i>Difficulty Level
+                </label>
+                <select
+                  name="difficulty"
+                  class="form-select"
+                  id="codeDifficultySelect"
+                  onchange="updateCodePoints()"
+                  required
+                >
+                  <option value="easy">Easy (50 points)</option>
+                  <option value="normal" selected>Normal (100 points)</option>
+                  <option value="intermediate">
+                    Intermediate (150 points)
+                  </option>
+                  <option value="hard">Hard (250 points)</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">
+                  <i class="fas fa-tag me-2"></i>Category
+                </label>
+                <input
+                  type="text"
+                  name="category"
+                  class="form-control"
+                  placeholder="e.g., DOM Manipulation, Flexbox"
+                  value="General"
+                />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">
+                  <i class="fas fa-trophy me-2"></i>Points Reward
+                </label>
+                <input
+                  type="number"
+                  name="points_reward"
+                  class="form-control"
+                  id="codePointsInput"
+                  value="100"
+                  min="10"
+                  max="500"
+                  required
+                />
+              </div>
+            </div>
+
+            <!-- Tech Stack Requirements -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="fas fa-tools me-2"></i>Required Technologies
+              </label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    name="requires_html"
+                    id="requiresHtml"
+                    onchange="toggleCodeTab('html')"
+                  />
+                  <label class="form-check-label" for="requiresHtml">
+                    <i class="fab fa-html5 text-danger"></i> HTML
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    name="requires_css"
+                    id="requiresCss"
+                    onchange="toggleCodeTab('css')"
+                  />
+                  <label class="form-check-label" for="requiresCss">
+                    <i class="fab fa-css3-alt text-primary"></i> CSS
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    name="requires_js"
+                    id="requiresJs"
+                    onchange="toggleCodeTab('js')"
+                    checked
+                  />
+                  <label class="form-check-label" for="requiresJs">
+                    <i class="fab fa-js text-warning"></i> JavaScript
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Starter Code Tabs -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="fas fa-code me-2"></i>Starter Code
+              </label>
+
+              <ul class="nav nav-tabs" id="starterCodeTabs" role="tablist">
+                <li
+                  class="nav-item"
+                  role="presentation"
+                  id="htmlTabLi"
+                  style="display: none"
+                >
+                  <button
+                    class="nav-link"
+                    id="html-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#html-pane"
+                    type="button"
+                    role="tab"
+                  >
+                    <i class="fab fa-html5"></i> HTML
+                  </button>
+                </li>
+                <li
+                  class="nav-item"
+                  role="presentation"
+                  id="cssTabLi"
+                  style="display: none"
+                >
+                  <button
+                    class="nav-link"
+                    id="css-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#css-pane"
+                    type="button"
+                    role="tab"
+                  >
+                    <i class="fab fa-css3-alt"></i> CSS
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation" id="jsTabLi">
+                  <button
+                    class="nav-link active"
+                    id="js-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#js-pane"
+                    type="button"
+                    role="tab"
+                  >
+                    <i class="fab fa-js"></i> JavaScript
+                  </button>
+                </li>
+              </ul>
+
+              <div
+                class="tab-content border border-top-0 p-3"
+                id="starterCodeTabContent"
+              >
+                <div class="tab-pane fade" id="html-pane" role="tabpanel">
+                  <textarea
+                    name="html_starter"
+                    class="form-control font-monospace"
+                    rows="8"
+                    placeholder="<!-- HTML starter code -->"
+                  ></textarea>
+                </div>
+                <div class="tab-pane fade" id="css-pane" role="tabpanel">
+                  <textarea
+                    name="css_starter"
+                    class="form-control font-monospace"
+                    rows="8"
+                    placeholder="/* CSS starter code */"
+                  ></textarea>
+                </div>
+                <div
+                  class="tab-pane fade show active"
+                  id="js-pane"
+                  role="tabpanel"
+                >
+                  <textarea
+                    name="js_starter"
+                    class="form-control font-monospace"
+                    rows="8"
+                    placeholder="// JavaScript starter code
+function solution() {
+  // Your code here
+}"
+                    required
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Test Cases -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="fas fa-vial me-2"></i>Test Cases
+              </label>
+              <div id="testCasesContainer">
+                <!-- Test Case 1 -->
+                <div class="test-case-group mb-3">
+                  <div
+                    class="d-flex justify-content-between align-items-center mb-2"
+                  >
+                    <strong>Test Case 1</strong>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      onclick="removeTestCase(this)"
+                      style="display: none"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+
+                  <div class="row mb-2">
+                    <div class="col-md-6">
+                      <label class="form-label small">Test Type</label>
+                      <select
+                        name="test_type_0"
+                        class="form-select form-select-sm"
+                        required
+                      >
+                        <option value="function">Function Test</option>
+                        <option value="html">HTML Output Test</option>
+                        <option value="css">CSS Style Test</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">Expected Result</label>
+                      <input
+                        type="text"
+                        name="expected_0"
+                        class="form-control form-control-sm"
+                        placeholder="e.g., true, 42, 'Hello'"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-12">
+                      <label class="form-label small">Test Input/Code</label>
+                      <textarea
+                        name="input_0"
+                        class="form-control form-control-sm font-monospace"
+                        rows="2"
+                        placeholder="e.g., solution(5, 10)"
+                        required
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                onclick="addTestCase()"
+              >
+                <i class="fas fa-plus me-1"></i>Add Test Case
+              </button>
+            </div>
+
+            <!-- Hint (Optional) -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="fas fa-lightbulb me-2"></i>Hint (Optional)
+              </label>
+              <textarea
+                name="hint"
+                class="form-control"
+                placeholder="Provide a helpful hint for students..."
+                rows="2"
+              ></textarea>
+            </div>
+
+            <!-- Expected Approach (Optional) -->
+            <div class="mb-4">
+              <label class="form-label">
+                <i class="fas fa-route me-2"></i>Expected Approach (Optional)
+              </label>
+              <textarea
+                name="expected_approach"
+                class="form-control"
+                placeholder="Describe the expected solution approach for evaluation..."
+                rows="3"
+              ></textarea>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="btn-group">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Save Challenge
+              </button>
+              <button
+                type="reset"
+                class="btn btn-outline-light"
+                onclick="resetCodeForm()"
+              >
+                <i class="fas fa-undo me-2"></i>Clear Form
+              </button>
+            </div>
+          </form>
+        </div>
+        <!-- END CODE CHALLENGES SECTION -->
+      </div>
+    </div>
+
+    <!-- Edit Code Challenge Modal -->
+    <div
+      class="modal fade"
+      id="editCodeModal"
+      tabindex="-1"
+      aria-labelledby="editCodeModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-xl">
+        <div
+          class="modal-content"
+          style="
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 16px;
+          "
+        >
+          <div
+            class="modal-header"
+            style="border-bottom: 2px solid var(--card-border)"
+          >
+            <h5
+              class="modal-title"
+              id="editCodeModalLabel"
+              style="color: var(--text-primary)"
+            >
+              <i
+                class="fas fa-code me-2"
+                style="color: var(--accent-color)"
+              ></i>
+              Edit Code Challenge
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+              style="filter: invert(1)"
+            ></button>
+          </div>
+          <div class="modal-body" style="max-height: 70vh; overflow-y: auto">
+            <form id="editCodeForm">
+              <input type="hidden" id="edit_code_id" />
+
+              <!-- Challenge Title -->
+              <div class="mb-3">
+                <label for="edit_code_title" class="form-label">
+                  <i class="fas fa-heading me-2"></i>Challenge Title
+                </label>
+                <input
+                  type="text"
+                  id="edit_code_title"
+                  name="title"
+                  class="form-control"
+                  required
+                />
+              </div>
+
+              <!-- Challenge Description -->
+              <div class="mb-3">
+                <label for="edit_code_description" class="form-label">
+                  <i class="fas fa-align-left me-2"></i>Description
+                </label>
+                <textarea
+                  id="edit_code_description"
+                  name="description"
+                  class="form-control"
+                  rows="4"
+                  required
+                ></textarea>
+              </div>
+
+              <!-- Difficulty, Category, Points -->
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label for="edit_code_difficulty" class="form-label">
+                    <i class="fas fa-signal me-2"></i>Difficulty Level
+                  </label>
+                  <select
+                    id="edit_code_difficulty"
+                    name="difficulty"
+                    class="form-select"
+                    onchange="updateEditCodePoints()"
+                    required
+                  >
+                    <option value="easy">Easy (50 points)</option>
+                    <option value="normal">Normal (100 points)</option>
+                    <option value="intermediate">
+                      Intermediate (150 points)
+                    </option>
+                    <option value="hard">Hard (250 points)</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label for="edit_code_category" class="form-label">
+                    <i class="fas fa-tag me-2"></i>Category
+                  </label>
+                  <input
+                    type="text"
+                    id="edit_code_category"
+                    name="category"
+                    class="form-control"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label for="edit_code_points" class="form-label">
+                    <i class="fas fa-trophy me-2"></i>Points Reward
+                  </label>
+                  <input
+                    type="number"
+                    id="edit_code_points"
+                    name="points_reward"
+                    class="form-control"
+                    min="10"
+                    max="500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <!-- Tech Stack Requirements -->
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-tools me-2"></i>Required Technologies
+                </label>
+                <div class="d-flex gap-3">
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="edit_requires_html"
+                      name="requires_html"
+                      onchange="toggleEditCodeTab('html')"
+                    />
+                    <label class="form-check-label" for="edit_requires_html">
+                      <i class="fab fa-html5 text-danger"></i> HTML
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="edit_requires_css"
+                      name="requires_css"
+                      onchange="toggleEditCodeTab('css')"
+                    />
+                    <label class="form-check-label" for="edit_requires_css">
+                      <i class="fab fa-css3-alt text-primary"></i> CSS
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="edit_requires_js"
+                      name="requires_js"
+                      onchange="toggleEditCodeTab('js')"
+                    />
+                    <label class="form-check-label" for="edit_requires_js">
+                      <i class="fab fa-js text-warning"></i> JavaScript
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Starter Code Tabs -->
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-code me-2"></i>Starter Code
+                </label>
+                <ul
+                  class="nav nav-tabs"
+                  id="editStarterCodeTabs"
+                  role="tablist"
+                >
+                  <li
+                    class="nav-item"
+                    role="presentation"
+                    id="editHtmlTabLi"
+                    style="display: none"
+                  >
+                    <button
+                      class="nav-link"
+                      id="edit-html-tab"
+                      data-bs-toggle="tab"
+                      data-bs-target="#edit-html-pane"
+                      type="button"
+                      role="tab"
+                    >
+                      <i class="fab fa-html5"></i> HTML
+                    </button>
+                  </li>
+                  <li
+                    class="nav-item"
+                    role="presentation"
+                    id="editCssTabLi"
+                    style="display: none"
+                  >
+                    <button
+                      class="nav-link"
+                      id="edit-css-tab"
+                      data-bs-toggle="tab"
+                      data-bs-target="#edit-css-pane"
+                      type="button"
+                      role="tab"
+                    >
+                      <i class="fab fa-css3-alt"></i> CSS
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation" id="editJsTabLi">
+                    <button
+                      class="nav-link active"
+                      id="edit-js-tab"
+                      data-bs-toggle="tab"
+                      data-bs-target="#edit-js-pane"
+                      type="button"
+                      role="tab"
+                    >
+                      <i class="fab fa-js"></i> JavaScript
+                    </button>
+                  </li>
+                </ul>
+
+                <div
+                  class="tab-content border border-top-0 p-3"
+                  id="editStarterCodeTabContent"
+                >
+                  <div
+                    class="tab-pane fade"
+                    id="edit-html-pane"
+                    role="tabpanel"
+                  >
+                    <textarea
+                      id="edit_html_starter"
+                      name="html_starter"
+                      class="form-control font-monospace"
+                      rows="6"
+                      placeholder="<!-- HTML starter code -->"
+                    ></textarea>
+                  </div>
+                  <div class="tab-pane fade" id="edit-css-pane" role="tabpanel">
+                    <textarea
+                      id="edit_css_starter"
+                      name="css_starter"
+                      class="form-control font-monospace"
+                      rows="6"
+                      placeholder="/* CSS starter code */"
+                    ></textarea>
+                  </div>
+                  <div
+                    class="tab-pane fade show active"
+                    id="edit-js-pane"
+                    role="tabpanel"
+                  >
+                    <textarea
+                      id="edit_js_starter"
+                      name="js_starter"
+                      class="form-control font-monospace"
+                      rows="6"
+                      placeholder="// JavaScript starter code"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Test Cases -->
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-vial me-2"></i>Test Cases
+                </label>
+                <div id="editTestCasesContainer"></div>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-primary mt-2"
+                  onclick="addEditTestCase()"
+                >
+                  <i class="fas fa-plus me-1"></i>Add Test Case
+                </button>
+              </div>
+
+              <!-- Hint -->
+              <div class="mb-3">
+                <label for="edit_code_hint" class="form-label">
+                  <i class="fas fa-lightbulb me-2"></i>Hint (Optional)
+                </label>
+                <textarea
+                  id="edit_code_hint"
+                  name="hint"
+                  class="form-control"
+                  rows="2"
+                ></textarea>
+              </div>
+
+              <!-- Expected Approach -->
+              <div class="mb-3">
+                <label for="edit_code_approach" class="form-label">
+                  <i class="fas fa-route me-2"></i>Expected Approach (Optional)
+                </label>
+                <textarea
+                  id="edit_code_approach"
+                  name="expected_approach"
+                  class="form-control"
+                  rows="3"
+                ></textarea>
+              </div>
+            </form>
+          </div>
+          <div
+            class="modal-footer"
+            style="border-top: 2px solid var(--card-border)"
+          >
+            <button
+              type="button"
+              class="btn btn-outline-light"
+              data-bs-dismiss="modal"
+            >
+              <i class="fas fa-times me-2"></i>Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="saveEditedCodeChallenge()"
+            >
+              <i class="fas fa-save me-2"></i>Save Changes
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1136,8 +2038,128 @@
       </div>
     </div>
 
+    <!-- Toast Container -->
+    <div
+      class="toast-container position-fixed top-0 end-0 p-3"
+      style="z-index: 9999"
+    >
+      <div
+        id="successToast"
+        class="toast align-items-center text-white bg-success border-0"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+      >
+        <div class="d-flex">
+          <div class="toast-body">
+            <i class="fas fa-check-circle me-2"></i>
+            <span id="toastMessage"></span>
+          </div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            data-bs-dismiss="toast"
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+      // Toast notification function
+      function showToast(message, type = "success") {
+        const toastElement = document.getElementById("successToast");
+        const toastBody = document.getElementById("toastMessage");
+
+        // Update message
+        toastBody.textContent = message;
+
+        // Update colors based on type
+        if (type === "success") {
+          toastElement.className =
+            "toast align-items-center text-white bg-success border-0";
+          toastBody.innerHTML =
+            '<i class="fas fa-check-circle me-2"></i>' + message;
+        } else if (type === "error") {
+          toastElement.className =
+            "toast align-items-center text-white bg-danger border-0";
+          toastBody.innerHTML =
+            '<i class="fas fa-exclamation-circle me-2"></i>' + message;
+        }
+
+        // Show toast
+        const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+        toast.show();
+      }
+
+      // Handle Quiz Form submission with AJAX
+      document
+        .getElementById("quizForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+
+          fetch("/admin/pvp/quiz/add", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                showToast("Quiz question created successfully!", "success");
+                setTimeout(() => {
+                  location.reload();
+                }, 1500);
+              } else {
+                showToast(data.message || "Failed to create question", "error");
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              showToast(
+                "An error occurred while creating the question",
+                "error"
+              );
+            });
+        });
+
+      // Handle Code Challenge Form submission with AJAX
+      document
+        .getElementById("codeForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+
+          fetch("/admin/pvp/code/add", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                showToast("Code challenge created successfully!", "success");
+                setTimeout(() => {
+                  location.reload();
+                }, 1500);
+              } else {
+                showToast(
+                  data.message || "Failed to create challenge",
+                  "error"
+                );
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              showToast(
+                "An error occurred while creating the challenge",
+                "error"
+              );
+            });
+        });
+
       let choiceCount = 2;
 
       // Difficulty to time limit mapping
@@ -1359,60 +2381,66 @@
           editModalInstance = new bootstrap.Modal(modalElement);
         }
 
-        // Add click handlers to all edit buttons
-        document.querySelectorAll(".btn-edit").forEach((button) => {
-          button.addEventListener("click", function () {
-            openEditModal(this);
+        // Add click handlers only to quiz question edit buttons (not code challenge buttons)
+        document
+          .querySelectorAll(
+            ".question-card:not(.code-challenge-card) .btn-edit"
+          )
+          .forEach((button) => {
+            button.addEventListener("click", function () {
+              openEditModal(this);
+            });
           });
-        });
       });
 
       // Open edit modal
       function openEditModal(button) {
         try {
           const questionId = button.dataset.questionId;
-          const questionText = button.dataset.questionText;
-          const difficulty = button.dataset.difficulty;
-          const timeLimit = button.dataset.timeLimit;
-          const choicesData = button.dataset.choices;
-          const correctIndex = parseInt(button.dataset.correctIndex);
-          const explanation = button.dataset.explanation;
 
-          // Debug log
-          console.log("Choices data:", choicesData);
+          // Fetch question data from API
+          fetch(`/admin/pvp/quiz/${questionId}`)
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.error) {
+                alert(data.error);
+                return;
+              }
 
-          // Parse choices with error handling
-          let choices = [];
-          if (choicesData) {
-            try {
-              choices = JSON.parse(choicesData);
-            } catch (e) {
-              console.error("Error parsing choices:", e);
-              alert("Error loading question choices. Please refresh the page.");
-              return;
-            }
-          }
+              // Populate form
+              document.getElementById("edit_question_id").value = data.id;
+              document.getElementById("edit_question").value =
+                data.question || "";
+              document.getElementById("edit_difficulty").value =
+                data.difficulty || "normal";
+              document.getElementById("edit_time_limit").value =
+                data.time_limit || 45;
+              document.getElementById("edit_explanation").value =
+                data.explanation || "";
 
-          // Populate form
-          document.getElementById("edit_question_id").value = questionId;
-          document.getElementById("edit_question").value = questionText;
-          document.getElementById("edit_difficulty").value = difficulty;
-          document.getElementById("edit_time_limit").value = timeLimit;
-          document.getElementById("edit_explanation").value = explanation;
+              // Populate choices
+              const container = document.getElementById(
+                "edit_choices_container"
+              );
+              container.innerHTML = "";
+              editChoiceCount = 0;
 
-          // Populate choices
-          const container = document.getElementById("edit_choices_container");
-          container.innerHTML = "";
-          editChoiceCount = 0;
+              const choices = data.choices || [];
+              const correctIndex = parseInt(data.correct_index) || 0;
 
-          choices.forEach((choice, index) => {
-            addEditChoice(choice, index === correctIndex);
-          });
+              choices.forEach((choice, index) => {
+                addEditChoice(choice, index === correctIndex);
+              });
 
-          // Show modal
-          if (editModalInstance) {
-            editModalInstance.show();
-          }
+              // Show modal
+              if (editModalInstance) {
+                editModalInstance.show();
+              }
+            })
+            .catch((error) => {
+              console.error("Error loading question:", error);
+              alert("Failed to load question data");
+            });
         } catch (error) {
           console.error("Error opening edit modal:", error);
           alert(
@@ -1596,6 +2624,572 @@
             alert("An error occurred while updating the question");
           });
       }
+
+      // ============================================
+      // CODE CHALLENGE FUNCTIONS
+      // ============================================
+
+      let testCaseCount = 1;
+
+      // Update points based on difficulty
+      function updateCodePoints() {
+        const difficultySelect = document.getElementById(
+          "codeDifficultySelect"
+        );
+        const pointsInput = document.getElementById("codePointsInput");
+        const pointsMap = {
+          easy: 50,
+          normal: 100,
+          intermediate: 150,
+          hard: 250,
+        };
+        pointsInput.value = pointsMap[difficultySelect.value];
+      }
+
+      // Toggle code tab visibility based on tech requirements
+      function toggleCodeTab(tech) {
+        const checkbox = document.getElementById(
+          "requires" + tech.charAt(0).toUpperCase() + tech.slice(1)
+        );
+        const tabLi = document.getElementById(tech + "TabLi");
+        const tabButton = document.getElementById(tech + "-tab");
+
+        if (checkbox.checked) {
+          tabLi.style.display = "block";
+          // If it's the first visible tab, make it active
+          const visibleTabs = document.querySelectorAll(
+            '#starterCodeTabs .nav-item[style="display: block;"], #starterCodeTabs .nav-item:not([style*="display"])'
+          );
+          if (visibleTabs.length === 1) {
+            tabButton.click();
+          }
+        } else {
+          tabLi.style.display = "none";
+          // If active tab is hidden, switch to first visible tab
+          if (tabButton.classList.contains("active")) {
+            const visibleTab = document.querySelector(
+              '#starterCodeTabs .nav-link:not([id="' + tech + '-tab"])'
+            );
+            if (visibleTab) visibleTab.click();
+          }
+        }
+      }
+
+      // Initialize: Show JS tab by default
+      document.addEventListener("DOMContentLoaded", function () {
+        toggleCodeTab("js");
+      });
+
+      // Add new test case
+      function addTestCase() {
+        testCaseCount++;
+        const container = document.getElementById("testCasesContainer");
+        const newTestCase = document.createElement("div");
+        newTestCase.className = "test-case-group mb-3";
+        newTestCase.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>Test Case ${testCaseCount}</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" 
+                    onclick="removeTestCase(this)">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div class="row mb-2">
+            <div class="col-md-6">
+              <label class="form-label small">Test Type</label>
+              <select name="test_type_${
+                testCaseCount - 1
+              }" class="form-select form-select-sm" required>
+                <option value="function">Function Test</option>
+                <option value="html">HTML Output Test</option>
+                <option value="css">CSS Style Test</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Expected Result</label>
+              <input type="text" name="expected_${testCaseCount - 1}" 
+                     class="form-control form-control-sm" 
+                     placeholder="e.g., true, 42, 'Hello'" required>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-12">
+              <label class="form-label small">Test Input/Code</label>
+              <textarea name="input_${testCaseCount - 1}" 
+                        class="form-control form-control-sm font-monospace" 
+                        rows="2" placeholder="e.g., solution(5, 10)" required></textarea>
+            </div>
+          </div>
+        `;
+        container.appendChild(newTestCase);
+        updateTestCaseRemoveButtons();
+      }
+
+      // Remove test case
+      function removeTestCase(button) {
+        button.closest(".test-case-group").remove();
+        updateTestCaseRemoveButtons();
+        renumberTestCases();
+      }
+
+      // Update test case remove button visibility
+      function updateTestCaseRemoveButtons() {
+        const testCases = document.querySelectorAll(
+          "#testCasesContainer .test-case-group"
+        );
+        testCases.forEach((testCase, index) => {
+          const removeBtn = testCase.querySelector(".btn-outline-danger");
+          if (testCases.length <= 1) {
+            removeBtn.style.display = "none";
+          } else {
+            removeBtn.style.display = "inline-block";
+          }
+        });
+      }
+
+      // Renumber test cases after removal
+      function renumberTestCases() {
+        const testCases = document.querySelectorAll(
+          "#testCasesContainer .test-case-group"
+        );
+        testCases.forEach((testCase, index) => {
+          testCase.querySelector("strong").textContent = `Test Case ${
+            index + 1
+          }`;
+
+          // Update input names
+          const typeSelect = testCase.querySelector(
+            'select[name^="test_type"]'
+          );
+          const expectedInput = testCase.querySelector(
+            'input[name^="expected"]'
+          );
+          const inputTextarea = testCase.querySelector(
+            'textarea[name^="input"]'
+          );
+
+          typeSelect.name = `test_type_${index}`;
+          expectedInput.name = `expected_${index}`;
+          inputTextarea.name = `input_${index}`;
+        });
+        testCaseCount = testCases.length;
+      }
+
+      // Reset code form
+      function resetCodeForm() {
+        document.getElementById("codeForm").reset();
+
+        // Reset to default: only JS checked
+        document.getElementById("requiresHtml").checked = false;
+        document.getElementById("requiresCss").checked = false;
+        document.getElementById("requiresJs").checked = true;
+
+        // Reset tabs
+        toggleCodeTab("html");
+        toggleCodeTab("css");
+        toggleCodeTab("js");
+
+        // Reset test cases to 1
+        const container = document.getElementById("testCasesContainer");
+        const testCases = container.querySelectorAll(".test-case-group");
+        if (testCases.length > 1) {
+          for (let i = 1; i < testCases.length; i++) {
+            testCases[i].remove();
+          }
+        }
+        testCaseCount = 1;
+        updateTestCaseRemoveButtons();
+      }
+
+      // Filter code challenges
+      let currentDifficultyFilter = "all";
+      let currentTechFilter = "all";
+
+      function filterCodeChallenges(value, filterType, clickedTab) {
+        const challenges = document.querySelectorAll(".code-challenge-card");
+        const tabs =
+          clickedTab.parentElement.querySelectorAll(".difficulty-tab");
+
+        // Update active tab
+        tabs.forEach((tab) => tab.classList.remove("active"));
+        clickedTab.classList.add("active");
+
+        // Update filter state
+        if (filterType === "difficulty") {
+          currentDifficultyFilter = value;
+        } else if (filterType === "tech") {
+          currentTechFilter = value;
+        }
+
+        // Apply combined filters
+        challenges.forEach((challenge) => {
+          let showChallenge = true;
+
+          // Check difficulty filter
+          if (
+            currentDifficultyFilter !== "all" &&
+            challenge.dataset.difficulty !== currentDifficultyFilter
+          ) {
+            showChallenge = false;
+          }
+
+          // Check tech filter
+          if (
+            currentTechFilter !== "all" &&
+            currentTechFilter !== "full-stack"
+          ) {
+            const requiresHtml = challenge.dataset.requiresHtml === "1";
+            const requiresCss = challenge.dataset.requiresCss === "1";
+            const requiresJs = challenge.dataset.requiresJs === "1";
+
+            if (currentTechFilter === "html" && !requiresHtml)
+              showChallenge = false;
+            if (currentTechFilter === "css" && !requiresCss)
+              showChallenge = false;
+            if (currentTechFilter === "js" && !requiresJs)
+              showChallenge = false;
+          } else if (currentTechFilter === "full-stack") {
+            const requiresHtml = challenge.dataset.requiresHtml === "1";
+            const requiresCss = challenge.dataset.requiresCss === "1";
+            const requiresJs = challenge.dataset.requiresJs === "1";
+
+            // Full stack means HTML + CSS + JS
+            if (!(requiresHtml && requiresCss && requiresJs)) {
+              showChallenge = false;
+            }
+          }
+
+          challenge.style.display = showChallenge ? "block" : "none";
+        });
+      }
+
+      // Delete code challenge
+      function deleteCodeChallenge(challengeId) {
+        if (!confirm("Are you sure you want to delete this code challenge?")) {
+          return;
+        }
+
+        fetch(`/admin/pvp/code/${challengeId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert("Challenge deleted successfully!");
+              location.reload();
+            } else {
+              alert("Error: " + (data.error || "Failed to delete challenge"));
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while deleting the challenge");
+          });
+      }
+
+      // Code difficulty to points mapping
+      const codePointsMap = {
+        easy: 50,
+        normal: 100,
+        intermediate: 150,
+        hard: 250,
+      };
+
+      // Update points based on difficulty in edit modal
+      function updateEditCodePoints() {
+        const difficulty = document.getElementById(
+          "edit_code_difficulty"
+        ).value;
+        const pointsInput = document.getElementById("edit_code_points");
+        pointsInput.value = codePointsMap[difficulty];
+      }
+
+      // Toggle code tabs in edit modal
+      function toggleEditCodeTab(tech) {
+        const checkbox = document.getElementById(`edit_requires_${tech}`);
+        const tabLi = document.getElementById(
+          `edit${tech.charAt(0).toUpperCase() + tech.slice(1)}TabLi`
+        );
+
+        if (checkbox.checked) {
+          tabLi.style.display = "block";
+        } else {
+          tabLi.style.display = "none";
+        }
+      }
+
+      // Add test case in edit modal
+      let editTestCaseCount = 0;
+      function addEditTestCase() {
+        const container = document.getElementById("editTestCasesContainer");
+        const testCaseDiv = document.createElement("div");
+        testCaseDiv.className = "test-case-group mb-3 p-3 border rounded";
+        testCaseDiv.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>Test Case ${editTestCaseCount + 1}</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.parentElement.remove()">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="row mb-2">
+            <div class="col-md-6">
+              <label class="form-label small">Test Type</label>
+              <select name="test_type_${editTestCaseCount}" class="form-select form-select-sm" required>
+                <option value="function">Function Test</option>
+                <option value="html">HTML Output Test</option>
+                <option value="css">CSS Style Test</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Expected Result</label>
+              <input type="text" name="expected_${editTestCaseCount}" class="form-control form-control-sm" required />
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12">
+              <label class="form-label small">Test Input/Code</label>
+              <textarea name="input_${editTestCaseCount}" class="form-control form-control-sm font-monospace" rows="2" required></textarea>
+            </div>
+          </div>
+        `;
+        container.appendChild(testCaseDiv);
+        editTestCaseCount++;
+      }
+
+      // Open edit code modal
+      function openEditCodeModal(challengeId) {
+        fetch(`/admin/pvp/code/${challengeId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              alert(data.error);
+              return;
+            }
+
+            // Populate basic fields
+            document.getElementById("edit_code_id").value = data.id;
+            document.getElementById("edit_code_title").value = data.title || "";
+            document.getElementById("edit_code_description").value =
+              data.description || "";
+            document.getElementById("edit_code_difficulty").value =
+              data.difficulty || "normal";
+            document.getElementById("edit_code_category").value =
+              data.category || "";
+            document.getElementById("edit_code_points").value =
+              data.points_reward || 100;
+
+            // Set technology checkboxes and show tabs
+            const htmlCheck = document.getElementById("edit_requires_html");
+            const cssCheck = document.getElementById("edit_requires_css");
+            const jsCheck = document.getElementById("edit_requires_js");
+
+            htmlCheck.checked = data.requires_html || false;
+            cssCheck.checked = data.requires_css || false;
+            jsCheck.checked = data.requires_js || false;
+
+            // Show/hide tabs based on requirements
+            toggleEditCodeTab("html");
+            toggleEditCodeTab("css");
+            toggleEditCodeTab("js");
+
+            // Set starter code
+            document.getElementById("edit_html_starter").value =
+              data.html_starter || "";
+            document.getElementById("edit_css_starter").value =
+              data.css_starter || "";
+            document.getElementById("edit_js_starter").value =
+              data.js_starter || "";
+
+            // Set hint and approach
+            document.getElementById("edit_code_hint").value = data.hint || "";
+            document.getElementById("edit_code_approach").value =
+              data.expected_approach || "";
+
+            // Populate test cases
+            const container = document.getElementById("editTestCasesContainer");
+            container.innerHTML = "";
+            editTestCaseCount = 0;
+
+            if (data.test_cases && data.test_cases.length > 0) {
+              data.test_cases.forEach((testCase, index) => {
+                const testCaseDiv = document.createElement("div");
+                testCaseDiv.className =
+                  "test-case-group mb-3 p-3 border rounded";
+                testCaseDiv.innerHTML = `
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>Test Case ${index + 1}</strong>
+                    ${
+                      index > 0
+                        ? `
+                      <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    `
+                        : ""
+                    }
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col-md-6">
+                      <label class="form-label small">Test Type</label>
+                      <select name="test_type_${index}" class="form-select form-select-sm" required>
+                        <option value="function" ${
+                          testCase.test_type === "function" ? "selected" : ""
+                        }>Function Test</option>
+                        <option value="html" ${
+                          testCase.test_type === "html" ? "selected" : ""
+                        }>HTML Output Test</option>
+                        <option value="css" ${
+                          testCase.test_type === "css" ? "selected" : ""
+                        }>CSS Style Test</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small">Expected Result</label>
+                      <input type="text" name="expected_${index}" class="form-control form-control-sm" value="${
+                  testCase.expected || ""
+                }" required />
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-12">
+                      <label class="form-label small">Test Input/Code</label>
+                      <textarea name="input_${index}" class="form-control form-control-sm font-monospace" rows="2" required>${
+                  testCase.input || ""
+                }</textarea>
+                    </div>
+                  </div>
+                `;
+                container.appendChild(testCaseDiv);
+                editTestCaseCount++;
+              });
+            }
+
+            // Show modal
+            const modal = new bootstrap.Modal(
+              document.getElementById("editCodeModal")
+            );
+            modal.show();
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Failed to load challenge data");
+          });
+      }
+
+      // Save edited code challenge
+      function saveEditedCodeChallenge() {
+        const form = document.getElementById("editCodeForm");
+        const formData = new FormData();
+
+        // Add basic fields
+        formData.append("id", document.getElementById("edit_code_id").value);
+        formData.append(
+          "title",
+          document.getElementById("edit_code_title").value
+        );
+        formData.append(
+          "description",
+          document.getElementById("edit_code_description").value
+        );
+        formData.append(
+          "difficulty",
+          document.getElementById("edit_code_difficulty").value
+        );
+        formData.append(
+          "category",
+          document.getElementById("edit_code_category").value
+        );
+        formData.append(
+          "points_reward",
+          document.getElementById("edit_code_points").value
+        );
+
+        // Add technology requirements
+        formData.append(
+          "requires_html",
+          document.getElementById("edit_requires_html").checked ? "1" : "0"
+        );
+        formData.append(
+          "requires_css",
+          document.getElementById("edit_requires_css").checked ? "1" : "0"
+        );
+        formData.append(
+          "requires_js",
+          document.getElementById("edit_requires_js").checked ? "1" : "0"
+        );
+
+        // Add starter code
+        formData.append(
+          "html_starter",
+          document.getElementById("edit_html_starter").value
+        );
+        formData.append(
+          "css_starter",
+          document.getElementById("edit_css_starter").value
+        );
+        formData.append(
+          "js_starter",
+          document.getElementById("edit_js_starter").value
+        );
+
+        // Add hint and approach
+        formData.append(
+          "hint",
+          document.getElementById("edit_code_hint").value
+        );
+        formData.append(
+          "expected_approach",
+          document.getElementById("edit_code_approach").value
+        );
+
+        // Add test cases
+        const testCases = [];
+        const container = document.getElementById("editTestCasesContainer");
+        const testCaseGroups = container.querySelectorAll(".test-case-group");
+
+        testCaseGroups.forEach((group, index) => {
+          const testType = group.querySelector(`[name^="test_type"]`).value;
+          const expected = group.querySelector(`[name^="expected"]`).value;
+          const input = group.querySelector(`[name^="input"]`).value;
+
+          testCases.push({
+            test_type: testType,
+            expected: expected,
+            input: input,
+          });
+        });
+
+        formData.append("test_cases", JSON.stringify(testCases));
+
+        // Submit
+        fetch("/admin/pvp/code/edit", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert("Code challenge updated successfully!");
+              location.reload();
+            } else {
+              alert(data.error || "Failed to update challenge");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while updating the challenge");
+          });
+      }
+
+      // Initialize test case remove buttons on page load
+      document.addEventListener("DOMContentLoaded", function () {
+        updateTestCaseRemoveButtons();
+      });
     </script>
   </body>
 </html>

@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Code Battle - WebScape</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+
+    <!-- CodeMirror CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.css"
+    />
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap");
+
+      :root {
+        --bg-color: #240e44;
+        --secondary-color: #2d2c2f;
+        --accent-color: #ff66c4;
+        --card-bg: #2d145c;
+        --card-border: #a259ff;
+        --text-primary: #ffffff;
+        --text-secondary: #a9a9a9;
+        --success-color: #32ffda;
+        --danger-color: #ff4d6d;
+        --easy-color: #4caf50;
+        --normal-color: #2196f3;
+        --intermediate-color: #ff9800;
+        --hard-color: #f44336;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Montserrat", sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        overflow: hidden;
+      }
+
+      /* Queue Screen */
+      .queue-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        text-align: center;
+        background: radial-gradient(
+          circle at center,
+          rgba(162, 89, 255, 0.1),
+          transparent 70%
+        );
+        position: relative;
+        overflow: hidden;
+      }
+
+      .queue-screen::before {
+        content: "";
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(
+          circle,
+          rgba(255, 102, 196, 0.2),
+          transparent
+        );
+        border-radius: 50%;
+        animation: pulse 3s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 0.5;
+        }
+        50% {
+          transform: scale(1.5);
+          opacity: 0.2;
+        }
+      }
+
+      .queue-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .queue-logo {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 4rem;
+        color: var(--accent-color);
+        margin-bottom: 1rem;
+        text-shadow: 0 0 30px rgba(255, 102, 196, 0.8);
+        animation: glow 2s ease-in-out infinite;
+      }
+
+      @keyframes glow {
+        0%,
+        100% {
+          text-shadow: 0 0 20px rgba(255, 102, 196, 0.5);
+        }
+        50% {
+          text-shadow: 0 0 40px rgba(255, 102, 196, 0.9),
+            0 0 60px rgba(162, 89, 255, 0.6);
+        }
+      }
+
+      .queue-card {
+        background: linear-gradient(
+          135deg,
+          rgba(45, 20, 92, 0.9),
+          rgba(26, 13, 46, 0.9)
+        );
+        border: 2px solid var(--card-border);
+        border-radius: 20px;
+        padding: 3rem 4rem;
+        margin: 2rem 0;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+      }
+
+      .queue-status {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+        color: var(--accent-color);
+        font-weight: 600;
+        animation: fadeInOut 2s ease-in-out infinite;
+      }
+
+      @keyframes fadeInOut {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.6;
+        }
+      }
+
+      .queue-subtitle {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+      }
+
+      .queue-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: center;
+      }
+
+      .cancel-queue-btn,
+      .leave-battle-btn {
+        padding: 1rem 2.5rem;
+        background: linear-gradient(135deg, var(--danger-color), #c23a4f);
+        border: 2px solid rgba(255, 77, 109, 0.3);
+        border-radius: 12px;
+        color: white;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .cancel-queue-btn:hover,
+      .leave-battle-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(255, 77, 109, 0.5);
+        border-color: var(--danger-color);
+      }
+
+      .cancel-queue-btn:active,
+      .leave-battle-btn:active {
+        transform: translateY(0);
+      }
+
+      .match-found-animation {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 1000;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .match-found-animation.active {
+        display: flex;
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .match-found-text {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 5rem;
+        color: var(--success-color);
+        text-shadow: 0 0 50px rgba(50, 255, 218, 0.8);
+        animation: scaleIn 0.5s ease-out;
+        margin-bottom: 2rem;
+      }
+
+      @keyframes scaleIn {
+        from {
+          transform: scale(0);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .vs-animation {
+        font-size: 3rem;
+        color: var(--accent-color);
+        margin: 2rem 0;
+        animation: bounce 0.5s ease-in-out infinite;
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+
+      .opponent-info {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      .player-card {
+        background: rgba(45, 20, 92, 0.8);
+        border: 2px solid var(--card-border);
+        border-radius: 15px;
+        padding: 1.5rem 2rem;
+        min-width: 200px;
+        text-align: center;
+      }
+
+      .player-name {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent-color);
+        margin-bottom: 0.5rem;
+      }
+
+      .player-rating {
+        font-size: 1rem;
+        color: var(--text-secondary);
+      }
+
+      /* Battle Screen */
+      .battle-screen {
+        display: none;
+        height: 100vh;
+        flex-direction: column;
+      }
+
+      /* Header */
+      .battle-header {
+        background: linear-gradient(135deg, var(--card-bg), #1a0d2e);
+        border-bottom: 2px solid var(--card-border);
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 2rem;
+        flex-wrap: wrap;
+      }
+
+      .challenge-info {
+        flex: 1;
+        min-width: 250px;
+      }
+
+      .challenge-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent-color);
+        margin-bottom: 0.5rem;
+      }
+
+      .challenge-meta {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .meta-badge {
+        padding: 0.3rem 0.8rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      .difficulty-easy {
+        background: var(--easy-color);
+      }
+      .difficulty-normal {
+        background: var(--normal-color);
+      }
+      .difficulty-intermediate {
+        background: var(--intermediate-color);
+      }
+      .difficulty-hard {
+        background: var(--hard-color);
+      }
+
+      .points-badge {
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        color: #000;
+      }
+
+      .timer {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--success-color);
+        text-align: center;
+        min-width: 80px;
+      }
+
+      .timer.warning {
+        color: var(--intermediate-color);
+        animation: pulse 1s ease-in-out infinite;
+      }
+
+      .timer.danger {
+        color: var(--danger-color);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
+
+      .scores {
+        display: flex;
+        gap: 2rem;
+      }
+
+      .score-item {
+        text-align: center;
+      }
+
+      .score-label {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.3rem;
+      }
+
+      .score-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--success-color);
+      }
+
+      /* Main Content */
+      .battle-main {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* Left Panel - Challenge Description */
+      .challenge-panel {
+        width: 350px;
+        background: var(--card-bg);
+        border-right: 2px solid var(--card-border);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+
+      .challenge-description {
+        padding: 1.5rem;
+        flex: 1;
+      }
+
+      .challenge-description h3 {
+        color: var(--accent-color);
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+      }
+
+      .challenge-description p {
+        line-height: 1.6;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+      }
+
+      .hint-section {
+        background: rgba(255, 102, 196, 0.1);
+        border-left: 3px solid var(--accent-color);
+        padding: 1rem;
+        margin-top: 1rem;
+        border-radius: 6px;
+      }
+
+      .hint-section.hidden {
+        display: none;
+      }
+
+      .hint-btn {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, var(--accent-color), #d454a3);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 1rem;
+      }
+
+      .hint-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 102, 196, 0.4);
+      }
+
+      .test-results {
+        padding: 1rem 1.5rem;
+        border-top: 2px solid var(--card-border);
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .test-results h4 {
+        color: var(--accent-color);
+        margin-bottom: 1rem;
+      }
+
+      .test-case {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 0.8rem;
+        margin-bottom: 0.5rem;
+        border-radius: 6px;
+        border-left: 3px solid var(--text-secondary);
+      }
+
+      .test-case.passed {
+        border-left-color: var(--success-color);
+        background: rgba(50, 255, 218, 0.1);
+      }
+
+      .test-case.failed {
+        border-left-color: var(--danger-color);
+        background: rgba(255, 77, 109, 0.1);
+      }
+
+      .test-case-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+      }
+
+      .test-icon {
+        font-size: 1.2rem;
+      }
+
+      .test-icon.passed {
+        color: var(--success-color);
+      }
+
+      .test-icon.failed {
+        color: var(--danger-color);
+      }
+
+      /* Center Panel - Code Editor */
+      .editor-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--secondary-color);
+      }
+
+      .editor-tabs {
+        display: flex;
+        background: var(--card-bg);
+        border-bottom: 2px solid var(--card-border);
+      }
+
+      .editor-tab {
+        padding: 1rem 2rem;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-bottom: 3px solid transparent;
+      }
+
+      .editor-tab:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+      }
+
+      .editor-tab.active {
+        color: var(--accent-color);
+        border-bottom-color: var(--accent-color);
+      }
+
+      .editor-tab:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      .code-editors {
+        flex: 1;
+        position: relative;
+      }
+
+      .code-editor {
+        display: none;
+        height: 100%;
+      }
+
+      .code-editor.active {
+        display: block;
+      }
+
+      .CodeMirror {
+        height: 100% !important;
+        font-size: 14px;
+      }
+
+      .editor-actions {
+        padding: 1rem;
+        background: var(--card-bg);
+        border-top: 2px solid var(--card-border);
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+      }
+
+      .btn {
+        padding: 0.8rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--success-color), #28d9b8);
+        color: #000;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(50, 255, 218, 0.4);
+      }
+
+      .btn-secondary {
+        background: linear-gradient(135deg, var(--accent-color), #d454a3);
+        color: white;
+      }
+
+      .btn-secondary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(255, 102, 196, 0.4);
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Right Panel - Preview */
+      .preview-panel {
+        width: 400px;
+        background: var(--card-bg);
+        border-left: 2px solid var(--card-border);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .preview-header {
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 2px solid var(--card-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .preview-header h3 {
+        color: var(--accent-color);
+        font-size: 1.1rem;
+      }
+
+      .preview-container {
+        flex: 1;
+        background: white;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .preview-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: white;
+      }
+
+      .opponent-progress {
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-top: 2px solid var(--card-border);
+      }
+
+      .opponent-progress h4 {
+        color: var(--accent-color);
+        margin-bottom: 0.8rem;
+        font-size: 1rem;
+      }
+
+      .progress-stats {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+      }
+
+      .progress-bar {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-color), #d454a3);
+        transition: width 0.5s ease;
+      }
+
+      /* Results Screen */
+      .results-screen {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        text-align: center;
+        padding: 2rem;
+      }
+
+      .results-container {
+        background: var(--card-bg);
+        border: 2px solid var(--card-border);
+        border-radius: 20px;
+        padding: 3rem;
+        max-width: 600px;
+        width: 100%;
+        box-shadow: 0 10px 40px rgba(162, 89, 255, 0.3);
+      }
+
+      .results-trophy {
+        font-size: 5rem;
+        margin-bottom: 1rem;
+      }
+
+      .results-title {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+
+      .results-title.victory {
+        color: var(--success-color);
+      }
+
+      .results-title.defeat {
+        color: var(--danger-color);
+      }
+
+      .results-title.draw {
+        color: var(--intermediate-color);
+      }
+
+      .results-stats {
+        margin: 2rem 0;
+      }
+
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+      }
+
+      .stat-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+      }
+
+      .stat-value {
+        color: var(--text-primary);
+        font-weight: 700;
+      }
+
+      .results-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      /* Mobile Responsive */
+      @media (max-width: 1024px) {
+        .challenge-panel {
+          width: 280px;
+        }
+
+        .preview-panel {
+          width: 320px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .battle-main {
+          flex-direction: column;
+        }
+
+        .challenge-panel,
+        .preview-panel {
+          width: 100%;
+          max-height: 200px;
+        }
+      }
+
+      /* Hidden State */
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Queue Screen -->
+    <div class="queue-screen" id="queueScreen">
+      <div class="queue-content">
+        <div class="queue-logo">
+          <i class="fas fa-laptop-code"></i> CODE BATTLE
+        </div>
+        <div class="queue-card">
+          <dotlottie-player
+            src="https://lottie.host/10fb778d-241e-4604-8a37-bbf4e061e93a/eBFMwd9fRi.lottie"
+            background="transparent"
+            speed="1"
+            style="width: 200px; height: 200px; margin: 0 auto"
+            loop
+            autoplay
+          ></dotlottie-player>
+          <div class="queue-status" id="queueStatus">
+            Searching for opponent...
+          </div>
+          <div class="queue-subtitle">Finding a worthy challenger for you</div>
+          <div class="queue-actions">
+            <button class="cancel-queue-btn" onclick="cancelQueue()">
+              <i class="fas fa-times"></i> Leave Queue
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Found Animation -->
+    <div class="match-found-animation" id="matchFoundAnimation">
+      <div class="match-found-text">
+        <i class="fas fa-check-circle"></i> MATCH FOUND!
+      </div>
+      <div class="opponent-info">
+        <div class="player-card">
+          <div class="player-name" id="player1Name">You</div>
+          <div class="player-rating">
+            <i class="fas fa-star"></i> <span id="player1Rating">1000</span>
+          </div>
+        </div>
+        <div class="vs-animation">VS</div>
+        <div class="player-card">
+          <div class="player-name" id="player2Name">Opponent</div>
+          <div class="player-rating">
+            <i class="fas fa-star"></i> <span id="player2Rating">1000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opponent Left Notification -->
+    <div class="match-found-animation" id="opponentLeftNotification">
+      <div class="match-found-text" style="color: #ffd700">
+        <i class="fas fa-trophy"></i> VICTORY!
+      </div>
+      <div class="opponent-info">
+        <div
+          style="
+            text-align: center;
+            font-size: 1.2rem;
+            color: white;
+            padding: 2rem;
+          "
+        >
+          <p style="margin: 0 0 1rem 0">Your opponent left the battle!</p>
+          <p style="margin: 0; color: #ffd700; font-weight: bold">
+            You win by forfeit! 🎉
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Battle Screen -->
+    <div class="battle-screen" id="battleScreen">
+      <!-- Header -->
+      <div class="battle-header">
+        <div class="challenge-info">
+          <div class="challenge-title" id="challengeTitle">Loading...</div>
+          <div class="challenge-meta">
+            <span class="meta-badge difficulty-normal" id="difficultyBadge"
+              >NORMAL</span
+            >
+            <span class="meta-badge points-badge" id="pointsBadge">
+              <i class="fas fa-trophy"></i>
+              <span id="pointsValue">100</span> pts
+            </span>
+            <span
+              class="meta-badge"
+              style="background: rgba(255, 255, 255, 0.1)"
+            >
+              <i class="fas fa-layer-group"></i>
+              <span id="challengeProgress">1/5</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="timer" id="timer">5:00</div>
+
+        <div class="scores">
+          <div class="score-item">
+            <div class="score-label">Your Score</div>
+            <div class="score-value" id="yourScore">0</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Opponent</div>
+            <div class="score-value" id="opponentScore">0</div>
+          </div>
+        </div>
+
+        <button
+          class="leave-battle-btn"
+          onclick="leaveBattle()"
+          title="Leave Battle"
+        >
+          <i class="fas fa-sign-out-alt"></i> Leave
+        </button>
+      </div>
+
+      <!-- Main Content -->
+      <div class="battle-main">
+        <!-- Left Panel -->
+        <div class="challenge-panel">
+          <div class="challenge-description" id="challengeDescription">
+            <h3>Description</h3>
+            <p>Loading challenge description...</p>
+
+            <div class="hint-section hidden" id="hintSection">
+              <strong><i class="fas fa-lightbulb"></i> Hint:</strong>
+              <p id="hintText"></p>
+            </div>
+
+            <button class="hint-btn" id="showHintBtn" onclick="showHint()">
+              <i class="fas fa-lightbulb"></i> Show Hint
+            </button>
+          </div>
+
+          <div class="test-results" id="testResults">
+            <h4><i class="fas fa-vial"></i> Test Results</h4>
+            <p style="color: var(--text-secondary)">
+              Submit your code to see results...
+            </p>
+          </div>
+        </div>
+
+        <!-- Center Panel -->
+        <div class="editor-panel">
+          <div class="editor-tabs">
+            <button
+              class="editor-tab"
+              id="htmlTab"
+              onclick="switchTab('html')"
+              disabled
+            >
+              <i class="fab fa-html5"></i> HTML
+            </button>
+            <button
+              class="editor-tab"
+              id="cssTab"
+              onclick="switchTab('css')"
+              disabled
+            >
+              <i class="fab fa-css3-alt"></i> CSS
+            </button>
+            <button
+              class="editor-tab active"
+              id="jsTab"
+              onclick="switchTab('js')"
+            >
+              <i class="fab fa-js"></i> JavaScript
+            </button>
+          </div>
+
+          <div class="code-editors">
+            <div class="code-editor" id="htmlEditor"></div>
+            <div class="code-editor" id="cssEditor"></div>
+            <div class="code-editor active" id="jsEditor"></div>
+          </div>
+
+          <div class="editor-actions">
+            <div style="display: flex; gap: 1rem">
+              <button
+                class="btn btn-primary"
+                id="submitBtn"
+                onclick="submitCode()"
+              >
+                <i class="fas fa-check"></i> Submit Solution
+              </button>
+              <button
+                class="btn btn-secondary hidden"
+                id="nextBtn"
+                onclick="nextChallenge()"
+              >
+                <i class="fas fa-arrow-right"></i> Next Challenge
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="preview-panel">
+          <div class="preview-header">
+            <h3><i class="fas fa-desktop"></i> Live Preview</h3>
+          </div>
+
+          <div class="preview-container">
+            <iframe
+              class="preview-iframe"
+              id="previewFrame"
+              sandbox="allow-scripts"
+            ></iframe>
+          </div>
+
+          <div class="opponent-progress">
+            <h4><i class="fas fa-user-ninja"></i> Opponent Progress</h4>
+            <div class="progress-stats">
+              <span id="opponentName">Opponent</span>
+              <span id="opponentCompleted">0/5 completed</span>
+            </div>
+            <div class="progress-bar">
+              <div
+                class="progress-fill"
+                id="opponentProgressBar"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div class="results-screen" id="resultsScreen">
+      <div class="results-container">
+        <div class="results-trophy" id="resultsTrophy">🏆</div>
+        <div class="results-title victory" id="resultsTitle">VICTORY!</div>
+        <div class="results-stats" id="resultsStats">
+          <!-- Stats will be populated by JavaScript -->
+        </div>
+        <div class="results-actions">
+          <button
+            class="btn btn-primary"
+            onclick="location.href='/user/competitive'"
+          >
+            <i class="fas fa-redo"></i> Play Again
+          </button>
+          <button class="btn btn-secondary" onclick="location.href='/rankings'">
+            <i class="fas fa-trophy"></i> View Rankings
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+
+    <!-- CodeMirror Addons for Autocomplete -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/html-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/css-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/javascript-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/hint/xml-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closetag.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchtags.min.js"></script>
+
+    <!-- Lottie Player -->
+    <script
+      src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs"
+      type="module"
+    ></script>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <!-- Battle Logic -->
+    <script src="{{ url_for('static', filename='code-battle.js') }}"></script>
+  </body>
+</html>

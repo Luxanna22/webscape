@@ -121,13 +121,78 @@
 
       .matchmaking-container {
         display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 70vh;
         text-align: center;
-        padding: 2rem;
-        background-color: #371569;
-        border: 3px solid #7e31ef;
-        border-radius: 15px;
-        width: 50%;
-        margin: 0 auto;
+        background: radial-gradient(
+          circle at center,
+          rgba(162, 89, 255, 0.1),
+          transparent 70%
+        );
+        position: relative;
+        overflow: hidden;
+      }
+
+      .matchmaking-container::before {
+        content: "";
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(
+          circle,
+          rgba(255, 102, 196, 0.2),
+          transparent
+        );
+        border-radius: 50%;
+        animation: pulse 3s ease-in-out infinite;
+      }
+
+      .matchmaking-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .matchmaking-logo {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 3.5rem;
+        color: #ff69b4;
+        margin-bottom: 1rem;
+        text-shadow: 0 0 30px rgba(255, 105, 180, 0.8);
+        animation: glow 2s ease-in-out infinite;
+      }
+
+      #gameModeSelection {
+        margin-top: 6rem;
+      }
+      .matchmaking-card {
+        background: linear-gradient(
+          135deg,
+          rgba(45, 20, 92, 0.9),
+          rgba(26, 13, 46, 0.9)
+        );
+        border: 2px solid #7e31ef;
+        border-radius: 20px;
+        padding: 3rem 4rem;
+        margin: 2rem 0;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .matchmaking-status {
+        font-size: 1.6rem;
+        margin-bottom: 1rem;
+        color: #ff69b4;
+        font-weight: 600;
+        animation: fadeInOut 2s ease-in-out infinite;
+      }
+
+      .matchmaking-subtitle {
+        font-size: 1rem;
+        color: #a9a9a9;
+        margin-bottom: 2rem;
       }
 
       .code-challenge-ui {
@@ -255,45 +320,136 @@
         display: none;
       }
 
-      .player-rating {
-        display: none;
-        color: #32ffda;
-        font-weight: bold;
-        margin-top: 0.5rem;
-      }
-
       .matchmaking-animation {
-        width: 100px;
-        height: 100px;
-        border: 5px solid #ff69b4;
-        border-top: 5px solid transparent;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
+        width: 200px;
+        height: 200px;
         margin: 2rem auto;
       }
 
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
+      .queue-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: center;
       }
 
       .btn-queue {
-        background-color: var(--accent-color);
+        padding: 1rem 2.5rem;
+        background: #c23a4f !important;
+        border: 2px solid rgba(255, 77, 109, 0.3);
+        border-radius: 12px;
         color: white;
-        font-family: "Luckiest Guy", cursive;
-        font-size: 1.25rem;
-        padding: 1rem 2rem;
-        border: none;
-        border-radius: 8px;
-        transition: background-color 0.2s;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0 auto !important;
       }
 
       .btn-queue:hover {
-        background-color: #c54fa3;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(255, 77, 109, 0.5);
+        border-color: var(--danger-color);
+      }
+
+      .btn-queue:active {
+        transform: translateY(0);
+      }
+
+      .match-found-animation {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 1000;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .match-found-animation.active {
+        display: flex;
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .match-found-text {
+        font-family: "Luckiest Guy", cursive;
+        font-size: 5rem;
+        color: var(--success-color);
+        text-shadow: 0 0 50px rgba(50, 255, 218, 0.8);
+        animation: scaleIn 0.5s ease-out;
+        margin-bottom: 2rem;
+      }
+
+      @keyframes scaleIn {
+        from {
+          transform: scale(0);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .vs-animation {
+        font-size: 3rem;
+        color: var(--accent-color);
+        margin: 2rem 0;
+        animation: bounce 0.5s ease-in-out infinite;
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+
+      .match-found-content {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        margin-top: 2rem;
+      }
+
+      .player-card-match {
+        background: rgba(45, 20, 92, 0.8);
+        border: 2px solid var(--card-border);
+        border-radius: 15px;
+        padding: 1.5rem 2rem;
+        min-width: 200px;
+        text-align: center;
+      }
+
+      .player-name-match {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent-color);
+        margin-bottom: 0.5rem;
+      }
+
+      .player-rating-match {
+        font-size: 1rem;
+        color: var(--text-secondary);
       }
 
       .match-found {
@@ -348,6 +504,24 @@
           padding: 1rem;
           border-radius: 10px;
           margin-bottom: 1rem;
+        }
+
+        .match-found-text {
+          font-size: 3rem;
+        }
+
+        .match-found-content {
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .vs-animation {
+          font-size: 2rem;
+          margin: 1rem 0;
+        }
+
+        .player-card-match {
+          min-width: 150px;
         }
       }
 
@@ -458,17 +632,11 @@
           Competitive</a
         >
       </div>
-      <h1
-        class="text-center mb-5"
-        style="font-family: 'Luckiest Guy', cursive; color: #ff69b4"
-        id="game-mode-title"
-      >
-        Choose your battleground
-      </h1>
 
       <!-- Game Mode Selection -->
       <div class="row justify-content-center" id="gameModeSelection">
-        <div class="col-md-4 mb-4">
+        <!-- Code Challenge - Hidden for now -->
+        <!-- <div class="col-md-4 mb-4">
           <div
             class="game-mode-card text-center"
             onclick="selectGameMode('code')"
@@ -480,8 +648,21 @@
               challenges and compete for the best solution!
             </p>
           </div>
+        </div> -->
+        <div class="col-lg-4 col-md-5 col-sm-6 mb-4">
+          <div
+            class="game-mode-card text-center"
+            onclick="navigateToCodeBattle()"
+          >
+            <i class="fas fa-laptop-code"></i>
+            <h2>Code Battle</h2>
+            <p>
+              Build complete web solutions with HTML, CSS, and JavaScript in
+              intense coding duels!
+            </p>
+          </div>
         </div>
-        <div class="col-md-4 mb-4">
+        <div class="col-lg-4 col-md-5 col-sm-6 mb-4">
           <div
             class="game-mode-card text-center"
             onclick="selectGameMode('quiz')"
@@ -498,25 +679,53 @@
 
       <!-- Matchmaking UI -->
       <div class="matchmaking-container" id="matchmakingUI">
-        <h2 style="font-family: 'Luckiest Guy', cursive; color: #ff69b4">
-          Finding Opponent...
-        </h2>
-        <div class="matchmaking-animation"></div>
-        <p>Waiting for another player to join...</p>
-        <p id="playerRatingDisplay" class="player-rating">Your rating: --</p>
-        <button class="btn-queue" onclick="cancelQueue()">Cancel Queue</button>
+        <div class="matchmaking-content">
+          <div class="matchmaking-logo">
+            <i class="fas fa-question-circle"></i> QUIZ BATTLE
+          </div>
+          <div class="matchmaking-card">
+            <dotlottie-player
+              src="https://lottie.host/10fb778d-241e-4604-8a37-bbf4e061e93a/eBFMwd9fRi.lottie"
+              background="transparent"
+              speed="1"
+              class="matchmaking-animation"
+              loop
+              autoplay
+            ></dotlottie-player>
+            <div class="matchmaking-status">Finding Opponent...</div>
+            <div class="matchmaking-subtitle">
+              Waiting for another player to join...
+            </div>
+            <div class="queue-actions">
+              <button class="btn-queue" onclick="cancelQueue()">
+                <i class="fas fa-times"></i> Leave Queue
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Match Found UI -->
-      <div class="match-found" id="matchFoundUI">
-        <h2 style="font-family: 'Luckiest Guy', cursive; color: #ff69b4">
-          Match Found!
-        </h2>
-        <div class="opponent-info">
-          <h3>Opponent: <span id="opponentName">Player123</span></h3>
-          <p>Rating: <span id="opponentRating">1500</span></p>
+      <div class="match-found-animation" id="matchFoundUI">
+        <div class="match-found-text">
+          <i class="fas fa-check-circle"></i> MATCH FOUND!
         </div>
-        <button class="btn-queue" onclick="startMatch()">Start Match</button>
+        <div class="match-found-content">
+          <div class="player-card-match">
+            <div class="player-name-match">You</div>
+            <div class="player-rating-match">
+              <i class="fas fa-star"></i>
+              <span id="yourRatingDisplay">1000</span>
+            </div>
+          </div>
+          <div class="vs-animation">VS</div>
+          <div class="player-card-match">
+            <div class="player-name-match" id="opponentName">Opponent</div>
+            <div class="player-rating-match">
+              <i class="fas fa-star"></i> <span id="opponentRating">1000</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Code Challenge UI -->
@@ -628,6 +837,11 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Lottie Player -->
+    <script
+      src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs"
+      type="module"
+    ></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
       let selectedMode = null;
@@ -645,16 +859,44 @@
       let totalQuestions = 5; // Or get from server
       let playerScores = { you: 0, opponent: 0 };
 
+      function navigateToCodeBattle() {
+        // Only check if actually in battle or queue, not just UI state
+        if ((isInBattle || isUserInQueue) && !allowNavigation) {
+          if (
+            confirm(
+              "You are in an active quiz battle! Leaving will forfeit the match. Do you want to continue?"
+            )
+          ) {
+            // User confirmed, allow navigation
+            allowNavigation = true;
+            if (socket) {
+              socket.emit("surrender", {
+                message: "Player navigated to code battle",
+              });
+            }
+            window.location.href = "/user/code-battle";
+          }
+          // User canceled, stay on page
+        } else {
+          // Not in battle, navigate freely
+          window.location.href = "/user/code-battle";
+        }
+      }
+
       function selectGameMode(mode) {
         selectedMode = mode;
         allowNavigation = false; // Reset flag when entering matchmaking
-        const gameModeTitle =
-          mode === "quiz" ? "Quiz Battle" : "Code Challenge";
         document.getElementById("gameModeSelection").style.display = "none";
-        document.getElementById("matchmakingUI").style.display = "block";
+        document.getElementById("matchmakingUI").style.display = "flex";
+
+        // Hide section title and sidebar when in queue
+        const sectionTitle = document.querySelector(".section-title");
+        const sidebar = document.querySelector(".sidebar");
+        if (sectionTitle) sectionTitle.style.display = "none";
+        if (sidebar) sidebar.style.display = "none";
+
         isUserInQueue = true;
         connectSocket();
-        document.getElementById("game-mode-title").textContent = gameModeTitle;
       }
 
       function connectSocket() {
@@ -690,11 +932,7 @@
 
         socket.on("queue_status", function (data) {
           console.log("Queue status:", data.status);
-          const ratingEl = document.getElementById("playerRatingDisplay");
-          if (ratingEl) {
-            ratingEl.textContent = `Your rating: ${data.rating}`;
-            ratingEl.style.display = "block";
-          }
+          // Rating display removed from queue
         });
 
         socket.on("disconnect", function () {
@@ -997,8 +1235,12 @@
           timerBarWrapper.style.display = "none";
         }
 
-        document.getElementById("game-mode-title").textContent =
-          "Choose your battleground";
+        // Show section title and sidebar again
+        const sectionTitle = document.querySelector(".section-title");
+        const sidebar = document.querySelector(".sidebar");
+        if (sectionTitle) sectionTitle.style.display = "flex";
+        if (sidebar) sidebar.style.display = "flex";
+
         document.getElementById("matchmakingUI").style.display = "none";
         document.getElementById("gameModeSelection").style.display = "flex";
         document.getElementById("codeChallengeUI").style.display = "none";
@@ -1023,17 +1265,23 @@
         playerScores = { you: 0, opponent: 0 };
         document.getElementById("player-score-you").textContent = 0;
         document.getElementById("player-score-opponent").textContent = 0;
-        const ratingEl = document.getElementById("playerRatingDisplay");
-        if (ratingEl) {
-          ratingEl.style.display = "none";
-        }
+        // Rating display removed from queue
       }
 
       function showMatchFound(opponent, you) {
         document.getElementById("matchmakingUI").style.display = "none";
-        document.getElementById("matchFoundUI").style.display = "block";
-        document.getElementById("opponentName").textContent = opponent.name;
-        document.getElementById("opponentRating").textContent = opponent.rating;
+
+        // Show match found animation
+        const matchFoundUI = document.getElementById("matchFoundUI");
+        matchFoundUI.classList.add("active");
+
+        // Update player names and ratings
+        document.getElementById("opponentName").textContent =
+          opponent.name || "Opponent";
+        document.getElementById("opponentRating").textContent =
+          opponent.rating || "1000";
+        document.getElementById("yourRatingDisplay").textContent =
+          you.rating || "1000";
 
         // Set opponent avatar if available
         if (opponent.avatar) {
@@ -1045,6 +1293,12 @@
         if (you && you.avatar) {
           document.getElementById("player-avatar-you").src = you.avatar;
         }
+
+        // Auto-hide animation after 3 seconds and start match
+        setTimeout(() => {
+          matchFoundUI.classList.remove("active");
+          startMatch();
+        }, 3000);
       }
 
       function startMatch() {
@@ -1112,7 +1366,6 @@
           clearInterval(quizTimerInterval);
         }
         const timerBarFixed = document.getElementById("quizTimerBarFill");
-        const gameModeTitle = document.getElementById("game-mode-title");
         const timerBarWrapper = document.getElementById("quizTimerBarFixed");
 
         // Show the fixed timer bar at the top
@@ -1128,11 +1381,6 @@
           // Update fixed top bar
           if (timerBarFixed) {
             timerBarFixed.style.width = `${percentage}%`;
-          }
-
-          // Update game-mode-title to show timer
-          if (gameModeTitle) {
-            gameModeTitle.textContent = `${Math.ceil(remaining)}`;
           }
 
           if (remaining <= 0) {
