@@ -20,6 +20,10 @@
       href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/quiz-battle.css') }}"
+    />
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap");
       @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
@@ -30,6 +34,10 @@
         --accent-color: #ff66c4;
       }
 
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent-color) transparent;
+      }
       body {
         background-color: var(--bg-color);
         color: #a9a9a9;
@@ -245,11 +253,6 @@
 
       .match-summary {
         display: none;
-        margin-top: 2rem;
-        background: rgba(122, 49, 239, 0.2);
-        border: 2px solid #7e31ef;
-        border-radius: 12px;
-        padding: 1.5rem;
       }
 
       .player-rating {
@@ -360,6 +363,52 @@
           color: var(--accent-color);
         }
       }
+
+      /* Leave Battle Modal Styles */
+      #leaveBattleModal .modal-content {
+        background-color: #371569;
+        border: 2px solid #7e31ef;
+        color: #fff;
+      }
+
+      #leaveBattleModal .modal-header {
+        border-bottom: 1px solid #7e31ef;
+      }
+
+      #leaveBattleModal .modal-title {
+        color: #ff69b4;
+        font-family: "Luckiest Guy", cursive;
+      }
+
+      #leaveBattleModal .modal-body {
+        font-size: 1.1rem;
+      }
+
+      #leaveBattleModal .modal-body p strong {
+        color: #ff6b6b;
+      }
+
+      #leaveBattleModal .modal-footer {
+        border-top: 1px solid #7e31ef;
+      }
+
+      #leaveBattleModal .btn-secondary {
+        background-color: #4a4166;
+        border: none;
+      }
+
+      #leaveBattleModal .btn-secondary:hover {
+        background-color: #5a5176;
+      }
+
+      #leaveBattleModal .btn-danger {
+        background-color: #dc3545;
+        border: none;
+      }
+
+      #leaveBattleModal .btn-danger:hover {
+        background-color: #c82333;
+      }
     </style>
   </head>
   <body>
@@ -386,19 +435,25 @@
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
         <span>Options</span>
       </div>
-      <div
-        class="nav-item account mt-auto mb-4"
-        onclick="window.location.href='/logout'"
-      >
+      <div class="nav-item account mt-auto mb-4" onclick="handleLogout(event)">
         <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
         <span>Logout</span>
       </div>
     </nav>
 
+    <!-- Fixed Top Timer Bar (only visible during quiz battle) -->
+    <div
+      class="quiz-timer-bar-fixed"
+      id="quizTimerBarFixed"
+      style="display: none"
+    >
+      <div class="quiz-timer-fill" id="quizTimerBarFill"></div>
+    </div>
+
     <!-- Main Content -->
     <div class="main-content">
       <div class="section-title">
-        <a href="/#game-modes"
+        <a href="#" onclick="handleBackNavigation(event)"
           ><i class="fas fa-angle-left" style="margin-right: 1rem"></i>
           Competitive</a
         >
@@ -484,16 +539,92 @@
         <div id="codeTimer" class="code-timer"></div>
       </div>
 
-      <div class="quiz-ui" id="quizUIContainer">
-        <div class="quiz-card">
-          <h2 id="quizQuestion" class="quiz-question"></h2>
-          <div id="quizChoices" class="quiz-choices"></div>
-          <div id="quizTimer" class="quiz-timer"></div>
+      <!-- Quiz Battle UI -->
+      <div class="quiz-battle-container" id="quizBattleUI">
+        <div class="players-info">
+          <div class="player-card" id="player-card-you">
+            <img
+              id="player-avatar-you"
+              src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+              alt="Your Avatar"
+              onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'"
+            />
+            <div class="player-info">
+              <p class="player-name" id="player-name-you">You</p>
+              <p class="player-score" id="player-score-you">0</p>
+            </div>
+          </div>
+          <div class="player-card" id="player-card-opponent">
+            <img
+              id="player-avatar-opponent"
+              src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+              alt="Opponent's Avatar"
+              onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'"
+            />
+            <div class="player-info">
+              <p class="player-name" id="player-name-opponent">Opponent</p>
+              <p class="player-score" id="player-score-opponent">0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="question-panel">
+          <p class="question-number" id="questionNumber"></p>
+          <h2 class="question-text" id="quizQuestionText"></h2>
+          <div class="choices-grid" id="quizChoicesGrid">
+            <!-- Choices will be populated by JS -->
+          </div>
           <div id="quizFeedback" class="quiz-feedback"></div>
         </div>
       </div>
+    </div>
 
-      <div id="matchSummary" class="match-summary"></div>
+    <!-- Leave Battle Confirmation Modal -->
+    <div
+      class="modal fade"
+      id="leaveBattleModal"
+      tabindex="-1"
+      aria-labelledby="leaveBattleModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="leaveBattleModalLabel">
+              <i class="fas fa-exclamation-triangle"></i> Leave Battle?
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to leave?</p>
+            <p style="color: #ff6b6b; margin-top: 1rem">
+              <strong>⚠️ Warning:</strong> This will surrender the battle and
+              your opponent will automatically win!
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Stay in Battle
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              onclick="confirmLeaveBattle()"
+            >
+              Leave & Surrender
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -506,13 +637,17 @@
       let codeTimeLimit = 300;
       let codeTimerInterval = null;
       let quizStartTime = null;
-      let quizTimeLimit = 45;
+      let quizTimeLimit = 20;
       let quizTimerInterval = null;
       let quizAnswered = false;
       let quizChoiceButtons = [];
+      let currentQuestionIndex = 0;
+      let totalQuestions = 5; // Or get from server
+      let playerScores = { you: 0, opponent: 0 };
 
       function selectGameMode(mode) {
         selectedMode = mode;
+        allowNavigation = false; // Reset flag when entering matchmaking
         const gameModeTitle =
           mode === "quiz" ? "Quiz Battle" : "Code Challenge";
         document.getElementById("gameModeSelection").style.display = "none";
@@ -528,25 +663,37 @@
         socket.on("connect", function () {
           console.log("Socket.IO connected");
           socket.emit("queue", {
-            type: "queue",
             mode: selectedMode,
           });
         });
 
         socket.on("match_found", function (data) {
-          showMatchFound(data.opponent);
+          isInBattle = true; // Set battle state
+          showMatchFound(data.opponent, data.you);
+          // Update opponent info in the new UI
+          document.getElementById("player-name-opponent").textContent =
+            data.opponent.name;
+
+          // Set avatars
+          if (data.opponent.avatar) {
+            document.getElementById("player-avatar-opponent").src =
+              data.opponent.avatar;
+          }
+          if (data.you && data.you.name) {
+            document.getElementById("player-name-you").textContent =
+              data.you.name;
+          }
+          if (data.you && data.you.avatar) {
+            document.getElementById("player-avatar-you").src = data.you.avatar;
+          }
         });
 
         socket.on("queue_status", function (data) {
           console.log("Queue status:", data.status);
           const ratingEl = document.getElementById("playerRatingDisplay");
           if (ratingEl) {
-            if (typeof data.rating === "number") {
-              ratingEl.textContent = `Your rating: ${data.rating}`;
-              ratingEl.style.display = "block";
-            } else {
-              ratingEl.style.display = "none";
-            }
+            ratingEl.textContent = `Your rating: ${data.rating}`;
+            ratingEl.style.display = "block";
           }
         });
 
@@ -557,7 +704,7 @@
         // --- Code Challenge Events ---
         socket.on("code_challenge_start", function (data) {
           document.getElementById("matchFoundUI").style.display = "none";
-          document.getElementById("quizUIContainer").style.display = "none";
+          document.getElementById("quizBattleUI").style.display = "none";
           document.getElementById("matchSummary").style.display = "none";
           document.getElementById("codeChallengeUI").style.display = "block";
           document.getElementById("challengeTitle").textContent =
@@ -582,30 +729,72 @@
         socket.on("quiz_question_start", function (data) {
           document.getElementById("matchFoundUI").style.display = "none";
           document.getElementById("codeChallengeUI").style.display = "none";
-          document.getElementById("matchSummary").style.display = "none";
-          document.getElementById("quizUIContainer").style.display = "block";
+          document.getElementById("quizBattleUI").style.display = "block";
+
+          // Reset player status indicators for new question
+          const opponentCard = document.getElementById("player-card-opponent");
+          const youCard = document.getElementById("player-card-you");
+          if (opponentCard) {
+            opponentCard.classList.remove(
+              "status-answering",
+              "status-answered",
+              "status-left"
+            );
+            opponentCard.classList.add("status-answering");
+          }
+          if (youCard) {
+            youCard.classList.remove(
+              "status-answering",
+              "status-answered",
+              "status-left"
+            );
+            youCard.classList.add("status-answering");
+          }
+
+          // Add transition effect
+          const questionPanel = document.querySelector(".question-panel");
+          questionPanel.style.animation = "none";
+          setTimeout(() => {
+            questionPanel.style.animation = "fadeIn 0.5s ease-in";
+          }, 10);
+
+          // Update question counter
+          if (data.question_number && data.total_questions) {
+            currentQuestionIndex = data.question_number;
+            totalQuestions = data.total_questions;
+          } else {
+            currentQuestionIndex++;
+          }
+
           const q = data.question;
-          document.getElementById("quizQuestion").textContent = q.question;
-          const choicesContainer = document.getElementById("quizChoices");
+          document.getElementById(
+            "questionNumber"
+          ).textContent = `Question ${currentQuestionIndex} of ${totalQuestions}`;
+          document.getElementById("quizQuestionText").textContent = q.question;
+
+          // Show question elements if they were hidden
+          document.getElementById("quizChoicesGrid").style.display = "grid";
+          document.getElementById("quizQuestionText").style.display = "block";
+          document.getElementById("questionNumber").style.display = "block";
+
+          const choicesContainer = document.getElementById("quizChoicesGrid");
           choicesContainer.innerHTML = "";
           quizChoiceButtons = [];
           quizAnswered = false;
+
           q.choices.forEach((choice, index) => {
             const button = document.createElement("button");
-            button.className = "quiz-choice-btn";
-            button.textContent = `${String.fromCharCode(
-              65 + index
-            )}. ${choice}`;
+            button.className = "choice-btn";
+            button.textContent = choice;
             button.onclick = () => submitQuizAnswer(index);
             choicesContainer.appendChild(button);
             quizChoiceButtons.push(button);
           });
-          quizTimeLimit = q.time_limit || 45;
+
+          quizTimeLimit = q.time_limit || 20;
           quizStartTime = Date.now();
-          document.getElementById("quizTimer").textContent = "";
           startQuizTimer();
-          document.getElementById("quizFeedback").textContent =
-            "Lock in your answer.";
+          document.getElementById("quizFeedback").textContent = "";
         });
 
         socket.on("quiz_result", function (data) {
@@ -614,69 +803,108 @@
             quizTimerInterval = null;
           }
           quizAnswered = true;
-          document.getElementById("quizTimer").textContent = "";
+
+          // Clear status indicators when showing results
+          const opponentCard = document.getElementById("player-card-opponent");
+          const youCard = document.getElementById("player-card-you");
+          if (opponentCard) {
+            opponentCard.classList.remove(
+              "status-answering",
+              "status-answered",
+              "status-left"
+            );
+          }
+          if (youCard) {
+            youCard.classList.remove(
+              "status-answering",
+              "status-answered",
+              "status-left"
+            );
+          }
+
           const correctIndex = data.correct_index;
+
           quizChoiceButtons.forEach((button, index) => {
-            button.classList.add("disabled");
             button.disabled = true;
-            if (index === data.your_answer) {
-              button.classList.add(
-                data.your_answer === correctIndex ? "selected" : "incorrect"
-              );
-            }
             if (index === correctIndex) {
               button.classList.add("correct");
+            } else if (index === data.your_answer) {
+              button.classList.add("incorrect");
             }
           });
+
+          // Update scores from server data (real-time sync)
+          if (data.your_score !== undefined) {
+            playerScores.you = data.your_score;
+          }
+          if (data.opponent_score !== undefined) {
+            playerScores.opponent = data.opponent_score;
+          }
+
+          document.getElementById("player-score-you").textContent =
+            playerScores.you;
+          document.getElementById("player-score-opponent").textContent =
+            playerScores.opponent;
+
           const feedbackEl = document.getElementById("quizFeedback");
           let feedbackText = "";
           if (data.your_answer === correctIndex) {
-            feedbackText = "You answered correctly.";
-          } else if (
-            typeof data.your_answer === "number" &&
-            data.your_answer >= 0
-          ) {
-            feedbackText = "Your answer was incorrect.";
+            const multiplierText =
+              data.multiplier > 1 ? ` (${data.multiplier}x speed bonus!)` : "";
+            feedbackText = `✓ Correct! +${data.points_earned} points${multiplierText}`;
+          } else if (data.your_answer >= 0) {
+            feedbackText = "✗ Incorrect answer";
           } else {
-            feedbackText = "You did not submit an answer.";
+            feedbackText = "⏰ Time's up!";
           }
-          if (data.winner === true) {
-            feedbackText += " You won the round!";
-          } else if (data.winner === false) {
-            feedbackText += " Opponent captured the round.";
-          }
-          feedbackEl.innerHTML = "";
-          const summaryDiv = document.createElement("div");
-          summaryDiv.textContent = feedbackText;
-          feedbackEl.appendChild(summaryDiv);
-          if (data.correct_choice) {
-            const correctDiv = document.createElement("div");
-            correctDiv.textContent = `Correct answer: ${data.correct_choice}`;
-            feedbackEl.appendChild(correctDiv);
-          }
+          feedbackEl.textContent = feedbackText;
+
+          // Show explanation briefly if available
           if (data.explanation) {
-            const explanationDiv = document.createElement("div");
-            explanationDiv.className = "quiz-explanation";
-            explanationDiv.textContent = data.explanation;
-            feedbackEl.appendChild(explanationDiv);
+            setTimeout(() => {
+              feedbackEl.textContent = `💡 ${data.explanation}`;
+            }, 800);
+          }
+
+          // Note: The server will automatically send the next question after 3 seconds
+          // or trigger match_end if this was the last question
+        });
+
+        socket.on("player_status", function (data) {
+          // data.player will be 'opponent' (the opponent's status from your perspective)
+          // data.status can be 'answering', 'answered', or 'left'
+          const opponentCard = document.getElementById("player-card-opponent");
+          if (!opponentCard) return;
+
+          // Remove all status classes
+          opponentCard.classList.remove(
+            "status-answering",
+            "status-answered",
+            "status-left"
+          );
+
+          // Add the new status class
+          if (data.status === "answered") {
+            opponentCard.classList.add("status-answered");
+          } else if (data.status === "left") {
+            opponentCard.classList.add("status-left");
+          } else if (data.status === "answering") {
+            opponentCard.classList.add("status-answering");
           }
         });
 
         socket.on("code_challenge_result", function (data) {
           let html = "";
           data.results.forEach((r, i) => {
-            html += `<div>Test ${i + 1}: Input <code>${JSON.stringify(
-              r.input
-            )}</code> | Expected: <code>${r.expected}</code> | Output: <code>${
-              r.output
-            }</code> | <b style='color:${r.passed ? "green" : "red"}'>${
-              r.passed ? "Passed" : "Failed"
-            }</b></div>`;
+            html += `<div class="result-item ${
+              r.passed ? "passed" : "failed"
+            }"><b>Test ${i + 1}: ${r.passed ? "Passed" : "Failed"}</b></div>`;
           });
           document.getElementById("codeResults").innerHTML = html;
           if (data.winner) {
-            document.getElementById("codeResults").innerHTML +=
-              "<div style='color:green;font-weight:bold;'>You won!</div>";
+            document.getElementById(
+              "codeResults"
+            ).innerHTML += `<h4>You won!</h4>`;
           }
         });
 
@@ -689,26 +917,69 @@
             clearInterval(quizTimerInterval);
             quizTimerInterval = null;
           }
-          const summaryEl = document.getElementById("matchSummary");
-          summaryEl.innerHTML = "";
-          const winnerHeading = document.createElement("h4");
-          winnerHeading.textContent = data.winner
-            ? `Winner: ${data.winner}`
-            : "Match ended";
-          summaryEl.appendChild(winnerHeading);
-          if (data.summary && data.summary.overview) {
-            const overview = document.createElement("p");
-            overview.textContent = data.summary.overview;
-            summaryEl.appendChild(overview);
+
+          // For quiz battles, show results in the quiz UI itself
+          if (selectedMode === "quiz") {
+            // Update final scores if provided
+            if (data.final_scores) {
+              // The scores are already updated from quiz_result events
+              // Just show the final screen
+            }
+            setTimeout(() => {
+              showFinalResults(data);
+            }, 2000);
           }
-          if (data.summary && data.summary.details) {
-            const details = document.createElement("p");
-            details.className = "text-muted";
-            details.textContent = data.summary.details;
-            summaryEl.appendChild(details);
-          }
-          summaryEl.style.display = "block";
         });
+      }
+
+      function showFinalResults(data) {
+        const feedbackEl = document.getElementById("quizFeedback");
+        feedbackEl.innerHTML = "";
+
+        const resultsDiv = document.createElement("div");
+        resultsDiv.style.marginTop = "2rem";
+        resultsDiv.style.padding = "1.5rem";
+        resultsDiv.style.background = "rgba(122, 49, 239, 0.3)";
+        resultsDiv.style.borderRadius = "12px";
+
+        let winner = "";
+
+        // Use server-determined winner or calculate from scores
+        if (data && data.winner && data.winner !== "Draw") {
+          // Check if the winner matches the current user
+          const playerName =
+            document.getElementById("player-name-you").textContent;
+          if (data.winner.includes(playerName) || data.winner === "You") {
+            winner = "🎉 You Win!";
+          } else {
+            winner = "😞 You Lost";
+          }
+        } else if (playerScores.you > playerScores.opponent) {
+          winner = "🎉 You Win!";
+        } else if (playerScores.opponent > playerScores.you) {
+          winner = "😞 You Lost";
+        } else {
+          winner = "🤝 It's a Tie!";
+        }
+
+        resultsDiv.innerHTML = `
+          <h3 style="color: #ff69b4; margin-bottom: 1rem; font-size: 2rem;">${winner}</h3>
+          <p style="font-size: 1.2rem; color: #fff;">Final Score: ${playerScores.you} - ${playerScores.opponent}</p>
+          <button class="btn-queue" style="margin-top: 1.5rem;" onclick="returnToMenu()">Back to Menu</button>
+        `;
+
+        feedbackEl.appendChild(resultsDiv);
+
+        // Hide the choices and question
+        document.getElementById("quizChoicesGrid").style.display = "none";
+        document.getElementById("quizQuestionText").style.display = "none";
+        document.getElementById("questionNumber").style.display = "none";
+      }
+
+      function returnToMenu() {
+        isInBattle = false; // Reset battle state
+        allowNavigation = true; // Allow navigation since battle is ending normally
+        cancelQueue();
       }
 
       function cancelQueue() {
@@ -716,18 +987,28 @@
           socket.emit("cancel_queue");
           socket.disconnect();
         }
+        isInBattle = false; // Reset battle state
+        isUserInQueue = false;
+        allowNavigation = false; // Reset navigation flag
+
+        // Hide fixed timer bar
+        const timerBarWrapper = document.getElementById("quizTimerBarFixed");
+        if (timerBarWrapper) {
+          timerBarWrapper.style.display = "none";
+        }
+
         document.getElementById("game-mode-title").textContent =
           "Choose your battleground";
         document.getElementById("matchmakingUI").style.display = "none";
         document.getElementById("gameModeSelection").style.display = "flex";
         document.getElementById("codeChallengeUI").style.display = "none";
-        document.getElementById("quizUIContainer").style.display = "none";
-        document.getElementById("matchSummary").style.display = "none";
+        document.getElementById("quizBattleUI").style.display = "none";
         document.getElementById("codeResults").innerHTML = "";
-        document.getElementById("quizChoices").innerHTML = "";
+        document.getElementById("quizChoicesGrid").innerHTML = "";
+        document.getElementById("quizChoicesGrid").style.display = "grid";
+        document.getElementById("quizQuestionText").style.display = "block";
+        document.getElementById("questionNumber").style.display = "block";
         document.getElementById("quizFeedback").textContent = "";
-        document.getElementById("quizTimer").textContent = "";
-        document.getElementById("codeTimer").textContent = "";
         if (codeTimerInterval) {
           clearInterval(codeTimerInterval);
           codeTimerInterval = null;
@@ -738,18 +1019,32 @@
         }
         quizChoiceButtons = [];
         quizAnswered = false;
+        currentQuestionIndex = 0;
+        playerScores = { you: 0, opponent: 0 };
+        document.getElementById("player-score-you").textContent = 0;
+        document.getElementById("player-score-opponent").textContent = 0;
         const ratingEl = document.getElementById("playerRatingDisplay");
         if (ratingEl) {
           ratingEl.style.display = "none";
         }
       }
 
-      function showMatchFound(opponent) {
+      function showMatchFound(opponent, you) {
         document.getElementById("matchmakingUI").style.display = "none";
         document.getElementById("matchFoundUI").style.display = "block";
         document.getElementById("opponentName").textContent = opponent.name;
         document.getElementById("opponentRating").textContent = opponent.rating;
-        document.getElementById("matchSummary").style.display = "none";
+
+        // Set opponent avatar if available
+        if (opponent.avatar) {
+          document.getElementById("player-avatar-opponent").src =
+            opponent.avatar;
+        }
+
+        // Set your avatar if available
+        if (you && you.avatar) {
+          document.getElementById("player-avatar-you").src = you.avatar;
+        }
       }
 
       function startMatch() {
@@ -770,11 +1065,18 @@
           return;
         }
         quizAnswered = true;
+
+        // Mark your card as answered
+        const youCard = document.getElementById("player-card-you");
+        if (youCard) {
+          youCard.classList.remove("status-answering");
+          youCard.classList.add("status-answered");
+        }
+
         quizChoiceButtons.forEach((button, index) => {
           if (index === idx) {
             button.classList.add("selected");
           }
-          button.classList.add("disabled");
           button.disabled = true;
         });
         document.getElementById("quizFeedback").textContent =
@@ -809,22 +1111,282 @@
         if (quizTimerInterval) {
           clearInterval(quizTimerInterval);
         }
-        const timerDiv = document.getElementById("quizTimer");
-        if (!timerDiv) {
-          return;
+        const timerBarFixed = document.getElementById("quizTimerBarFill");
+        const gameModeTitle = document.getElementById("game-mode-title");
+        const timerBarWrapper = document.getElementById("quizTimerBarFixed");
+
+        // Show the fixed timer bar at the top
+        if (timerBarWrapper) {
+          timerBarWrapper.style.display = "block";
         }
+
         const render = () => {
-          const elapsed = Math.floor((Date.now() - quizStartTime) / 1000);
+          const elapsed = (Date.now() - quizStartTime) / 1000;
           const remaining = Math.max(0, quizTimeLimit - elapsed);
-          timerDiv.textContent = `Time left: ${remaining}s`;
-          if (remaining <= 0 && quizTimerInterval) {
-            clearInterval(quizTimerInterval);
-            quizTimerInterval = null;
+          const percentage = (remaining / quizTimeLimit) * 100;
+
+          // Update fixed top bar
+          if (timerBarFixed) {
+            timerBarFixed.style.width = `${percentage}%`;
+          }
+
+          // Update game-mode-title to show timer
+          if (gameModeTitle) {
+            gameModeTitle.textContent = `${Math.ceil(remaining)}`;
+          }
+
+          if (remaining <= 0) {
+            if (quizTimerInterval) {
+              clearInterval(quizTimerInterval);
+              quizTimerInterval = null;
+            }
+            if (!quizAnswered) {
+              submitQuizAnswer(-1); // Submit with invalid index for timeout
+            }
           }
         };
         render();
-        quizTimerInterval = setInterval(render, 1000);
+        quizTimerInterval = setInterval(render, 50); // Update more frequently for smooth bar
       }
+
+      // Handle back navigation with battle leave confirmation
+      let isInBattle = false;
+      let allowNavigation = false; // Flag to allow navigation after confirmation
+
+      // Check if user is currently in battle
+      function isUserInActiveBattle() {
+        return (
+          isInBattle ||
+          isUserInQueue ||
+          document.getElementById("quizBattleUI").style.display !== "none" ||
+          document.getElementById("codeChallengeUI").style.display !== "none" ||
+          document.getElementById("matchmakingUI").style.display !== "none" ||
+          document.getElementById("matchFoundUI").style.display !== "none"
+        );
+      }
+
+      // Prevent accidental navigation/page close during battle
+      window.addEventListener("beforeunload", function (event) {
+        if (isUserInActiveBattle() && !allowNavigation) {
+          // Emit surrender before leaving
+          if (socket) {
+            socket.emit("surrender", { message: "Player closed tab/window" });
+          }
+
+          // Modern browsers require returnValue to be set
+          event.preventDefault();
+          event.returnValue =
+            "You're in an active battle! Leaving will forfeit the match.";
+          return event.returnValue;
+        }
+      });
+
+      // Intercept all link clicks on the page
+      document.addEventListener("click", function (event) {
+        // Check if clicked element or its parent is a link
+        const link = event.target.closest("a");
+        if (link && link.href && !link.hasAttribute("data-allow-navigation")) {
+          const currentUrl = window.location.href;
+          const targetUrl = link.href;
+
+          // Only intercept if navigating away from current page
+          if (
+            targetUrl !== currentUrl &&
+            isUserInActiveBattle() &&
+            !allowNavigation
+          ) {
+            event.preventDefault();
+
+            // Store the target URL for later
+            link.setAttribute("data-pending-navigation", targetUrl);
+
+            // Clean up any existing modals first
+            document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+              backdrop.remove();
+            });
+            document.body.classList.remove("modal-open");
+            document.body.style.overflow = "";
+            document.body.style.paddingRight = "";
+
+            // Show confirmation modal
+            const modalElement = document.getElementById("leaveBattleModal");
+            if (modalElement) {
+              const modal = new bootstrap.Modal(modalElement, {
+                backdrop: "static",
+                keyboard: true,
+              });
+              modal.show();
+
+              // Store the link element for later use
+              window.pendingNavigationLink = link;
+            }
+          }
+        }
+      });
+
+      function handleBackNavigation(event) {
+        event.preventDefault();
+
+        // Check if user is in an active battle (matchmaking or in-game)
+        if (isUserInActiveBattle()) {
+          // Clean up any existing modals first
+          document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+            backdrop.remove();
+          });
+          document.body.classList.remove("modal-open");
+          document.body.style.overflow = "";
+          document.body.style.paddingRight = "";
+
+          // Show confirmation modal
+          const modalElement = document.getElementById("leaveBattleModal");
+          if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement, {
+              backdrop: "static",
+              keyboard: true,
+            });
+            modal.show();
+
+            // Store the target URL
+            window.pendingNavigationUrl = "/#game-modes";
+          }
+        } else {
+          // Not in battle, just go back
+          window.location.href = "/#game-modes";
+        }
+      }
+
+      function handleLogout(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Check if user is in an active battle
+        if (isUserInActiveBattle()) {
+          // Emit surrender before logout
+          if (socket) {
+            socket.emit("surrender", { message: "Player logged out" });
+
+            // Give socket time to send the message, then disconnect and logout
+            setTimeout(() => {
+              if (socket) {
+                socket.disconnect();
+              }
+              window.location.href = "/logout";
+            }, 200);
+          } else {
+            // No socket, just logout
+            window.location.href = "/logout";
+          }
+        } else {
+          // Not in battle, safely disconnect socket and logout
+          if (socket) {
+            socket.disconnect();
+          }
+          window.location.href = "/logout";
+        }
+      }
+
+      function confirmLeaveBattle() {
+        // Close the modal and ensure backdrop is removed
+        const modalElement = document.getElementById("leaveBattleModal");
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+          modal.hide();
+        }
+
+        // Force remove any lingering backdrops
+        setTimeout(() => {
+          document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+            backdrop.remove();
+          });
+          document.body.classList.remove("modal-open");
+          document.body.style.overflow = "";
+          document.body.style.paddingRight = "";
+        }, 100);
+
+        // Emit surrender event to server
+        if (socket) {
+          socket.emit("surrender", { message: "Player left the battle" });
+        }
+
+        // Reset battle state
+        isInBattle = false;
+        isUserInQueue = false;
+        allowNavigation = true; // Allow the navigation to proceed
+
+        // Clear any timers
+        if (quizTimerInterval) {
+          clearInterval(quizTimerInterval);
+          quizTimerInterval = null;
+        }
+        if (codeTimerInterval) {
+          clearInterval(codeTimerInterval);
+          codeTimerInterval = null;
+        }
+
+        // Navigate to pending URL or default
+        setTimeout(() => {
+          if (window.pendingNavigationLink) {
+            const targetUrl = window.pendingNavigationLink.getAttribute(
+              "data-pending-navigation"
+            );
+            window.location.href = targetUrl || "/#game-modes";
+            window.pendingNavigationLink = null;
+          } else if (window.pendingNavigationUrl) {
+            window.location.href = window.pendingNavigationUrl;
+            window.pendingNavigationUrl = null;
+          } else {
+            window.location.href = "/#game-modes";
+          }
+        }, 200);
+      }
+
+      // Clean up modal backdrop when dismissed without action
+      const leaveBattleModalElement =
+        document.getElementById("leaveBattleModal");
+      if (leaveBattleModalElement) {
+        leaveBattleModalElement.addEventListener(
+          "hidden.bs.modal",
+          function (event) {
+            // Clean up any lingering backdrops aggressively
+            cleanupModalBackdrop();
+
+            // Clear pending navigation if modal was dismissed
+            window.pendingNavigationLink = null;
+            window.pendingNavigationUrl = null;
+          }
+        );
+      }
+
+      // Global cleanup function for modal backdrops
+      function cleanupModalBackdrop() {
+        setTimeout(() => {
+          // Remove all backdrops
+          document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+            backdrop.remove();
+          });
+
+          // Reset body state
+          document.body.classList.remove("modal-open");
+          document.body.style.overflow = "";
+          document.body.style.paddingRight = "";
+          document.body.style.removeProperty("overflow");
+          document.body.style.removeProperty("padding-right");
+        }, 50);
+      }
+
+      // Emergency cleanup on visibility change (when tab becomes visible)
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) {
+          // Check if there are orphaned backdrops
+          const backdrops = document.querySelectorAll(".modal-backdrop");
+          const openModals = document.querySelectorAll(".modal.show");
+
+          // If backdrops exist but no open modals, clean up
+          if (backdrops.length > 0 && openModals.length === 0) {
+            cleanupModalBackdrop();
+          }
+        }
+      });
     </script>
   </body>
 </html>
