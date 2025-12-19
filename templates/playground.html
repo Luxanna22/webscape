@@ -481,6 +481,14 @@
         font-size: 12px;
       }
 
+      .ai-fix-btn.paid-mode {
+        color: #ff6b6b;
+      }
+
+      .ai-fix-btn.paid-mode:hover {
+        text-shadow: 0 0 5px #ff6b6b;
+      }
+
       .ai-fix-btn:hover {
         color: #fff;
         text-shadow: 0 0 5px var(--accent-color);
@@ -693,9 +701,9 @@
           <div class="tab active" data-lang="html">HTML</div>
           <div class="tab" data-lang="css">CSS</div>
           <div class="tab" data-lang="js">JavaScript</div>
-          <button class="ai-fix-btn" id="aiFixBtn">
+          <button class="ai-fix-btn" id="aiFixBtn" title="Costs 25 points">
             <i class="fas fa-magic"></i>
-            Analyze Your Code with AI
+            Analyze Code (25 pts)
           </button>
         </div>
         <div class="live-output-label">
@@ -751,7 +759,7 @@ function changeColor() {
         <div class="live-output">
           <iframe
             id="output-frame"
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts"
             title="Playground live preview"
           ></iframe>
           <div class="debug-panel" id="debug-panel">
@@ -865,8 +873,8 @@ function changeColor() {
         const clearDebugBtn = document.getElementById("clear-debug-btn");
         const debugToggleBtn = document.getElementById("debug-toggle-btn");
 
-        let activeOutputWindow = outputFrame.contentWindow || null;
         let debugPanelCollapsed = false;
+        let lastJsOffset = 0;
 
         function setDebugPanelCollapsed(collapsed) {
           debugPanelCollapsed = !!collapsed;
@@ -1001,101 +1009,8 @@ function changeColor() {
           debugLog.scrollTop = debugLog.scrollHeight;
         }
 
-        function installFrameDebugging(frameWindow) {
-          if (!frameWindow || frameWindow.__webscapeDebugInstalled) {
-            return;
-          }
-
-          const levels = ["log", "info", "warn", "error", "debug", "table"];
-          const consoleHost = frameWindow.console || (frameWindow.console = {});
-
-          levels.forEach((level) => {
-            const original =
-              typeof consoleHost[level] === "function"
-                ? consoleHost[level].bind(consoleHost)
-                : null;
-            consoleHost[level] = function (...args) {
-              appendDebugEntry({ type: "console", level, args });
-              if (original) {
-                try {
-                  original(...args);
-                } catch (err) {
-                  // Suppress console forwarding errors inside sandboxed iframe
-                }
-              }
-            };
-          });
-
-          const originalClear =
-            typeof consoleHost.clear === "function"
-              ? consoleHost.clear.bind(consoleHost)
-              : null;
-          consoleHost.clear = function () {
-            clearDebugConsole(true);
-            if (originalClear) {
-              try {
-                originalClear();
-              } catch (err) {
-                // Ignore sandbox errors during clear
-              }
-            }
-          };
-
-          frameWindow.addEventListener(
-            "error",
-            function (event) {
-              appendDebugEntry({
-                type: "error",
-                level: "error",
-                message: event.message || "Uncaught error",
-                source: event.filename || "",
-                lineno: event.lineno,
-                colno: event.colno,
-                stack:
-                  event.error && event.error.stack
-                    ? String(event.error.stack)
-                    : "",
-              });
-            },
-            false
-          );
-
-          frameWindow.addEventListener(
-            "unhandledrejection",
-            function (event) {
-              const reason = event.reason;
-              appendDebugEntry({
-                type: "error",
-                level: "error",
-                message:
-                  (reason && reason.message) ||
-                  (typeof reason === "string"
-                    ? reason
-                    : "Unhandled promise rejection"),
-                stack: reason && reason.stack ? String(reason.stack) : "",
-              });
-            },
-            false
-          );
-
-          frameWindow.__webscapeDebugInstalled = true;
-          activeOutputWindow = frameWindow;
-        }
-
         if (clearDebugBtn) {
           clearDebugBtn.addEventListener("click", function () {
-            if (
-              activeOutputWindow &&
-              activeOutputWindow.console &&
-              typeof activeOutputWindow.console.clear === "function"
-            ) {
-              try {
-                activeOutputWindow.console.clear();
-                return;
-              } catch (err) {
-                // ignore sandbox exceptions during manual clear
-              }
-            }
             clearDebugConsole(true);
           });
         }
@@ -1108,7 +1023,50 @@ function changeColor() {
 
         setDebugPanelCollapsed(false);
 
-        installFrameDebugging(activeOutputWindow);
+        // Listen for debug messages from the sandboxed iframe
+        window.addEventListener("message", function (event) {
+          if (event.data && event.data.source === "webscape-playground") {
+            if (event.data.type === "console") {
+              appendDebugEntry({
+                type: "console",
+                level: event.data.payload.level,
+                args: event.data.payload.args,
+              });
+            } else if (event.data.type === "error") {
+              let message = event.data.payload.message;
+              let stack = event.data.payload.stack;
+
+              // Adjust line number if available
+              if (event.data.payload.lineno) {
+                const relativeLine = Math.max(
+                  1,
+                  event.data.payload.lineno - lastJsOffset
+                );
+                message = `${message} (Line ${relativeLine})`;
+                // Also try to fix up the stack trace if it contains the blob/srcdoc url
+                if (stack) {
+                  stack = stack.replace(
+                    /(about:srcdoc|blob:[^:]+):(\d+):(\d+)/g,
+                    (match, url, line, col) => {
+                      const fixedLine = Math.max(
+                        1,
+                        parseInt(line) - lastJsOffset
+                      );
+                      return `playground.js:${fixedLine}:${col}`;
+                    }
+                  );
+                }
+              }
+
+              appendDebugEntry({
+                type: "error",
+                level: "error",
+                message: message,
+                stack: stack,
+              });
+            }
+          }
+        });
         clearDebugConsole(true);
 
         // Initialize CodeMirror editors
@@ -1261,27 +1219,109 @@ function changeColor() {
           const validatedHTML = validateHTML(htmlCode);
           const sanitizedHTML = sanitizeHTML(validatedHTML);
 
-          const outputWindow = outputFrame.contentWindow || null;
-          if (outputWindow) {
-            installFrameDebugging(outputWindow);
-          }
+          // Debug script to inject
+          const debugScript = `
+            <script>
+              (function() {
+                const levels = ["log", "info", "warn", "error", "debug", "table"];
+                const originalConsole = console;
+                
+                function sendToParent(type, payload) {
+                  window.parent.postMessage({
+                    source: 'webscape-playground',
+                    type: type,
+                    payload: payload
+                  }, '*');
+                }
 
-          try {
-            const outputDoc = outputFrame.contentDocument;
-            outputDoc.open();
-            outputDoc.write(`
+                levels.forEach(level => {
+                  const original = originalConsole[level];
+                  console[level] = function(...args) {
+                    // Serialize args safely
+                    const safeArgs = args.map(arg => {
+                      try {
+                        if (arg instanceof Error) return arg.toString();
+                        if (typeof arg === 'function') return arg.toString();
+                        if (typeof arg === 'object' && arg !== null) {
+                           // Simple check for DOM elements
+                           if (arg.nodeType) return arg.outerHTML || arg.nodeName;
+                           // Try to clone
+                           try {
+                             return JSON.parse(JSON.stringify(arg));
+                           } catch(e) {
+                             return String(arg);
+                           }
+                        }
+                        return arg;
+                      } catch (e) {
+                        return String(arg);
+                      }
+                    });
+                    
+                    sendToParent('console', { level, args: safeArgs });
+                    if (original) original.apply(originalConsole, args);
+                  };
+                });
+
+                window.addEventListener('error', function(event) {
+                  sendToParent('error', {
+                    message: event.message,
+                    source: event.filename,
+                    lineno: event.lineno,
+                    colno: event.colno,
+                    stack: event.error ? String(event.error.stack) : ''
+                  });
+                });
+
+                window.addEventListener('unhandledrejection', function(event) {
+                  sendToParent('error', {
+                    message: event.reason ? (event.reason.message || String(event.reason)) : 'Unhandled Rejection',
+                    stack: event.reason ? String(event.reason.stack) : ''
+                  });
+                });
+
+                // Intercept navigation
+                window.addEventListener('click', function(e) {
+                  if (e.target.tagName === 'A' || e.target.closest('a')) {
+                    e.preventDefault();
+                    console.warn('Navigation is disabled in the playground.');
+                  }
+                });
+              })();
+            <\/script>
+          `;
+
+          const preJsParts = `
               <!DOCTYPE html>
               <html>
                 <head>
                   <style>${cssCode}</style>
+                  ${debugScript}
+                </head>
+                <body>
+                  ${sanitizedHTML}
+                  <script>`;
+
+          // Calculate offset: number of newlines before the user's JS code
+          // The user's JS code starts immediately after <script>
+          lastJsOffset = preJsParts.split("\n").length - 1;
+
+          const fullHTML = `
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <style>${cssCode}</style>
+                  ${debugScript}
                 </head>
                 <body>
                   ${sanitizedHTML}
                   <script>${jsCode}<\/script>
                 </body>
               </html>
-            `);
-            outputDoc.close();
+            `;
+
+          try {
+            outputFrame.srcdoc = fullHTML;
           } catch (error) {
             appendDebugEntry({
               type: "error",
@@ -1329,6 +1369,36 @@ function changeColor() {
         const aiResponse = document.getElementById("aiResponse");
         const aiResponseClose = document.getElementById("aiResponseClose");
         let currentEditor = htmlEditor;
+        let remainingFreeRequests = 0;
+
+        // Fetch initial AI usage status
+        async function updateAiButtonStatus() {
+          try {
+            const response = await fetch("/api/ai-usage-status");
+            if (response.ok) {
+              const data = await response.json();
+              remainingFreeRequests = data.remaining_free;
+              updateAiButtonText();
+            }
+          } catch (e) {
+            console.error("Failed to fetch AI status", e);
+          }
+        }
+
+        function updateAiButtonText() {
+          if (remainingFreeRequests > 0) {
+            aiFixBtn.innerHTML = `<i class="fas fa-magic"></i> Analyze Code (${remainingFreeRequests} Free)`;
+            aiFixBtn.title = `You have ${remainingFreeRequests} free requests left today.`;
+            aiFixBtn.classList.remove("paid-mode");
+          } else {
+            aiFixBtn.innerHTML = `<i class="fas fa-magic"></i> Analyze Code (25 pts)`;
+            aiFixBtn.title = "Costs 25 points per request";
+            aiFixBtn.classList.add("paid-mode");
+          }
+        }
+
+        // Call on load
+        updateAiButtonStatus();
 
         // Update current editor when switching tabs
         document.querySelectorAll(".tab").forEach((tab) => {
@@ -1379,10 +1449,21 @@ function changeColor() {
             });
 
             if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              if (response.status === 403) {
+                throw new Error(errorData.error || "Insufficient points.");
+              }
               throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
+
+            // Update local state based on response
+            if (data.remaining_free !== undefined) {
+              remainingFreeRequests = data.remaining_free;
+              updateAiButtonText();
+            }
+
             aiResponse.classList.remove("loading");
 
             let responseText = "";
@@ -1416,8 +1497,15 @@ function changeColor() {
           } catch (error) {
             console.error("Error:", error);
             aiResponse.classList.remove("loading");
-            aiResponse.querySelector(".ai-response-content").innerHTML =
-              "Sorry, there was an error analyzing your code.";
+            aiResponse.querySelector(
+              ".ai-response-content"
+            ).innerHTML = `<div style="color: #ff6b6b; text-align: center;">
+                 <i class="fas fa-exclamation-circle" style="font-size: 2em; margin-bottom: 10px;"></i><br>
+                 ${
+                   error.message ||
+                   "Sorry, there was an error analyzing your code."
+                 }
+               </div>`;
           }
         }
 
