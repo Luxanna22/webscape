@@ -3462,6 +3462,22 @@ def init_chapters_table():
             db_connection.commit()
         except Exception:
             pass
+
+        # Create daily AI usage table
+        try:
+            db_cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS daily_ai_usage (
+                    user_id INT PRIMARY KEY,
+                    usage_count INT DEFAULT 0,
+                    last_used_date DATE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """
+            )
+            db_connection.commit()
+        except Exception as e:
+            print("Error creating daily_ai_usage table:", str(e))
         
     except Exception as e:
         print("Error initializing tables:", str(e))
@@ -4126,7 +4142,56 @@ recalculate_all_user_ratings()
 
 @app.route('/api/analyze-code', methods=['POST'])
 def analyze_code():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Login required'}), 401
+
+    user_id = session['user_id']
+    conn = None
+    cursor = None
+
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check daily usage
+        today = datetime.now().date()
+        cursor.execute("SELECT * FROM daily_ai_usage WHERE user_id = %s", (user_id,))
+        usage_record = cursor.fetchone()
+        
+        is_free = False
+        remaining_free = 0
+        
+        if not usage_record:
+            # First time user
+            cursor.execute("INSERT INTO daily_ai_usage (user_id, usage_count, last_used_date) VALUES (%s, 0, %s)", (user_id, today))
+            conn.commit()
+            usage_count = 0
+            last_date = today
+        else:
+            usage_count = usage_record['usage_count']
+            last_date = usage_record['last_used_date']
+            
+            # Reset if new day
+            if last_date != today:
+                cursor.execute("UPDATE daily_ai_usage SET usage_count = 0, last_used_date = %s WHERE user_id = %s", (today, user_id))
+                conn.commit()
+                usage_count = 0
+        
+        if usage_count < 3:
+            is_free = True
+            remaining_free = 3 - usage_count
+        else:
+            # Check user points if free quota exceeded
+            cursor.execute("SELECT points FROM user_stats WHERE user_id = %s", (user_id,))
+            user_stats = cursor.fetchone()
+
+            if not user_stats:
+                 return jsonify({'error': 'User stats not found'}), 404
+                 
+            current_points = user_stats['points'] if user_stats['points'] is not None else 0
+            if current_points < 25:
+                return jsonify({'error': 'Insufficient points. You have used your 3 free daily requests. You need 25 points for additional requests.'}), 403
+
         data = request.get_json()
         if not data or 'message' not in data:
             return jsonify({'error': 'No message provided'}), 400
@@ -4135,7 +4200,7 @@ def analyze_code():
         print("Sending code to Gemini API:", code)  # Debug log
 
         # Gemini API endpoint and model (per official docs)
-        api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+        api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
         api_key = os.getenv('GEMINI_API_KEY')
         if not api_key:
             return jsonify({'error': 'Gemini API key not set'}), 500
@@ -4173,7 +4238,22 @@ def analyze_code():
             response_data = response.json()
             # Extract the text response from Gemini
             gemini_text = response_data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-            return jsonify({'result': gemini_text, 'raw': response_data})
+            
+            # Update usage/points on success
+            if is_free:
+                cursor.execute("UPDATE daily_ai_usage SET usage_count = usage_count + 1 WHERE user_id = %s", (user_id,))
+                remaining_free -= 1
+            else:
+                cursor.execute("UPDATE user_stats SET points = points - 25 WHERE user_id = %s", (user_id,))
+            
+            conn.commit()
+            
+            return jsonify({
+                'result': gemini_text, 
+                'raw': response_data,
+                'is_free': is_free,
+                'remaining_free': remaining_free
+            })
         except Exception as e:
             print("Gemini JSON parsing error:", str(e))
             return jsonify({
@@ -4193,7 +4273,48 @@ def analyze_code():
             'error': 'An unexpected error occurred',
             'details': str(e)
         }), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
         
+@app.route('/api/ai-usage-status', methods=['GET'])
+@login_required
+def get_ai_usage_status():
+    user_id = session['user_id']
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        today = datetime.now().date()
+        cursor.execute("SELECT * FROM daily_ai_usage WHERE user_id = %s", (user_id,))
+        usage_record = cursor.fetchone()
+        
+        usage_count = 0
+        if usage_record:
+            if usage_record['last_used_date'] == today:
+                usage_count = usage_record['usage_count']
+            else:
+                # It's a new day, so usage is effectively 0
+                usage_count = 0
+        
+        remaining_free = max(0, 3 - usage_count)
+        
+        return jsonify({
+            'remaining_free': remaining_free,
+            'is_free': remaining_free > 0
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 @app.route("/proxy/4o")
 def proxy_4o():
     try:
