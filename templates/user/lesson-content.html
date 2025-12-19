@@ -36,6 +36,10 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-darker.min.css"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
@@ -977,6 +981,16 @@
             align-items: center;
           "
         >
+          <!-- Playground button -->
+          <button
+            class="btn btn-link text-white"
+            style="font-size: 1.5rem; text-decoration: none"
+            onclick="togglePlaygroundDropdown()"
+            id="playground-btn"
+            title="Open Playground"
+          >
+            <i class="fas fa-code"></i>
+          </button>
           <!-- Comments button -->
           <button
             class="btn btn-link text-white"
@@ -2448,7 +2462,7 @@
         display: none;
         backdrop-filter: blur(2px);
       "
-      onclick="toggleCommentsDropdown()"
+      onclick="closeAllSidebars()"
     ></div>
 
     <!-- Side Panel -->
@@ -2576,7 +2590,605 @@
       #lesson-comments-dropdown textarea::placeholder {
         color: rgba(224, 210, 255, 0.85);
       }
+
+      /* Ensure CodeMirror takes full height in the sidebar */
+      #lesson-playground-dropdown .CodeMirror {
+        height: 100%;
+      }
     </style>
+
+    <!-- Playground Side Panel -->
+    <div
+      id="lesson-playground-dropdown"
+      class="card shadow-lg"
+      style="
+        position: fixed;
+        top: 0;
+        right: -600px;
+        width: 600px;
+        height: 100vh;
+        background: #371569;
+        border-left: 2px solid #7e31ef;
+        z-index: 1050;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: right 0.3s ease-in-out;
+      "
+    >
+      <!-- Header -->
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+        style="
+          background: rgba(25, 24, 44, 0.9);
+          border-bottom: 2px solid #7e31ef;
+          padding: 1rem;
+        "
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="fas fa-code" style="font-size: 1.2rem; color: #a259ff"></i>
+          <h5 class="mb-0 fw-bold" style="color: #a259ff">Playground</h5>
+        </div>
+        <div class="d-flex gap-2">
+          <button
+            class="btn btn-sm btn-success"
+            onclick="runPlaygroundCode()"
+            style="
+              background-color: #28a745;
+              border-color: #28a745;
+              font-weight: bold;
+              box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+            "
+          >
+            <i class="fas fa-play me-1"></i> Run
+          </button>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            onclick="togglePlaygroundDropdown()"
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div
+        class="tabs"
+        style="
+          display: flex;
+          background-color: #2c1050;
+          border-bottom: 1px solid #7e31ef;
+        "
+      >
+        <div
+          class="playground-tab active"
+          onclick="switchPlaygroundTab('html')"
+          id="tab-html"
+          style="
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #ff66c4;
+            border-bottom: 3px solid #ff66c4;
+            font-weight: bold;
+            transition: all 0.2s;
+          "
+        >
+          HTML
+        </div>
+        <div
+          class="playground-tab"
+          onclick="switchPlaygroundTab('css')"
+          id="tab-css"
+          style="
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #fff;
+            border-bottom: 3px solid transparent;
+            font-weight: bold;
+            transition: all 0.2s;
+          "
+        >
+          CSS
+        </div>
+        <div
+          class="playground-tab"
+          onclick="switchPlaygroundTab('js')"
+          id="tab-js"
+          style="
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #fff;
+            border-bottom: 3px solid transparent;
+            font-weight: bold;
+            transition: all 0.2s;
+          "
+        >
+          JS
+        </div>
+        <div
+          class="playground-tab"
+          onclick="switchPlaygroundTab('output')"
+          id="tab-output"
+          style="
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #fff;
+            border-bottom: 3px solid transparent;
+            font-weight: bold;
+            transition: all 0.2s;
+            margin-left: auto;
+            border-left: 1px solid #7e31ef;
+          "
+        >
+          <i class="fas fa-desktop me-1"></i> Output
+        </div>
+      </div>
+
+      <!-- Editor Area -->
+      <div
+        id="sidebar-editor-area"
+        class="d-flex flex-column flex-grow-1"
+        style="overflow: hidden; background-color: #1e1e1e; position: relative"
+      >
+        <!-- Editors -->
+        <div
+          id="editor-container-html"
+          class="code-editor-container"
+          style="height: 100%; display: block"
+        >
+          <textarea id="sidebar-html-code"></textarea>
+        </div>
+        <div
+          id="editor-container-css"
+          class="code-editor-container"
+          style="height: 100%; display: none"
+        >
+          <textarea id="sidebar-css-code"></textarea>
+        </div>
+        <div
+          id="editor-container-js"
+          class="code-editor-container"
+          style="height: 100%; display: none"
+        >
+          <textarea id="sidebar-js-code"></textarea>
+        </div>
+
+        <!-- Output Container (Hidden by default, shown as tab) -->
+        <div
+          id="editor-container-output"
+          class="code-editor-container"
+          style="
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            background: #0f0f13;
+          "
+        >
+          <!-- Iframe -->
+          <div
+            id="sidebar-iframe-container"
+            style="flex: 1; position: relative; background: white"
+          >
+            <iframe
+              id="sidebar-playground-output"
+              sandbox="allow-scripts"
+              style="width: 100%; height: 100%; border: none"
+            ></iframe>
+          </div>
+
+          <!-- Debug Panel -->
+          <div
+            id="sidebar-debug-panel"
+            class="debug-panel"
+            style="
+              height: 35px;
+              background: rgba(17, 17, 26, 0.98);
+              border-top: 1px solid rgba(162, 89, 255, 0.35);
+              display: flex;
+              flex-direction: column;
+              flex-shrink: 0;
+              transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            "
+          >
+            <div
+              class="debug-panel-header"
+              style="
+                padding: 6px 12px;
+                background: rgba(55, 21, 105, 0.9);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                cursor: pointer;
+                user-select: none;
+              "
+              onclick="toggleSidebarConsole()"
+            >
+              <div class="d-flex align-items-center gap-2">
+                <i
+                  id="console-toggle-icon"
+                  class="fas fa-chevron-up"
+                  style="font-size: 0.8rem; transition: transform 0.3s"
+                ></i>
+                <span
+                  style="
+                    color: #f5f5f5;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    font-family: 'Montserrat', sans-serif;
+                  "
+                  >Console</span
+                >
+              </div>
+              <button
+                onclick="event.stopPropagation(); clearSidebarDebug()"
+                style="
+                  background: transparent;
+                  border: 1px solid rgba(255, 255, 255, 0.25);
+                  color: #f5f5f5;
+                  font-size: 0.7rem;
+                  padding: 2px 8px;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  transition: all 0.2s;
+                "
+              >
+                <i class="fas fa-ban me-1"></i> Clear
+              </button>
+            </div>
+            <div
+              id="sidebar-debug-log"
+              style="
+                flex: 1;
+                overflow-y: auto;
+                padding: 10px;
+                font-family: 'Fira Code', monospace;
+                font-size: 0.8rem;
+                color: #f5f5f5;
+              "
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let sidebarEditors = {
+        html: null,
+        css: null,
+        js: null,
+      };
+      let activeTab = "html";
+
+      function toggleSidebarConsole() {
+        const debugPanel = document.getElementById("sidebar-debug-panel");
+        const icon = document.getElementById("console-toggle-icon");
+
+        if (debugPanel.style.height === "35px") {
+          // Expand
+          debugPanel.style.height = "150px";
+          icon.style.transform = "rotate(180deg)"; // Point down
+        } else {
+          // Collapse
+          debugPanel.style.height = "35px";
+          icon.style.transform = "rotate(0deg)"; // Point up
+        }
+      }
+
+      function closeAllSidebars() {
+        const commentsPanel = document.getElementById(
+          "lesson-comments-dropdown"
+        );
+        const playgroundPanel = document.getElementById(
+          "lesson-playground-dropdown"
+        );
+        const backdrop = document.getElementById("comments-backdrop");
+
+        if (commentsPanel) commentsPanel.style.right = "-450px";
+        if (playgroundPanel) playgroundPanel.style.right = "-600px";
+        if (backdrop) backdrop.style.display = "none";
+      }
+
+      function togglePlaygroundDropdown() {
+        const panel = document.getElementById("lesson-playground-dropdown");
+        const backdrop = document.getElementById("comments-backdrop");
+        const commentsPanel = document.getElementById(
+          "lesson-comments-dropdown"
+        );
+
+        if (panel.style.right === "0px") {
+          // Close
+          panel.style.right = "-600px";
+          // Only hide backdrop if comments panel is also closed
+          if (!commentsPanel || commentsPanel.style.right !== "0px") {
+            backdrop.style.display = "none";
+          }
+        } else {
+          // Open
+          panel.style.right = "0px";
+          backdrop.style.display = "block";
+
+          // Initialize editors if not already
+          if (!sidebarEditors.html) {
+            setTimeout(initSidebarEditors, 100);
+          }
+        }
+      }
+
+      function initSidebarEditors() {
+        const commonOptions = {
+          theme: "dracula",
+          lineNumbers: true,
+          autoCloseTags: true,
+          autoCloseBrackets: true,
+          matchBrackets: true,
+          matchTags: true,
+          foldGutter: true,
+          gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+          extraKeys: {
+            Tab: function (cm) {
+              if (cm.somethingSelected()) {
+                cm.indentSelection("add");
+              } else {
+                cm.replaceSelection("  ", "end");
+              }
+            },
+          },
+        };
+
+        sidebarEditors.html = CodeMirror.fromTextArea(
+          document.getElementById("sidebar-html-code"),
+          {
+            ...commonOptions,
+            mode: "htmlmixed",
+          }
+        );
+        sidebarEditors.html.setValue(
+          "<h1>Hello World</h1>\n<p>Welcome to the playground!</p>"
+        );
+
+        sidebarEditors.css = CodeMirror.fromTextArea(
+          document.getElementById("sidebar-css-code"),
+          {
+            ...commonOptions,
+            mode: "css",
+          }
+        );
+        sidebarEditors.css.setValue(
+          "body {\n  color: #333;\n  font-family: sans-serif;\n  padding: 20px;\n}\nh1 {\n  color: #7e31ef;\n}"
+        );
+
+        sidebarEditors.js = CodeMirror.fromTextArea(
+          document.getElementById("sidebar-js-code"),
+          {
+            ...commonOptions,
+            mode: "javascript",
+          }
+        );
+        sidebarEditors.js.setValue(
+          'console.log("Playground ready!");\nconsole.log("Try writing some code...");'
+        );
+
+        // Refresh to ensure proper rendering
+        sidebarEditors.html.refresh();
+      }
+
+      function switchPlaygroundTab(tab) {
+        activeTab = tab;
+
+        // Update tab styles
+        document.querySelectorAll(".playground-tab").forEach((el) => {
+          el.style.color = "#fff";
+          el.style.borderBottomColor = "transparent";
+          el.classList.remove("active");
+        });
+        const activeTabEl = document.getElementById("tab-" + tab);
+        if (activeTabEl) {
+          activeTabEl.style.color = "#ff66c4";
+          activeTabEl.style.borderBottomColor = "#ff66c4";
+          activeTabEl.classList.add("active");
+        }
+
+        // Show/Hide editors/output
+        document.querySelectorAll(".code-editor-container").forEach((el) => {
+          el.style.display = "none";
+          // Reset display style for output container specifically if it was flex
+          if (el.id === "editor-container-output") {
+            el.style.display = "none";
+          }
+        });
+
+        const targetContainer = document.getElementById(
+          "editor-container-" + tab
+        );
+        if (targetContainer) {
+          if (tab === "output") {
+            targetContainer.style.display = "flex";
+          } else {
+            targetContainer.style.display = "block";
+            // Refresh the active editor
+            if (sidebarEditors[tab]) {
+              sidebarEditors[tab].refresh();
+            }
+          }
+        }
+      }
+
+      function sanitizeHTML(html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+        return doc.body.innerHTML;
+      }
+
+      // Global variable to store line offset for error reporting
+      window.sidebarLineOffset = 0;
+
+      function runPlaygroundCode() {
+        if (!sidebarEditors.html) return;
+
+        const html = sidebarEditors.html.getValue();
+        const css = sidebarEditors.css.getValue();
+        const js = sidebarEditors.js.getValue();
+
+        const sanitizedHTML = sanitizeHTML(html);
+        const iframe = document.getElementById("sidebar-playground-output");
+
+        // Console interception script
+        const consoleScript = `
+                <script>
+                    (function() {
+                        var oldLog = console.log;
+                        var oldError = console.error;
+                        var oldWarn = console.warn;
+                        var oldInfo = console.info;
+                        
+                        function send(type, args) {
+                            try {
+                                window.parent.postMessage({
+                                    source: 'sidebar-playground',
+                                    type: 'console',
+                                    level: type,
+                                    args: Array.from(args).map(arg => {
+                                        if (typeof arg === 'object') {
+                                            try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+                                        }
+                                        return String(arg);
+                                    })
+                                }, '*');
+                            } catch(e) {}
+                        }
+                        
+                        console.log = function() { send('log', arguments); oldLog.apply(console, arguments); };
+                        console.error = function() { send('error', arguments); oldError.apply(console, arguments); };
+                        console.warn = function() { send('warn', arguments); oldWarn.apply(console, arguments); };
+                        console.info = function() { send('info', arguments); oldInfo.apply(console, arguments); };
+                        
+                        window.onerror = function(msg, url, line, col, error) {
+                            window.parent.postMessage({
+                                source: 'sidebar-playground',
+                                type: 'error',
+                                message: msg,
+                                line: line,
+                                col: col
+                            }, '*');
+                        };
+                    })();
+                <\/script>
+            `;
+
+        const fullContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>${css}</style>
+                    ${consoleScript}
+                </head>
+                <body>
+                    ${sanitizedHTML}
+                    <script id="user-code">${js}<\/script>
+                </body>
+                </html>
+            `;
+
+        // Calculate line offset for error reporting
+        const parts = fullContent.split('<script id="user-code">');
+        if (parts.length > 1) {
+          window.sidebarLineOffset = parts[0].split("\n").length - 1;
+        }
+
+        // Switch to output tab FIRST to ensure container is visible
+        switchPlaygroundTab("output");
+
+        // Force a complete iframe recreation to ensure clean state
+        const container = document.getElementById("sidebar-iframe-container");
+        if (container) {
+          container.innerHTML = ""; // Remove old iframe
+
+          const newIframe = document.createElement("iframe");
+          newIframe.id = "sidebar-playground-output";
+          newIframe.sandbox = "allow-scripts";
+          newIframe.style.width = "100%";
+          newIframe.style.height = "100%";
+          newIframe.style.border = "none";
+
+          container.appendChild(newIframe);
+
+          // Small delay to allow DOM update
+          setTimeout(() => {
+            newIframe.srcdoc = fullContent;
+            clearSidebarDebug();
+          }, 10);
+        }
+      }
+
+      function toggleSidebarConsole() {
+        const debugPanel = document.getElementById("sidebar-debug-panel");
+        const icon = document.getElementById("console-toggle-icon");
+
+        if (debugPanel.style.height === "35px") {
+          // Expand
+          debugPanel.style.height = "150px";
+          icon.style.transform = "rotate(180deg)"; // Point down
+        } else {
+          // Collapse
+          debugPanel.style.height = "35px";
+          icon.style.transform = "rotate(0deg)"; // Point up
+        }
+      }
+
+      function clearSidebarDebug() {
+        const log = document.getElementById("sidebar-debug-log");
+        if (log) log.innerHTML = "";
+      }
+
+      function appendSidebarDebug(type, text, color) {
+        const log = document.getElementById("sidebar-debug-log");
+        if (!log) return;
+
+        const entry = document.createElement("div");
+        entry.style.marginBottom = "4px";
+        entry.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+        entry.style.paddingBottom = "2px";
+        entry.style.color = color || "#ccc";
+
+        const icon = type === "error" ? "❌ " : type === "warn" ? "⚠️ " : "› ";
+        entry.textContent = icon + text;
+
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      // Listen for messages from sidebar iframe
+      window.addEventListener("message", function (event) {
+        if (event.data && event.data.source === "sidebar-playground") {
+          if (event.data.type === "console") {
+            const colorMap = {
+              log: "#ccc",
+              info: "#9ad5ff",
+              warn: "#ffd166",
+              error: "#ff6b6b",
+            };
+            const text = event.data.args.join(" ");
+            appendSidebarDebug(
+              event.data.level,
+              text,
+              colorMap[event.data.level]
+            );
+          } else if (event.data.type === "error") {
+            let line = event.data.line;
+            // Adjust line number based on injected code offset
+            if (window.sidebarLineOffset && line > window.sidebarLineOffset) {
+              line = line - window.sidebarLineOffset;
+            }
+            appendSidebarDebug(
+              "error",
+              event.data.message + " (Line " + line + ")",
+              "#ff6b6b"
+            );
+          }
+        }
+      });
+    </script>
 
     <!-- Load lesson comments script first -->
     <script src="/static/lesson-comments.js"></script>
@@ -2591,6 +3203,8 @@
       function toggleCommentsDropdown() {
         const panel = document.getElementById('lesson-comments-dropdown');
         const backdrop = document.getElementById('comments-backdrop');
+        const playgroundPanel = document.getElementById('lesson-playground-dropdown');
+
         const metaEl = document.getElementById('lesson-page-meta');
         if (metaEl && metaEl.dataset.lessonContentId) {
           const parsedId = parseInt(metaEl.dataset.lessonContentId, 10);
@@ -2602,7 +3216,10 @@
         if (panel.style.right === '0px') {
           // Close panel
           panel.style.right = '-450px';
-          backdrop.style.display = 'none';
+          // Only hide backdrop if playground panel is also closed
+          if (!playgroundPanel || playgroundPanel.style.right !== '0px') {
+              backdrop.style.display = 'none';
+          }
         } else {
           // Open panel
           panel.style.right = '0px';
