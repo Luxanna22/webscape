@@ -26,6 +26,7 @@ import time
 import random
 import subprocess
 import re
+import tempfile
 from datetime import datetime
 from html import escape, unescape
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
@@ -352,7 +353,12 @@ _db_pool_lock = Lock()
 def _build_db_config() -> dict:
     """Build connection keyword arguments based on environment variables."""
     db_host = os.getenv("DB_HOST", "localhost")
-    db_port = int(os.getenv("DB_PORT", "3306"))
+    try:
+        db_port = int(os.getenv("DB_PORT", "3306"))
+    except ValueError:
+        print(f"Warning: DB_PORT is not a valid integer: {os.getenv('DB_PORT')}. Defaulting to 3306.")
+        db_port = 3306
+
     db_user = os.getenv("DB_USER", "root")
     # Support both DB_PASSWORD and DB_PASS (Render screenshot shows DB_PASS)
     db_password = os.getenv("DB_PASSWORD", os.getenv("DB_PASS", ""))
@@ -376,7 +382,16 @@ def _build_db_config() -> dict:
     if ssl_disabled:
         connect_kwargs["ssl_disabled"] = True
     elif ssl_ca:
-        connect_kwargs["ssl_ca"] = ssl_ca
+        # Check if ssl_ca is content (PEM format) or a file path
+        if "-----BEGIN CERTIFICATE-----" in ssl_ca:
+            # Create a persistent temp file for the CA certificate
+            # We use a fixed name in tempdir to avoid creating many files on reload
+            ca_file = os.path.join(tempfile.gettempdir(), 'aiven-ca-cert.pem')
+            with open(ca_file, 'w') as f:
+                f.write(ssl_ca)
+            connect_kwargs["ssl_ca"] = ca_file
+        else:
+            connect_kwargs["ssl_ca"] = ssl_ca
 
     return connect_kwargs
 
@@ -409,8 +424,8 @@ def get_db_connection():
     try:
         pool = _get_db_pool(config)
         connection = pool.get_connection()
-    except mysql_errors.PoolError as pool_error:
-        print("DB pool issue, falling back to direct connection:", str(pool_error))
+    except (mysql_errors.PoolError, mysql.connector.Error) as e:
+        print(f"DB pool issue ({type(e).__name__}), falling back to direct connection: {e}")
         connection = mysql.connector.connect(**config)
 
     # Ensure autocommit stays disabled for compatibility with existing code
@@ -3490,11 +3505,14 @@ def init_chapters_table():
 # --- Startup diagnostics for DB config (safe: no secrets) ---
 def _log_db_startup_info():
     try:
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = os.getenv("DB_PORT", "3306")
-        ssl_ca = os.getenv("DB_SSL_CA")
-        ssl_disabled_env = os.getenv("DB_SSL_DISABLED", "0").strip()
-        print(f"DB startup config → host={db_host}, port={db_port}, ssl_ca_set={'yes' if ssl_ca else 'no'}, ssl_disabled={ssl_disabled_env}")
+        config = _build_db_config()
+        db_host = config.get('host')
+        db_port = config.get('port')
+        ssl_ca = config.get('ssl_ca')
+        ssl_disabled = config.get('ssl_disabled', False)
+        
+        print(f"DB startup config → host={db_host}, port={db_port} (type: {type(db_port).__name__}), ssl_ca={ssl_ca}, ssl_disabled={ssl_disabled}")
+        
         # Try a quick connection ping
         try:
             conn = get_db_connection()
@@ -3506,13 +3524,17 @@ def _log_db_startup_info():
             finally:
                 try:
                     cur.close()
+                    conn.close()
                 except Exception:
                     pass
-                conn.close()
         except Exception as e:
-            print(f"DB connectivity check failed: {e}")
+            print(f"DB connectivity check FAILED: {e}")
+            # Print detailed error for debugging
+            import traceback
+            traceback.print_exc()
+        
     except Exception as e:
-        print(f"DB startup info error: {e}")
+        print("Error in DB startup diagnostics:", str(e))
 
 
 # --- PvP challenge helpers ---
