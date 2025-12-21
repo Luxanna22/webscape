@@ -1,12 +1,17 @@
 import os
-# Enable eventlet monkey patching only when explicitly requested via env
+import sys
+
+# Enable eventlet monkey patching if requested OR if running on Render (likely using gunicorn+eventlet)
 try:
-    _use_eventlet = os.getenv('USE_EVENTLET', '0').strip()
-    if _use_eventlet in ('1', 'true', 'True'):
+    _use_eventlet = os.getenv('USE_EVENTLET', '0').strip().lower()
+    _is_render = os.getenv('RENDER') is not None
+    
+    if _use_eventlet in ('1', 'true') or _is_render:
         import eventlet  # type: ignore
         eventlet.monkey_patch()
-except Exception:
-    pass
+        print("Eventlet monkey patching applied.")
+except Exception as e:
+    print(f"Eventlet patching failed: {e}")
 
 from flask import Flask, render_template, render_template_string, request, redirect, url_for, session, flash, jsonify
 # mysql connector 
@@ -425,8 +430,19 @@ def get_db_connection():
         pool = _get_db_pool(config)
         connection = pool.get_connection()
     except (mysql_errors.PoolError, mysql.connector.Error) as e:
-        print(f"DB pool issue ({type(e).__name__}), falling back to direct connection: {e}")
-        connection = mysql.connector.connect(**config)
+        err_msg = str(e)
+        # Check for common connection errors
+        if "2003" in err_msg:
+            print(f"CRITICAL DB ERROR: Could not connect to database host '{config.get('host')}'.")
+            print("Possible causes: 1) DB server is powered off 2) Firewall blocking 3) Wrong host/port.")
+        
+        print(f"DB pool issue ({type(e).__name__}), falling back to direct connection: {err_msg}")
+        try:
+            connection = mysql.connector.connect(**config)
+        except mysql.connector.Error as direct_err:
+            if "2003" in str(direct_err):
+                print("DIRECT CONNECTION FAILED: Database server appears to be unreachable/offline.")
+            raise direct_err
 
     # Ensure autocommit stays disabled for compatibility with existing code
     if connection.autocommit:
