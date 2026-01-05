@@ -2740,7 +2740,7 @@ def _start_code_battle(match_id):
             'requires_css': first_challenge.get('requires_css', False),
             'requires_js': first_challenge.get('requires_js', True),
             'starter_code': first_challenge.get('starter_code', {}),
-            'hint': first_challenge.get('hint', ''),
+            'hint': '', # Hint hidden for competition
             'test_cases_count': len(first_challenge.get('test_cases', []))
         }
     }, room=match_id)
@@ -3038,10 +3038,53 @@ def _run_js_test(js_code, test_case, challenge):
         print(f"[_run_js_test] stderr: '{proc.stderr}'")
         
         if proc.returncode != 0:
+            error_msg = proc.stderr.strip()
+            clean_error = error_msg
+            
+            # Attempt to extract a user-friendly error message
+            try:
+                # Regex to find standard JS errors
+                # Matches "ReferenceError: x is not defined" etc.
+                error_pattern = r'(SyntaxError|ReferenceError|TypeError|RangeError|URIError|EvalError|Error):\s+([^\n]+)'
+                match = re.search(error_pattern, error_msg)
+                
+                # Regex to find line number and code in [eval]:N
+                # [eval]:3
+                # return return;
+                line_match = re.search(r'\[eval\]:(\d+)\n([^\n]+)', error_msg)
+                
+                if match:
+                    clean_error = f"{match.group(1)}: {match.group(2)}"
+                    if line_match:
+                        line_num = line_match.group(1)
+                        code_line = line_match.group(2).strip()
+                        clean_error += f" at Line {line_num}: {code_line}"
+                else:
+                    # If no standard error found, try to clean up stack trace
+                    lines = error_msg.split('\n')
+                    # Filter out stack trace lines (starting with '    at ') and internal node lines
+                    clean_lines = [
+                        line for line in lines 
+                        if not line.strip().startswith('at ') 
+                        and 'node:internal' not in line
+                        and not line.strip().startswith('Node.js')
+                        and not line.strip().startswith('[eval]')
+                        and not line.strip().startswith('^')
+                    ]
+                    if clean_lines:
+                        # Take the last meaningful line as it often contains the error description
+                        clean_error = clean_lines[-1].strip()
+                        if line_match:
+                            line_num = line_match.group(1)
+                            code_line = line_match.group(2).strip()
+                            clean_error += f" (Line {line_num}: {code_line})"
+            except Exception:
+                pass # Fallback to original error if parsing fails
+
             return {
                 'passed': False,
                 'actual': '',
-                'error': proc.stderr.strip() or 'Execution error'
+                'error': clean_error or 'Execution error'
             }
         
         actual_output = proc.stdout.strip()
@@ -3124,15 +3167,49 @@ def _validate_html_structure(html_code, test_case):
 
 def _validate_css_styles(css_code, test_case):
     """Validate CSS styles (basic validation)"""
+    import re
     try:
         selector = test_case.get('selector', '')
         expected = test_case.get('expected', {})
         
+        # Check selector existence if provided
+        if selector and selector not in css_code:
+            return {'passed': False, 'actual': f"Selector '{selector}' not found"}
+        
         # Simple validation: check if CSS property exists
-        for prop, value in expected.items():
-            prop_search = f"{prop}:".replace('_', '-')
-            if prop_search not in css_code:
-                return {'passed': False, 'actual': 'Property not found'}
+        for prop, expected_val in expected.items():
+            css_prop = prop.replace('_', '-')
+            
+            # Regex to find property and its value
+            # Looks for property: value; or property: value} or property: value (end of string)
+            # We use * for value to capture empty values too, then check them
+            pattern = re.compile(rf"{re.escape(css_prop)}\s*:\s*([^;}}]*)(?:[;}}])", re.IGNORECASE)
+            match = pattern.search(css_code)
+            
+            if not match:
+                # Try finding it at end of string
+                pattern_eof = re.compile(rf"{re.escape(css_prop)}\s*:\s*([^;}}]*)$", re.IGNORECASE)
+                match = pattern_eof.search(css_code)
+            
+            if not match:
+                return {'passed': False, 'actual': "CSS property not found"}
+            
+            actual_val = match.group(1).strip()
+            
+            # Calculate line number
+            line_number = css_code.count('\n', 0, match.start()) + 1
+            
+            if not actual_val:
+                return {'passed': False, 'actual': f"Property '{css_prop}' has no value (Line {line_number})"}
+            
+            # If we have a specific expected value, check it
+            if expected_val and isinstance(expected_val, str) and expected_val != '*':
+                # Normalize spaces
+                norm_actual = ' '.join(actual_val.split())
+                norm_expected = ' '.join(expected_val.split())
+                
+                if norm_actual != norm_expected:
+                    return {'passed': False, 'actual': f"Incorrect value for property '{css_prop}' (Line {line_number})"}
         
         return {'passed': True, 'actual': 'Styles present'}
         
@@ -3334,7 +3411,7 @@ def handle_request_next_challenge(data):
             'requires_css': next_challenge.get('requires_css', False),
             'requires_js': next_challenge.get('requires_js', True),
             'starter_code': next_challenge.get('starter_code', {}),
-            'hint': next_challenge.get('hint', ''),
+            'hint': '', # Hint hidden for competition
             'test_cases_count': len(next_challenge.get('test_cases', []))
         },
         'remaining': len(match_data['challenges']) - next_index - 1
