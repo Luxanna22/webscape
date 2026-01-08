@@ -2,7 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#240e44" />
+    <link rel="manifest" href="/static/manifest.json" />
     <link
       rel="icon"
       href="/static/images/playground-mode.png"
@@ -473,35 +484,635 @@
         object-fit: contain;
         margin-bottom: 1rem;
       }
+
+      /* ==================== MODERN PROFILE DESIGN ==================== */
+      .profile-hero {
+        background: linear-gradient(
+          135deg,
+          #371569 0%,
+          #240e44 50%,
+          #1a0a33 100%
+        );
+        border-radius: 24px;
+        padding: 2.5rem 2rem;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+        border: 2px solid rgba(126, 49, 239, 0.3);
+      }
+
+      .profile-hero::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(
+          circle,
+          rgba(255, 102, 196, 0.15) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .profile-header {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+
+      .profile-avatar {
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .profile-avatar .avatar-ring {
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ff66c4, #7e31ef);
+        padding: 4px;
+        box-shadow: 0 0 30px rgba(255, 102, 196, 0.4);
+      }
+
+      .profile-avatar .avatar-inner {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: #2d145c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+      }
+
+      .profile-avatar .avatar-inner:hover {
+        transform: scale(1.05);
+      }
+
+      .profile-avatar .avatar-inner img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .profile-avatar .avatar-inner i {
+        font-size: 80px;
+        color: #666;
+      }
+
+      .profile-avatar .avatar-badge {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #ff66c4, #c54fa3);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 3px solid #240e44;
+        transition: transform 0.2s;
+      }
+
+      .profile-avatar .avatar-badge:hover {
+        transform: scale(1.1);
+      }
+
+      .profile-avatar .avatar-badge i {
+        color: #fff;
+        font-size: 0.9rem;
+      }
+
+      .profile-info {
+        flex: 1;
+      }
+
+      .profile-name-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .profile-name {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #fff;
+        font-family: "Montserrat", sans-serif;
+        margin: 0;
+      }
+
+      .profile-edit-btn {
+        background: rgba(255, 102, 196, 0.2);
+        border: none;
+        color: #ff66c4;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .profile-edit-btn:hover {
+        background: #ff66c4;
+        color: #fff;
+      }
+
+      .profile-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-top: 1rem;
+      }
+
+      .profile-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #b3b3b3;
+        font-size: 0.95rem;
+      }
+
+      .profile-meta-item i {
+        color: #7e31ef;
+        font-size: 1rem;
+      }
+
+      .profile-meta-item span {
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .profile-actions {
+        display: flex;
+        gap: 1rem;
+        margin-left: auto;
+        align-self: flex-start;
+      }
+
+      .btn-danger-outline {
+        background: transparent;
+        border: 2px solid #dc3545;
+        color: #dc3545;
+        padding: 0.6rem 1.2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-danger-outline:hover {
+        background: #dc3545;
+        color: #fff;
+      }
+
+      /* Stats Grid */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .stat-card {
+        background: linear-gradient(180deg, #371569 0%, #2d145c 100%);
+        border-radius: 16px;
+        padding: 1.25rem;
+        text-align: center;
+        border: 1px solid rgba(126, 49, 239, 0.3);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(126, 49, 239, 0.2);
+      }
+
+      .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.75rem;
+        font-size: 1.3rem;
+      }
+
+      .stat-icon.purple {
+        background: rgba(126, 49, 239, 0.2);
+        color: #a259ff;
+      }
+      .stat-icon.pink {
+        background: rgba(255, 102, 196, 0.2);
+        color: #ff66c4;
+      }
+      .stat-icon.gold {
+        background: rgba(255, 211, 105, 0.2);
+        color: #ffd369;
+      }
+      .stat-icon.cyan {
+        background: rgba(94, 234, 255, 0.2);
+        color: #5eeaff;
+      }
+
+      .stat-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #fff;
+        font-family: "Luckiest Guy", cursive;
+        margin-bottom: 0.25rem;
+      }
+
+      .stat-label {
+        font-size: 0.85rem;
+        color: #b3b3b3;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      /* Progress Section */
+      .section-card {
+        background: #2d145c;
+        border-radius: 20px;
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(126, 49, 239, 0.2);
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+      }
+
+      .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .section-title i {
+        color: #ff66c4;
+      }
+
+      .progress-bar-modern {
+        height: 12px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+      }
+
+      .progress-bar-modern .fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff66c4 0%, #7e31ef 100%);
+        border-radius: inherit;
+        transition: width 0.5s ease;
+      }
+
+      .progress-stats {
+        display: flex;
+        justify-content: space-between;
+        color: #b3b3b3;
+        font-size: 0.9rem;
+      }
+
+      .progress-stats span:last-child {
+        color: #ff66c4;
+        font-weight: 600;
+      }
+
+      /* Rank & Badges Row */
+      .rank-badges-row {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 1.5rem;
+      }
+
+      .rank-card {
+        background: linear-gradient(
+          180deg,
+          rgba(255, 211, 105, 0.1) 0%,
+          #2d145c 100%
+        );
+        border-radius: 20px;
+        padding: 1.5rem;
+        text-align: center;
+        border: 2px solid rgba(255, 211, 105, 0.3);
+      }
+
+      .rank-card .rank-badge-img {
+        width: 120px;
+        height: 120px;
+        margin-bottom: 1rem;
+      }
+
+      .rank-card .rank-number {
+        font-size: 3rem;
+        font-weight: 800;
+        color: #ffd369;
+        font-family: "Luckiest Guy", cursive;
+        text-shadow: 0 0 20px rgba(255, 211, 105, 0.5);
+      }
+
+      .rank-card .rank-label {
+        color: #b3b3b3;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+      }
+
+      .badges-card {
+        background: #2d145c;
+        border-radius: 20px;
+        padding: 1.5rem;
+        border: 1px solid rgba(126, 49, 239, 0.2);
+      }
+
+      .badges-grid {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        min-height: 140px;
+      }
+
+      .badge-item {
+        text-align: center;
+        transition: transform 0.2s;
+      }
+
+      .badge-item:hover {
+        transform: scale(1.1);
+      }
+
+      .badge-item img {
+        width: 70px;
+        height: 70px;
+        margin-bottom: 0.5rem;
+      }
+
+      .badge-item .badge-name {
+        font-size: 0.85rem;
+        color: #b3b3b3;
+      }
+
+      /* ==================== MOBILE APP DESIGN ==================== */
+      @media (max-width: 768px) {
+        /* Top navigation bar */
+        .sidebar {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: auto !important;
+          width: 100vw !important;
+          height: 56px !important;
+          flex-direction: row !important;
+          justify-content: space-around !important;
+          align-items: center !important;
+          padding: 0 !important;
+          gap: 0 !important;
+          background: rgba(58, 20, 100, 0.95) !important;
+          backdrop-filter: blur(12px) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          z-index: 1000 !important;
+          border-bottom: 1px solid rgba(255, 102, 196, 0.2) !important;
+        }
+
+        .sidebar .nav-item {
+          flex: 1 !important;
+          display: flex !important;
+          justify-content: center !important;
+          align-items: center !important;
+          height: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        .sidebar .nav-item.account {
+          margin: 0 !important;
+        }
+
+        .sidebar .nav-item span {
+          display: none !important;
+        }
+
+        .sidebar .nav-item i {
+          font-size: 1.5rem !important;
+          margin: 0 !important;
+          color: #d3d3d3 !important;
+        }
+
+        .sidebar .nav-item:hover i,
+        .sidebar .nav-item.active i {
+          color: #ff66c4 !important;
+        }
+
+        /* Main content adjustments */
+        .main-content {
+          margin-left: 0 !important;
+          padding: 70px 1rem 2rem !important;
+          min-height: 100vh !important;
+        }
+
+        .container {
+          padding: 0 !important;
+          max-width: 100% !important;
+        }
+
+        .dashboard-title {
+          display: none !important;
+        }
+
+        /* Profile Hero Mobile */
+        .profile-hero {
+          padding: 1.5rem 1rem;
+          border-radius: 16px;
+          margin-bottom: 1.5rem;
+        }
+
+        .profile-header {
+          flex-direction: column;
+          text-align: center;
+          gap: 1rem;
+        }
+
+        .profile-avatar .avatar-ring {
+          width: 100px;
+          height: 100px;
+        }
+
+        .profile-avatar .avatar-inner i {
+          font-size: 60px;
+        }
+
+        .profile-avatar .avatar-badge {
+          width: 30px;
+          height: 30px;
+        }
+
+        .profile-name {
+          font-size: 1.6rem;
+        }
+
+        .profile-name-row {
+          justify-content: center;
+        }
+
+        .profile-meta {
+          justify-content: center;
+          gap: 1rem;
+        }
+
+        .profile-meta-item {
+          font-size: 0.85rem;
+        }
+
+        .profile-actions {
+          margin: 1rem auto 0;
+        }
+
+        /* Stats Grid Mobile */
+        .stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.75rem;
+        }
+
+        .stat-card {
+          padding: 1rem;
+          border-radius: 12px;
+        }
+
+        .stat-icon {
+          width: 40px;
+          height: 40px;
+          font-size: 1.1rem;
+        }
+
+        .stat-value {
+          font-size: 1.4rem;
+        }
+
+        .stat-label {
+          font-size: 0.75rem;
+        }
+
+        /* Section Cards Mobile */
+        .section-card {
+          padding: 1.25rem;
+          border-radius: 16px;
+        }
+
+        .section-title {
+          font-size: 1.1rem;
+        }
+
+        /* Rank & Badges Mobile */
+        .rank-badges-row {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        .rank-card {
+          padding: 1.25rem;
+        }
+
+        .rank-card .rank-badge-img {
+          width: 80px;
+          height: 80px;
+        }
+
+        .rank-card .rank-number {
+          font-size: 2.2rem;
+        }
+
+        .badges-card {
+          padding: 1.25rem;
+        }
+
+        .badges-grid {
+          gap: 1rem;
+          min-height: 100px;
+        }
+
+        .badge-item img {
+          width: 55px;
+          height: 55px;
+        }
+
+        .badge-item .badge-name {
+          font-size: 0.75rem;
+        }
+
+        /* Hide old elements */
+        .performance-panel,
+        .row.align-items-center.mb-4,
+        hr[style*="border-color: #7e31ef"],
+        .row.g-4.mt-4,
+        .row.text-center.mt-4 {
+          display: none !important;
+        }
+      }
+
+      @media (min-width: 769px) {
+        /* Show desktop design on larger screens */
+        .main-content.d-md-none {
+          display: none !important;
+        }
+        .main-content.d-none.d-md-block {
+          display: block !important;
+        }
+      }
+
+      @media (max-width: 768px) {
+        /* Show mobile design on smaller screens */
+        .main-content.d-md-none {
+          display: block !important;
+        }
+        .main-content.d-none.d-md-block {
+          display: none !important;
+        }
+      }
     </style>
   </head>
   <body>
     <nav class="sidebar d-flex flex-column align-items-center">
-      <!-- <div class="nav-item levels">
-        <i class="fas fa-bars" aria-hidden="true"></i>
-        <span>Levels</span>
-      </div> -->
-      <div class="nav-item levels">
-        <a href="/"
-          ><img
-            src="/static/images/book-icon.png"
-            alt="webscape-logo"
-            width="50px"
-        /></a>
-        <br />
-      </div>
-      <div class="nav-item badges">
-        <a href="{{ url_for('rankings') }}">
-          <i class="fas fa-award" aria-hidden="true"></i>
-          <span>Rankings</span>
-        </a>
-      </div>
-      <div class="nav-item options">
+      <a href="/" class="nav-item" style="text-decoration: none">
+        <i class="fas fa-home" aria-hidden="true"></i>
+        <span>Home</span>
+      </a>
+      <a
+        href="{{ url_for('rankings') }}"
+        class="nav-item"
+        style="text-decoration: none"
+      >
+        <i class="fas fa-trophy" aria-hidden="true"></i>
+        <span>Rankings</span>
+      </a>
+      <a href="/options" class="nav-item" style="text-decoration: none">
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
         <span>Options</span>
-      </div>
+      </a>
       <div
-        class="nav-item account mt-auto mb-4"
+        class="nav-item account active"
         id="logoutSidebarBtn"
         style="cursor: pointer"
       >
@@ -509,7 +1120,202 @@
         <span>Logout</span>
       </div>
     </nav>
-    <div class="main-content">
+
+    <!-- NEW MODERN PROFILE DESIGN (Mobile & Tablet) -->
+    <div class="main-content d-md-none">
+      <div class="container">
+        <!-- Profile Hero Card -->
+        <div class="profile-hero">
+          <div class="profile-header">
+            <div class="profile-avatar">
+              <div class="avatar-ring">
+                <div
+                  class="avatar-inner"
+                  id="mobileAvatarClickable"
+                  title="Change avatar"
+                >
+                  {% if user and user.avatar_path %}
+                  <img src="{{ user.avatar_path }}" alt="Avatar" />
+                  {% else %}
+                  <i class="fas fa-user-circle"></i>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="avatar-badge">
+                <i class="fas fa-camera"></i>
+              </div>
+            </div>
+            <div class="profile-info">
+              <div class="profile-name-row">
+                <h1 class="profile-name">
+                  {{ user.username if user else 'Username' }}
+                </h1>
+                <button
+                  class="profile-edit-btn"
+                  id="mobileEditUsernameBtn"
+                  title="Edit username"
+                >
+                  <i class="fas fa-pen"></i>
+                </button>
+              </div>
+              <div class="profile-meta">
+                <div class="profile-meta-item">
+                  <i class="fas fa-envelope"></i>
+                  <span>{{ user.email if user else '---' }}</span>
+                </div>
+                <div class="profile-meta-item">
+                  <i class="fas fa-id-badge"></i>
+                  ID:
+                  <span
+                    >{{ (user.google_id if user.google_id else user.id) if user
+                    else '---' }}</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="profile-actions">
+              <button class="btn-danger-outline" id="mobileDeleteAccountBtn">
+                <i class="fas fa-trash-alt me-1"></i> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon gold">
+              <i class="fas fa-trophy"></i>
+            </div>
+            <div class="stat-value">{{ user_rank if user_rank else '--' }}</div>
+            <div class="stat-label">Rank</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon pink">
+              <i class="fas fa-star"></i>
+            </div>
+            <div class="stat-value">{{ performance.scores.points }}</div>
+            <div class="stat-label">Points</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <i class="fas fa-bolt"></i>
+            </div>
+            <div class="stat-value">{{ performance.scores.xp }}</div>
+            <div class="stat-label">XP</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon cyan">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-value">{{ performance.scores.rating }}</div>
+            <div class="stat-label">Rating</div>
+          </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div class="section-card progress-section">
+          <div class="section-header">
+            <div class="section-title">
+              <i class="fas fa-graduation-cap"></i>
+              Learning Progress
+            </div>
+            <span style="color: #ff66c4; font-weight: 600"
+              >{{ performance.progress.overall_percent_label }}%</span
+            >
+          </div>
+          <div class="progress-bar-modern">
+            <div
+              class="fill"
+              style="width: {{ performance.progress.bar_width }}%;"
+            ></div>
+          </div>
+          <div class="progress-stats">
+            <span
+              >{{ performance.progress.completed_chapters }} chapters
+              completed</span
+            >
+            <span
+              >{{ performance.progress.in_progress_chapters }} in progress</span
+            >
+          </div>
+        </div>
+
+        <!-- Engagement Section -->
+        <div class="section-card">
+          <div class="section-title" style="margin-bottom: 1rem">
+            <i class="fas fa-clock"></i>
+            Time Spent: {{ performance.engagement.total_time_label }}
+          </div>
+          <div class="progress-stats" style="margin-bottom: 0.5rem">
+            <span>Active Days</span>
+            <span style="color: #fff"
+              >{{ performance.engagement.active_days }}</span
+            >
+          </div>
+          <div class="progress-stats" style="margin-bottom: 0.5rem">
+            <span>Avg per Day</span>
+            <span style="color: #fff"
+              >{{ performance.engagement.avg_daily_label }}</span
+            >
+          </div>
+          <div class="progress-stats">
+            <span>Last Active</span>
+            <span style="color: #fff"
+              >{% if performance.engagement.last_active_relative %}{{
+              performance.engagement.last_active_relative }}{% else %}--{% endif
+              %}</span
+            >
+          </div>
+        </div>
+
+        <!-- Rank & Badges -->
+        <div class="rank-badges-row">
+          <div class="rank-card">
+            <img
+              src="/static/images/badges/top-one.png"
+              alt="Rank Badge"
+              class="rank-badge-img"
+            />
+            <div class="rank-number">
+              #{{ user_rank if user_rank else '--' }}
+            </div>
+            <div class="rank-label">{{ user_points }} points</div>
+          </div>
+          <div class="badges-card">
+            <div
+              class="section-title"
+              style="margin-bottom: 1rem; justify-content: center"
+            >
+              <i class="fas fa-medal"></i>
+              Top Badges
+            </div>
+            <div class="badges-grid">
+              {% for badge in badges[:3] %}
+              <div class="badge-item">
+                {% if badge.icon %}
+                <img src="{{ badge.icon }}" alt="{{ badge.name }}" />
+                {% else %}
+                <i
+                  class="fas fa-award"
+                  style="font-size: 50px; color: #7e31ef"
+                ></i>
+                {% endif %}
+                <div class="badge-name">{{ badge.name }}</div>
+              </div>
+              {% else %}
+              <div style="color: #666; font-size: 0.9rem">
+                No badges earned yet
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORIGINAL DESKTOP DESIGN -->
+    <div class="main-content d-none d-md-block">
       <div class="container">
         <h1 class="dashboard-title">Account</h1>
         <!-- Redesigned account page -->
@@ -1496,15 +2302,45 @@
       }
       // Edit account modal logic
       const editUsernameIcon = document.getElementById("editUsernameIcon");
-      if (editUsernameIcon) {
-        editUsernameIcon.onclick = function (e) {
-          e.preventDefault();
-          const modal = new bootstrap.Modal(
-            document.getElementById("editUsernameModal")
-          );
-          modal.show();
-        };
+      const mobileEditUsernameBtn = document.getElementById(
+        "mobileEditUsernameBtn"
+      );
+
+      function openEditUsernameModal(e) {
+        e.preventDefault();
+        const modal = new bootstrap.Modal(
+          document.getElementById("editUsernameModal")
+        );
+        modal.show();
       }
+
+      if (editUsernameIcon) {
+        editUsernameIcon.onclick = openEditUsernameModal;
+      }
+      if (mobileEditUsernameBtn) {
+        mobileEditUsernameBtn.onclick = openEditUsernameModal;
+      }
+
+      // Mobile delete account button
+      const mobileDeleteAccountBtn = document.getElementById(
+        "mobileDeleteAccountBtn"
+      );
+      const deleteAccountBtn = document.getElementById("deleteAccountBtn");
+
+      function openDeleteAccountModal() {
+        const modal = new bootstrap.Modal(
+          document.getElementById("deleteAccountModal")
+        );
+        modal.show();
+      }
+
+      if (mobileDeleteAccountBtn) {
+        mobileDeleteAccountBtn.onclick = openDeleteAccountModal;
+      }
+      if (deleteAccountBtn) {
+        deleteAccountBtn.onclick = openDeleteAccountModal;
+      }
+
       const editUsernameForm = document.getElementById("editUsernameForm");
       const editUsernameInput = document.getElementById("editUsernameInput");
       const usernameStatus = document.getElementById("usernameStatus");
@@ -1603,6 +2439,23 @@
             overlay.style.opacity = "0";
           });
           circle.addEventListener("click", function () {
+            if (input) input.click();
+          });
+        }
+        // Mobile avatar click
+        var mobileAvatarClickable = document.getElementById(
+          "mobileAvatarClickable"
+        );
+        var mobileAvatarBadge = document.querySelector(
+          ".profile-avatar .avatar-badge"
+        );
+        if (mobileAvatarClickable) {
+          mobileAvatarClickable.addEventListener("click", function () {
+            if (input) input.click();
+          });
+        }
+        if (mobileAvatarBadge) {
+          mobileAvatarBadge.addEventListener("click", function () {
             if (input) input.click();
           });
         }

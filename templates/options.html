@@ -2,7 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#240e44" />
+    <link rel="manifest" href="/static/manifest.json" />
     {{ ga_script|safe }}
     <link
       rel="icon"
@@ -345,72 +356,153 @@
         font-weight: 500;
       }
 
+      /* ==================== MOBILE APP DESIGN ==================== */
       @media (max-width: 768px) {
+        /* Top navigation bar */
         .sidebar {
-          width: 0;
-          min-width: 0;
-          overflow: hidden;
-          padding: 0;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: auto !important;
+          width: 100vw !important;
+          min-width: 100vw !important;
+          height: 56px !important;
+          flex-direction: row !important;
+          justify-content: space-around !important;
+          align-items: center !important;
+          padding: 0 !important;
+          gap: 0 !important;
+          background: rgba(58, 20, 100, 0.95) !important;
+          backdrop-filter: blur(12px) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          z-index: 1000 !important;
+          border-bottom: 1px solid rgba(255, 102, 196, 0.2) !important;
+          overflow: visible !important;
+        }
+
+        .sidebar .nav-item {
+          flex: 1 !important;
+          display: flex !important;
+          justify-content: center !important;
+          align-items: center !important;
+          height: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        .sidebar .nav-item.account {
+          margin: 0 !important;
+        }
+
+        .sidebar .nav-item span {
+          display: none !important;
+        }
+
+        .sidebar .nav-item i {
+          font-size: 1.5rem !important;
+          margin: 0 !important;
+          color: #d3d3d3 !important;
+        }
+
+        .sidebar .nav-item:hover i,
+        .sidebar .nav-item.active i {
+          color: #ff66c4 !important;
+        }
+
+        .sidebar .nav-item img {
+          width: 28px !important;
+          height: 28px !important;
         }
 
         main {
-          margin-left: 0;
-          padding: 24px 16px;
+          margin-left: 0 !important;
+          padding: 70px 16px 24px !important;
+          min-height: 100vh !important;
         }
 
         .options-title {
-          font-size: 2.5rem;
+          font-size: 2rem !important;
+        }
+
+        .options-subtitle {
+          font-size: 1rem !important;
+        }
+
+        .options-header {
+          margin-bottom: 24px !important;
+        }
+
+        .options-section {
+          padding: 20px !important;
+          margin-bottom: 20px !important;
+        }
+
+        .section-title {
+          font-size: 1.2rem !important;
         }
 
         .theme-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, 1fr) !important;
+          gap: 12px !important;
+        }
+
+        .theme-option {
+          padding: 12px !important;
+        }
+
+        .theme-preview {
+          width: 45px !important;
+          height: 45px !important;
+          font-size: 1.2rem !important;
+          margin-bottom: 8px !important;
+        }
+
+        .theme-name {
+          font-size: 0.9rem !important;
+        }
+
+        .theme-description {
+          font-size: 0.75rem !important;
         }
 
         .color-group {
-          grid-template-columns: 1fr;
+          grid-template-columns: 1fr !important;
         }
 
         .button-group {
-          flex-direction: column;
+          flex-direction: column !important;
+        }
+
+        .btn {
+          width: 100% !important;
         }
       }
     </style>
   </head>
   <body>
     <nav class="sidebar" id="sidebarNav">
-      <div
-        class="nav-item"
-        tabindex="0"
-        title="Home"
-        onclick="window.location.href='/'"
-      >
-        <a href="/"
-          ><img
-            src="/static/images/book-icon.png"
-            alt="webscape-logo"
-            width="50px"
-        /></a>
-        <br />
-      </div>
-      <a class="nav-item" tabindex="0" title="Rankings" href="/rankings">
-        <i class="fas fa-award" aria-hidden="true"></i>
+      <a class="nav-item" href="/" style="text-decoration: none">
+        <i class="fas fa-home" aria-hidden="true"></i>
+        <span>Home</span>
+      </a>
+      <a class="nav-item" href="/rankings" style="text-decoration: none">
+        <i class="fas fa-trophy" aria-hidden="true"></i>
         <span>Rankings</span>
       </a>
       <a
         class="nav-item options active"
-        tabindex="0"
-        title="Options"
         href="/options"
+        style="text-decoration: none"
       >
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
         <span>Options</span>
       </a>
       <a
         class="nav-item account mt-auto mb-4"
-        tabindex="0"
-        title="Account"
         href="#"
         onclick="handleAccountClick()"
+        style="text-decoration: none"
       >
         <i class="fas fa-user-circle" aria-hidden="true"></i>
         <span>Account</span>
