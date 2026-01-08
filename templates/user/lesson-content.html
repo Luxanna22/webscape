@@ -2632,7 +2632,7 @@
         <div class="d-flex gap-2">
           <button
             class="btn btn-sm btn-success"
-            onclick="runPlaygroundCode()"
+            onclick="runSidebarCode()"
             style="
               background-color: #28a745;
               border-color: #28a745;
@@ -3023,7 +3023,7 @@
       // Global variable to store line offset for error reporting
       window.sidebarLineOffset = 0;
 
-      function runPlaygroundCode() {
+      function runSidebarCode() {
         if (!sidebarEditors.html) return;
 
         const html = sidebarEditors.html.getValue();
