@@ -2,7 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#240e44" />
+    <link rel="manifest" href="/static/manifest.json" />
     <title>Rankings | WebScape</title>
     <link
       rel="icon"
@@ -144,6 +155,24 @@
         color: #ff69b4;
       }
       .sidebar .nav-item.active a {
+        color: #ff69b4;
+      }
+
+      .sidebar .nav-item.levels i {
+        font-size: 28px;
+        color: #bfbfbf;
+      }
+
+      .sidebar a.nav-item.account {
+        text-decoration: none;
+        color: #a9a9a9;
+      }
+
+      .sidebar a.nav-item.account:hover {
+        color: #ff69b4;
+      }
+
+      .sidebar a.nav-item.account:hover i {
         color: #ff69b4;
       }
 
@@ -359,10 +388,13 @@
       .top-three-container {
         display: flex;
         justify-content: center;
-        align-items: center;
+        align-items: flex-end;
+        gap: 2rem;
+        padding: 2rem 1rem;
       }
       .top-three-container img {
-        width: 80%;
+        width: 70px;
+        height: 70px;
         object-fit: cover;
       }
       /* center the content  of tops*/
@@ -372,25 +404,86 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 0;
-        margin: 0;
+        padding: 1.5rem 1.5rem 2rem;
+        margin: 0 0.5rem;
         flex-direction: column;
+        border-radius: 20px 20px 0 0;
+        min-width: 180px;
+        max-width: 220px;
+        position: relative;
       }
+
+      /* Champion - tallest, gold glow */
+      .top-one {
+        min-height: 280px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 211, 105, 0.2),
+          rgba(45, 20, 92, 0.95)
+        );
+        border-top: 4px solid #ffd369;
+        box-shadow: 0 0 30px rgba(255, 211, 105, 0.4),
+          0 0 60px rgba(255, 211, 105, 0.2);
+        z-index: 2;
+      }
+
+      .top-one img {
+        width: 90px;
+        height: 90px;
+      }
+
+      /* Runner up - medium height, silver */
+      .top-two {
+        min-height: 240px;
+        background: linear-gradient(
+          180deg,
+          rgba(192, 192, 192, 0.15),
+          rgba(45, 20, 92, 0.95)
+        );
+        border-top: 4px solid #c0c0c0;
+        box-shadow: 0 0 20px rgba(192, 192, 192, 0.3);
+      }
+
+      /* Third place - shortest, bronze */
+      .top-three {
+        min-height: 200px;
+        background: linear-gradient(
+          180deg,
+          rgba(205, 127, 50, 0.15),
+          rgba(45, 20, 92, 0.95)
+        );
+        border-top: 4px solid #cd7f32;
+        box-shadow: 0 0 20px rgba(205, 127, 50, 0.3);
+      }
+
       .top-three-container h4 {
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: #d3d3d3;
         font-family: "Anton", sans-serif;
+        margin: 0;
       }
       .top-three-container h3 {
-        font-size: 2rem;
-        color: #d3d3d3;
+        font-size: 1.5rem;
         font-family: "Anton", sans-serif;
-        color: #ff69b4;
+        margin: 0.5rem 0 0.25rem;
+      }
+
+      .top-one h3 {
+        color: #ffd369;
+        font-size: 1.7rem;
+      }
+
+      .top-two h3 {
+        color: #c0c0c0;
+      }
+
+      .top-three h3 {
+        color: #cd7f32;
       }
 
       .top-badge {
-        margin-top: 0.35rem;
-        font-size: 0.95rem;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
         color: #d3d3d3;
         font-family: "Montserrat", sans-serif;
       }
@@ -598,37 +691,317 @@
         background: #ff40b5;
         color: #fff;
       }
+
+      /* ==================== MOBILE APP DESIGN ==================== */
+      @media (max-width: 768px) {
+        /* Hide desktop sidebar */
+        .sidebar {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: auto !important;
+          width: 100vw !important;
+          height: 56px !important;
+          flex-direction: row !important;
+          justify-content: space-around !important;
+          align-items: center !important;
+          padding: 0 !important;
+          gap: 0 !important;
+          background: rgba(58, 20, 100, 0.95) !important;
+          backdrop-filter: blur(12px) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          z-index: 1000 !important;
+          border-bottom: 1px solid rgba(255, 102, 196, 0.2) !important;
+        }
+
+        .sidebar .nav-item {
+          flex: 1 !important;
+          display: flex !important;
+          justify-content: center !important;
+          align-items: center !important;
+          height: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        .sidebar .nav-item.account {
+          margin: 0 !important;
+        }
+
+        .sidebar .nav-item span {
+          display: none !important;
+        }
+
+        .sidebar .nav-item i {
+          font-size: 1.5rem !important;
+          margin: 0 !important;
+          color: #d3d3d3 !important;
+        }
+
+        .sidebar .nav-item:hover i,
+        .sidebar .nav-item.active i {
+          color: #ff66c4 !important;
+        }
+
+        .sidebar .nav-item.levels img {
+          width: 28px !important;
+          height: 28px !important;
+        }
+
+        /* Main content adjustments */
+        .main-content {
+          margin-left: 0 !important;
+          padding-top: 70px !important;
+          padding-left: 1rem !important;
+          padding-right: 1rem !important;
+          padding-bottom: 2rem !important;
+          min-height: 100vh !important;
+        }
+
+        .container {
+          padding: 0 !important;
+          max-width: 100% !important;
+        }
+
+        /* Dashboard title */
+        .dashboard-title {
+          font-size: 2rem !important;
+          text-align: center !important;
+          margin-bottom: 1.5rem !important;
+        }
+
+        /* Top three container - podium layout for mobile */
+        .top-three-container {
+          flex-direction: row !important;
+          align-items: flex-end !important;
+          justify-content: center !important;
+          gap: 0.75rem !important;
+          padding: 1rem 0.5rem !important;
+          margin-bottom: 1rem !important;
+        }
+
+        .top-one,
+        .top-two,
+        .top-three {
+          width: auto !important;
+          flex: 1 !important;
+          max-width: 110px !important;
+          min-width: 90px !important;
+          border-radius: 16px 16px 0 0 !important;
+          padding: 0.75rem 0.5rem 1rem !important;
+          position: relative !important;
+          margin: 0 !important;
+        }
+
+        /* Champion - center, tallest */
+        .top-one {
+          order: 0 !important;
+          min-height: 170px !important;
+          max-width: 120px !important;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 211, 105, 0.25),
+            rgba(45, 20, 92, 0.95)
+          ) !important;
+          border-top: 3px solid #ffd369 !important;
+          box-shadow: 0 0 20px rgba(255, 211, 105, 0.4) !important;
+          z-index: 2 !important;
+        }
+
+        /* Runner up - left, medium height */
+        .top-two {
+          order: -1 !important;
+          min-height: 145px !important;
+          background: linear-gradient(
+            180deg,
+            rgba(192, 192, 192, 0.2),
+            rgba(45, 20, 92, 0.95)
+          ) !important;
+          border-top: 3px solid #c0c0c0 !important;
+          box-shadow: 0 0 15px rgba(192, 192, 192, 0.3) !important;
+        }
+
+        /* Third place - right, shortest */
+        .top-three {
+          order: 1 !important;
+          min-height: 125px !important;
+          background: linear-gradient(
+            180deg,
+            rgba(205, 127, 50, 0.2),
+            rgba(45, 20, 92, 0.95)
+          ) !important;
+          border-top: 3px solid #cd7f32 !important;
+          box-shadow: 0 0 15px rgba(205, 127, 50, 0.3) !important;
+        }
+
+        .top-three-container img {
+          width: 48px !important;
+          height: 48px !important;
+          margin-bottom: 0.4rem !important;
+        }
+
+        .top-one img {
+          width: 56px !important;
+          height: 56px !important;
+        }
+
+        .top-three-container h3 {
+          font-size: 0.85rem !important;
+          margin: 0.2rem 0 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          max-width: 100% !important;
+          padding: 0 2px !important;
+        }
+
+        .top-one h3 {
+          font-size: 0.95rem !important;
+          color: #ffd369 !important;
+        }
+
+        .top-two h3 {
+          color: #c0c0c0 !important;
+        }
+
+        .top-three h3 {
+          color: #cd7f32 !important;
+        }
+
+        .top-three-container h4 {
+          font-size: 0.65rem !important;
+          margin: 0 !important;
+          opacity: 0.8 !important;
+        }
+
+        .top-badge {
+          font-size: 0.65rem !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          gap: 0.15rem !important;
+          margin-top: 0.3rem !important;
+        }
+
+        .top-badge span {
+          margin: 0 !important;
+        }
+
+        /* Only show points on mobile for cleaner look */
+        .top-badge span:not(:first-child) {
+          display: none !important;
+        }
+
+        .top-one .top-badge span:not(:first-child) {
+          display: inline !important;
+          font-size: 0.6rem !important;
+        }
+
+        /* Table responsive */
+        .table-responsive {
+          margin-top: 1.5rem !important;
+          border-radius: 12px !important;
+          overflow: hidden !important;
+        }
+
+        .custom-user-table {
+          font-size: 0.85rem !important;
+          margin-top: 0 !important;
+        }
+
+        .table-header {
+          padding: 0.75rem !important;
+        }
+
+        .header-flex {
+          flex-direction: column !important;
+          gap: 0.75rem !important;
+        }
+
+        .table-title {
+          font-size: 1.2rem !important;
+        }
+
+        .search-bar {
+          width: 100% !important;
+        }
+
+        .search-bar input {
+          padding: 0.6rem 2.5rem 0.6rem 1rem !important;
+          font-size: 0.9rem !important;
+        }
+
+        .table-meta {
+          font-size: 0.75rem !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 0.25rem !important;
+        }
+
+        .table-meta span {
+          margin: 0 !important;
+        }
+
+        .column-header th {
+          font-size: 0.75rem !important;
+          padding: 0.6rem 0.25rem !important;
+        }
+
+        .custom-user-table td {
+          font-size: 0.8rem !important;
+          padding: 0.75rem 0.25rem !important;
+        }
+
+        /* Hide less important columns on very small screens */
+        @media (max-width: 480px) {
+          .column-header th:nth-child(3),
+          .column-header th:nth-child(5),
+          .custom-user-table td:nth-child(3),
+          .custom-user-table td:nth-child(5) {
+            display: none !important;
+          }
+        }
+
+        /* Empty state */
+        .empty-state {
+          margin: 1rem !important;
+          padding: 1.5rem !important;
+          border-radius: 12px !important;
+          font-size: 0.9rem !important;
+        }
+      }
     </style>
   </head>
   <body>
     <!-- Sidebar -->
     <nav class="sidebar d-flex flex-column align-items-center">
       <div class="nav-item levels">
-        <a href="/"
-          ><img
-            src="/static/images/book-icon.png"
-            alt="webscape-logo"
-            width="50px"
-        /></a>
-        <br />
+        <a href="/" style="text-decoration: none">
+          <i class="fas fa-home" aria-hidden="true"></i>
+          <span>Home</span>
+        </a>
       </div>
-      <div class="nav-item badges">
-        <a href="{{ url_for('rankings') }}">
-          <i class="fas fa-award" aria-hidden="true"></i>
+      <div class="nav-item badges active">
+        <a href="{{ url_for('rankings') }}" style="text-decoration: none">
+          <i class="fas fa-trophy" aria-hidden="true"></i>
           <span>Rankings</span>
         </a>
       </div>
       <div class="nav-item options">
-        <i class="fas fa-paint-brush" aria-hidden="true"></i>
-        <span>Options</span>
+        <a href="/options" style="text-decoration: none">
+          <i class="fas fa-paint-brush" aria-hidden="true"></i>
+          <span>Options</span>
+        </a>
       </div>
-      <div
+      <a
+        href="/account"
         class="nav-item account mt-auto mb-4"
-        onclick="window.location.href='/account'"
+        style="text-decoration: none"
       >
         <i class="fas fa-user-circle" aria-hidden="true"></i>
         <span>Account</span>
-      </div>
+      </a>
     </nav>
     <!-- Main Content -->
     <div class="main-content">
