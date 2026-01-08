@@ -179,6 +179,11 @@
         border-bottom: 3px solid var(--accent-color);
       }
 
+      /* Hide mobile-only output tab on desktop */
+      .tab.mobile-output-tab {
+        display: none;
+      }
+
       .editor-container {
         display: flex;
         flex: 1;
@@ -671,7 +676,9 @@
       @media (max-width: 768px) {
         body,
         html {
-          overflow: auto;
+          overflow: hidden;
+          height: 100%;
+          height: 100dvh;
         }
 
         /* Sidebar becomes top navigation bar */
@@ -687,7 +694,7 @@
           justify-content: space-around !important;
           align-items: center !important;
           padding: 0 10px !important;
-          padding-top: 0 !important;
+          padding-top: env(safe-area-inset-top, 0) !important;
           background: linear-gradient(
             135deg,
             var(--bg-color) 0%,
@@ -697,27 +704,29 @@
           border-right: none;
           z-index: 1000;
           gap: 0 !important;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
 
         .sidebar .nav-item {
+          display: flex;
           flex-direction: column;
-          padding: 8px 12px;
+          align-items: center;
+          justify-content: center;
+          padding: 8px 16px;
           margin: 0;
-          font-size: 0.7rem;
+          font-size: 0.65rem;
           gap: 2px;
+          border-radius: 8px;
+          transition: background 0.2s ease;
         }
 
         .sidebar .nav-item i {
-          font-size: 1.2rem !important;
-          margin-bottom: 0 !important;
+          font-size: 1.3rem !important;
+          margin-bottom: 2px !important;
         }
 
         .sidebar .nav-item span {
           display: none;
-        }
-
-        .sidebar .nav-item img {
-          width: 28px !important;
         }
 
         .sidebar .nav-item.account {
@@ -725,17 +734,25 @@
         }
 
         .sidebar .nav-item:hover,
+        .sidebar .nav-item:active,
         .sidebar .nav-item.active {
           color: var(--accent-color);
+          background: rgba(255, 102, 196, 0.1);
         }
 
         /* Main playground area */
         .playground {
+          position: fixed;
+          top: 56px;
+          left: 0;
+          right: 0;
+          bottom: 0;
           margin-left: 0;
-          padding: 10px;
-          padding-top: 66px;
-          height: 100vh;
-          height: 100dvh;
+          padding: 0;
+          height: auto;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
         }
 
         /* Section title - hide on mobile */
@@ -743,98 +760,250 @@
           display: none;
         }
 
-        /* Tabs container */
+        /* Tabs container - like lesson playground */
         .tabs-container {
-          flex-direction: column;
+          flex-direction: row;
+          background: #2c1050;
+          border-bottom: 1px solid var(--accent-color);
+          flex-shrink: 0;
+          overflow: visible;
+          position: relative;
         }
 
         .tabs {
-          border-radius: 10px 10px 0 0;
-          flex-wrap: wrap;
-          gap: 0;
+          display: flex;
+          flex: 1;
+          border-radius: 0;
+          background: transparent;
         }
 
         .tab {
-          padding: 8px 12px;
+          padding: 12px 10px;
           font-size: 0.8rem;
           flex: 1;
           text-align: center;
+          border-bottom: 3px solid transparent;
+          transition: all 0.2s ease;
+          color: #fff;
+        }
+
+        .tab.active {
+          color: var(--accent-color);
+          border-bottom-color: var(--accent-color);
+          background: rgba(255, 102, 196, 0.1);
+        }
+
+        /* Show Output tab on mobile - icon only */
+        .tab.mobile-output-tab {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex: none;
+          padding: 12px 14px;
+          border-left: 1px solid rgba(126, 49, 239, 0.3);
+          background: rgba(126, 49, 239, 0.15);
+          gap: 0;
+        }
+
+        .tab.mobile-output-tab i {
+          font-size: 1rem;
+          color: #a259ff;
+        }
+
+        .tab.mobile-output-tab .output-text {
+          display: none;
+        }
+
+        .tab.mobile-output-tab.active {
+          background: rgba(126, 49, 239, 0.35);
+          border-bottom-color: #a259ff;
+        }
+
+        .tab.mobile-output-tab.active i {
+          color: #c49dff;
         }
 
         .live-output-label {
           display: none;
         }
 
-        /* AI Fix button */
+        /* AI Fix button - icon only with count badge on mobile */
         .ai-fix-btn {
-          padding: 6px 10px;
-          font-size: 0.75rem;
-          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px 12px;
+          margin: 0;
+          border-radius: 0;
+          background: rgba(126, 49, 239, 0.25);
+          border: none;
+          border-left: 1px solid rgba(126, 49, 239, 0.4);
+          gap: 4px;
+          flex-shrink: 0;
         }
 
         .ai-fix-btn i {
-          margin-right: 4px;
+          font-size: 1rem;
+          color: #a259ff;
         }
 
-        /* Editor container - stack vertically */
+        .ai-fix-btn .ai-btn-text {
+          display: none;
+        }
+
+        .ai-fix-btn .ai-btn-count {
+          font-size: 0.65rem;
+          color: #ccc;
+          font-weight: normal;
+        }
+
+        .ai-fix-btn.free-mode .ai-btn-count {
+          color: #4ade80;
+        }
+
+        .ai-fix-btn.free-mode i {
+          color: #4ade80;
+        }
+
+        .ai-fix-btn:active {
+          background: rgba(126, 49, 239, 0.4);
+        }
+
+        /* Editor container - full height tabs */
         .editor-container {
+          display: flex;
           flex-direction: column;
-          height: calc(100vh - 100px);
-          height: calc(100dvh - 100px);
+          flex: 1;
+          min-height: 0;
+          border-radius: 0;
+          overflow: hidden;
+          position: relative;
         }
 
-        .editor,
-        .live-output {
-          width: 100% !important;
-          height: 50% !important;
-        }
-
+        /* Editor takes full space, show/hide based on active tab */
         .editor {
-          border-bottom: 2px solid var(--secondary-color);
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100% !important;
+          height: 100% !important;
+          opacity: 1;
+          transition: opacity 0.2s ease;
+          z-index: 1;
         }
 
+        .editor.mobile-hidden {
+          opacity: 0;
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        /* Live output - full screen when output tab active */
         .live-output {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100% !important;
+          height: 100% !important;
           border-left: none;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 0;
+          display: flex;
+          flex-direction: column;
+          opacity: 0;
+          pointer-events: none;
+          z-index: 0;
+          transition: opacity 0.2s ease;
+        }
+
+        .live-output.mobile-active {
+          opacity: 1;
+          pointer-events: auto;
+          z-index: 2;
+        }
+
+        .live-output iframe {
+          flex: 1;
+          min-height: 0;
         }
 
         /* CodeMirror adjustments */
         .CodeMirror {
-          font-size: 13px !important;
+          height: 100% !important;
+          font-size: 14px !important;
+          border-radius: 0;
         }
 
-        /* Debug panel */
+        .code-editor {
+          height: 100%;
+        }
+
+        .code-editor.active {
+          height: 100%;
+        }
+
+        /* Debug panel - collapsible at bottom of output */
         .debug-panel {
-          max-height: 35%;
-          min-height: 100px;
+          flex-shrink: 0;
+          max-height: 40%;
+          min-height: 36px;
+          border-radius: 0;
+          background: rgba(17, 17, 26, 0.98);
+          border-top: 1px solid rgba(162, 89, 255, 0.35);
+        }
+
+        .debug-panel.collapsed {
+          max-height: 36px;
+          min-height: 36px;
         }
 
         .debug-panel-header {
-          padding: 8px 10px;
+          padding: 8px 12px;
           font-size: 0.8rem;
+          cursor: pointer;
+          background: rgba(55, 21, 105, 0.9);
+        }
+
+        .debug-panel-actions {
+          gap: 8px;
         }
 
         .debug-clear-btn {
-          padding: 3px 8px;
+          padding: 4px 10px;
           font-size: 0.7rem;
+          border-radius: 4px;
+        }
+
+        .debug-toggle-btn {
+          width: 26px;
+          height: 24px;
+          font-size: 0.75rem;
         }
 
         .debug-panel-body {
-          font-size: 0.8rem;
+          font-size: 0.75rem;
+          padding: 8px 12px;
+          overflow-y: auto;
         }
 
         /* AI Response modal */
         .ai-response {
-          width: calc(100% - 20px) !important;
+          width: calc(100% - 24px) !important;
           max-width: none;
-          left: 10px !important;
-          right: 10px !important;
-          top: 70px !important;
-          max-height: calc(100vh - 90px);
+          left: 12px !important;
+          right: 12px !important;
+          top: 50% !important;
+          transform: translate(0, -50%) !important;
+          max-height: calc(100vh - 100px);
+          border-radius: 16px;
         }
 
         .ai-response-header {
-          padding: 12px 15px;
+          padding: 14px 16px;
+          border-radius: 16px 16px 0 0;
         }
 
         .ai-response-title {
@@ -842,43 +1011,50 @@
         }
 
         .ai-response-content {
-          padding: 12px 15px;
+          padding: 14px 16px;
           font-size: 0.85rem;
+          max-height: 60vh;
         }
 
-        .ai-close-btn {
-          font-size: 1.2rem;
+        .ai-response-close {
+          font-size: 1.3rem;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
         }
       }
 
       /* Extra small screens */
       @media (max-width: 480px) {
-        .playground {
-          padding: 8px;
-          padding-top: 60px;
+        .sidebar .nav-item {
+          padding: 8px 12px;
+        }
+
+        .sidebar .nav-item i {
+          font-size: 1.2rem !important;
         }
 
         .tab {
-          padding: 6px 8px;
-          font-size: 0.75rem;
-        }
-
-        .ai-fix-btn {
-          padding: 5px 8px;
-          font-size: 0.7rem;
-        }
-
-        .editor-container {
-          height: calc(100vh - 90px);
-          height: calc(100dvh - 90px);
+          padding: 10px 6px;
+          font-size: 0.72rem;
         }
 
         .CodeMirror {
-          font-size: 12px !important;
+          font-size: 13px !important;
         }
 
-        .debug-panel {
-          min-height: 80px;
+        .debug-panel-header {
+          padding: 6px 10px;
+          font-size: 0.75rem;
+        }
+
+        .debug-panel-body {
+          font-size: 0.7rem;
+          padding: 6px 10px;
         }
       }
     </style>
@@ -918,9 +1094,13 @@
           <div class="tab active" data-lang="html">HTML</div>
           <div class="tab" data-lang="css">CSS</div>
           <div class="tab" data-lang="js">JavaScript</div>
+          <div class="tab mobile-output-tab" data-lang="output">
+            <i class="fas fa-play"></i><span class="output-text">Output</span>
+          </div>
           <button class="ai-fix-btn" id="aiFixBtn" title="Costs 25 points">
             <i class="fas fa-magic"></i>
-            Analyze Code (25 pts)
+            <span class="ai-btn-text">Analyze Code</span>
+            <span class="ai-btn-count">25</span>
           </button>
         </div>
         <div class="live-output-label">
@@ -1554,31 +1734,78 @@ function changeColor() {
           editor.on("change", updateOutput);
         });
 
+        // Check if mobile view
+        function isMobileView() {
+          return window.innerWidth <= 768;
+        }
+
+        // Handle mobile tab switching with output tab
+        function switchMobileTab(lang) {
+          const editorEl = document.querySelector(".editor");
+          const outputEl = document.querySelector(".live-output");
+
+          if (lang === "output") {
+            // Show output, hide editor
+            editorEl.classList.add("mobile-hidden");
+            outputEl.classList.add("mobile-active");
+            // Update output when switching to output tab
+            updateOutput();
+          } else {
+            // Show editor, hide output
+            editorEl.classList.remove("mobile-hidden");
+            outputEl.classList.remove("mobile-active");
+          }
+        }
+
         // Tab switching
         document.querySelectorAll(".tab").forEach((tab) => {
           tab.addEventListener("click", function () {
-            // Remove active class from all tabs and editors
+            const lang = this.getAttribute("data-lang");
+
+            // Remove active class from all tabs
             document
               .querySelectorAll(".tab")
               .forEach((t) => t.classList.remove("active"));
-            document
-              .querySelectorAll(".code-editor")
-              .forEach((e) => e.classList.remove("active"));
 
-            // Add active class to clicked tab and corresponding editor
+            // Add active class to clicked tab
             this.classList.add("active");
-            const lang = this.getAttribute("data-lang");
-            document.getElementById(`${lang}-editor`).classList.add("active");
 
-            // Refresh the active editor
-            const editor =
-              lang === "html"
-                ? htmlEditor
-                : lang === "css"
-                ? cssEditor
-                : jsEditor;
-            editor.refresh();
+            // Handle mobile output tab
+            if (isMobileView()) {
+              switchMobileTab(lang);
+            }
+
+            // If it's an editor tab (not output), switch the editor
+            if (lang !== "output") {
+              document
+                .querySelectorAll(".code-editor")
+                .forEach((e) => e.classList.remove("active"));
+
+              const editorEl = document.getElementById(`${lang}-editor`);
+              if (editorEl) {
+                editorEl.classList.add("active");
+              }
+
+              // Refresh the active editor
+              const editor =
+                lang === "html"
+                  ? htmlEditor
+                  : lang === "css"
+                  ? cssEditor
+                  : jsEditor;
+              editor.refresh();
+            }
           });
+        });
+
+        // Handle resize - reset mobile classes when switching to desktop
+        window.addEventListener("resize", function () {
+          if (!isMobileView()) {
+            document.querySelector(".editor").classList.remove("mobile-hidden");
+            document
+              .querySelector(".live-output")
+              .classList.remove("mobile-active");
+          }
         });
 
         // AI Code Fix functionality
@@ -1603,30 +1830,36 @@ function changeColor() {
         }
 
         function updateAiButtonText() {
+          const countSpan = aiFixBtn.querySelector(".ai-btn-count");
           if (remainingFreeRequests > 0) {
-            aiFixBtn.innerHTML = `<i class="fas fa-magic"></i> Analyze Code (${remainingFreeRequests} Free)`;
+            if (countSpan) countSpan.textContent = `${remainingFreeRequests}`;
             aiFixBtn.title = `You have ${remainingFreeRequests} free requests left today.`;
             aiFixBtn.classList.remove("paid-mode");
+            aiFixBtn.classList.add("free-mode");
           } else {
-            aiFixBtn.innerHTML = `<i class="fas fa-magic"></i> Analyze Code (25 pts)`;
+            if (countSpan) countSpan.textContent = `25`;
             aiFixBtn.title = "Costs 25 points per request";
             aiFixBtn.classList.add("paid-mode");
+            aiFixBtn.classList.remove("free-mode");
           }
         }
 
         // Call on load
         updateAiButtonStatus();
 
-        // Update current editor when switching tabs
+        // Update current editor when switching tabs (for AI analysis)
         document.querySelectorAll(".tab").forEach((tab) => {
           tab.addEventListener("click", function () {
             const lang = this.getAttribute("data-lang");
-            currentEditor =
-              lang === "html"
-                ? htmlEditor
-                : lang === "css"
-                ? cssEditor
-                : jsEditor;
+            // Only update currentEditor for code tabs, not output tab
+            if (lang !== "output") {
+              currentEditor =
+                lang === "html"
+                  ? htmlEditor
+                  : lang === "css"
+                  ? cssEditor
+                  : jsEditor;
+            }
           });
         });
 
