@@ -12,6 +12,8 @@
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/static/manifest.json" />
     <link
       rel="icon"
       href="/static/images/playground-mode.png"
@@ -466,27 +468,26 @@
   </head>
   <body>
     <nav class="sidebar d-flex flex-column align-items-center">
-      <div class="nav-item levels">
-        <a href="/">
-          <i class="fas fa-home" aria-hidden="true"></i>
-          <span>Home</span>
-        </a>
-      </div>
-      <div class="nav-item badges">
+      <a href="/" class="nav-item" style="text-decoration: none">
+        <i class="fas fa-home" aria-hidden="true"></i>
+        <span>Home</span>
+      </a>
+      <a href="/rankings" class="nav-item" style="text-decoration: none">
         <i class="fas fa-trophy" aria-hidden="true"></i>
-        <span>Ranking</span>
-      </div>
-      <div class="nav-item options">
+        <span>Rankings</span>
+      </a>
+      <a href="/options" class="nav-item" style="text-decoration: none">
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
         <span>Options</span>
-      </div>
-      <div
+      </a>
+      <a
+        href="/account"
         class="nav-item account mt-auto mb-4"
-        onclick="window.location.href='/account'"
+        style="text-decoration: none"
       >
         <i class="fas fa-user-circle" aria-hidden="true"></i>
         <span>Account</span>
-      </div>
+      </a>
     </nav>
 
     <div class="main-content">
