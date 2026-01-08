@@ -2,15 +2,58 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#240e44" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link
+      rel="manifest"
+      href="{{ url_for('static', filename='manifest.json') }}"
+    />
+    <link
+      rel="icon"
+      href="/static/images/playground-mode.png"
+      type="image/png"
+    />
     <title>Code Battle - WebScape</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Main Styles -->
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='styles.css') }}"
     />
+
+    <!-- Font Awesome -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
     />
 
     <!-- CodeMirror CSS -->
@@ -51,13 +94,100 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+        scrollbar-width: thin;
+        scrollbar-color: var(--accent-color) transparent;
       }
 
       body {
         font-family: "Montserrat", sans-serif;
         background-color: var(--bg-color);
-        color: var(--text-primary);
+        color: #a9a9a9;
         overflow: hidden;
+        min-height: 100vh;
+      }
+
+      /* Sidebar Navigation */
+      .sidebar {
+        background-color: #3a1464;
+        width: 90px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+        gap: 50px;
+        z-index: 1001;
+      }
+
+      .sidebar .nav-item {
+        text-align: center;
+        font-weight: 500;
+        font-size: 14px;
+        color: #a9a9a9;
+        user-select: none;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .sidebar .nav-item i {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+        color: #a9a9a9;
+      }
+
+      .sidebar .nav-item.account i {
+        font-size: 32px !important;
+        color: #bfbfbf;
+      }
+
+      .sidebar .nav-item:hover {
+        color: #ff69b4;
+      }
+
+      .sidebar .nav-item:hover i {
+        color: #ff69b4;
+      }
+
+      /* Leave Battle Modal Styles */
+      #leaveBattleModal .modal-content {
+        background: linear-gradient(135deg, #2d145c, #1a0d2e);
+        border: 2px solid var(--card-border);
+        border-radius: 16px;
+      }
+      #leaveBattleModal .modal-header {
+        border-bottom: 1px solid rgba(162, 89, 255, 0.3);
+      }
+      #leaveBattleModal .modal-title {
+        color: var(--accent-color);
+        font-weight: 600;
+      }
+      #leaveBattleModal .modal-body {
+        color: var(--text-primary);
+      }
+      #leaveBattleModal .modal-body p strong {
+        color: #ff6b6b;
+      }
+      #leaveBattleModal .modal-footer {
+        border-top: 1px solid rgba(162, 89, 255, 0.3);
+      }
+      #leaveBattleModal .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+      }
+      #leaveBattleModal .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      #leaveBattleModal .btn-danger {
+        background: linear-gradient(135deg, #ff4d6d, #c23a4f);
+        border: none;
+      }
+      #leaveBattleModal .btn-danger:hover {
+        background: linear-gradient(135deg, #ff6b85, #d44d63);
       }
 
       /* Queue Screen */
@@ -67,12 +197,9 @@
         align-items: center;
         justify-content: center;
         height: 100vh;
+        margin-left: 90px;
         text-align: center;
-        background: radial-gradient(
-          circle at center,
-          rgba(162, 89, 255, 0.1),
-          transparent 70%
-        );
+        background: var(--bg-color);
         position: relative;
         overflow: hidden;
       }
@@ -298,6 +425,7 @@
       .battle-screen {
         display: none;
         height: 100vh;
+        margin-left: 90px;
         flex-direction: column;
       }
 
@@ -697,6 +825,7 @@
         align-items: center;
         justify-content: center;
         height: 100vh;
+        margin-left: 90px;
         text-align: center;
         padding: 2rem;
       }
@@ -775,14 +904,673 @@
       }
 
       @media (max-width: 768px) {
+        /* Transform sidebar to top navigation bar */
+        .sidebar {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          width: 100vw !important;
+          max-width: 100vw !important;
+          height: 56px !important;
+          padding: 0 !important;
+          gap: 0 !important;
+
+          flex-direction: row !important;
+          justify-content: space-around !important;
+          align-items: center !important;
+
+          background: rgba(58, 20, 100, 0.95) !important;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+
+        .sidebar .nav-item,
+        .sidebar .nav-item.account,
+        .sidebar .nav-item.mt-auto,
+        .sidebar .nav-item.mb-4 {
+          margin: 0 !important;
+          width: auto !important;
+          min-width: 56px;
+          height: 100% !important;
+          flex: 1 1 auto !important;
+          max-width: 70px;
+          gap: 0 !important;
+
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+
+          padding: 10px 8px !important;
+          border-radius: 0 !important;
+        }
+
+        .sidebar .nav-item i {
+          font-size: 1.5rem !important;
+          margin-bottom: 0 !important;
+        }
+
+        /* Hide labels - icons only */
+        .sidebar .nav-item span {
+          display: none !important;
+        }
+
+        .sidebar .nav-item:active {
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Adjust screens for mobile - remove sidebar margin */
+        .queue-screen {
+          margin-left: 0 !important;
+          padding-top: 56px;
+        }
+
+        .battle-screen {
+          margin-left: 0 !important;
+          padding-top: 0;
+          height: 100vh;
+          overflow: hidden;
+        }
+
+        .results-screen {
+          margin-left: 0 !important;
+          padding-top: 56px;
+        }
+
+        .queue-logo {
+          font-size: 2.5rem;
+        }
+
+        .queue-card {
+          padding: 2rem;
+          margin: 1rem;
+          width: calc(100% - 2rem);
+          max-width: 350px;
+        }
+
+        .queue-status {
+          font-size: 1.3rem;
+        }
+
+        .queue-subtitle {
+          font-size: 0.9rem;
+        }
+
+        .cancel-queue-btn {
+          padding: 0.8rem 1.5rem;
+          font-size: 1rem;
+        }
+
+        /* ============================================
+           MOBILE BATTLE SCREEN REDESIGN
+           ============================================ */
+
+        /* Compact Header */
+        .battle-header {
+          position: fixed;
+          top: 56px;
+          left: 0;
+          right: 0;
+          z-index: 100;
+          padding: 0.4rem 0.75rem;
+          gap: 0.4rem;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          background: linear-gradient(135deg, var(--card-bg), #1a0d2e);
+          border-bottom: 1px solid var(--card-border);
+        }
+
+        .challenge-info {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .challenge-title {
+          font-size: 0.8rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-bottom: 0.2rem;
+        }
+
+        .challenge-meta {
+          gap: 0.4rem;
+          flex-wrap: nowrap;
+        }
+
+        .meta-badge {
+          padding: 0.1rem 0.4rem;
+          font-size: 0.6rem;
+        }
+
+        .timer {
+          font-size: 1.1rem;
+          min-width: 50px;
+          padding: 0.2rem 0.4rem;
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 6px;
+        }
+
+        .scores {
+          display: flex !important;
+          gap: 0.4rem;
+          flex-shrink: 0;
+        }
+
+        .scores .score-item {
+          text-align: center;
+          padding: 0.15rem 0.35rem;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 4px;
+          min-width: 40px;
+        }
+
+        .scores .score-label {
+          font-size: 0.45rem;
+          color: var(--text-secondary);
+          display: block;
+        }
+
+        .scores .score-value {
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
+
+        .scores .score-item:first-child .score-value {
+          color: var(--accent-color);
+        }
+
+        .scores .score-item:last-child .score-value {
+          color: var(--warning-color);
+        }
+
+        .leave-battle-btn {
+          padding: 0.3rem 0.5rem;
+          font-size: 0.7rem;
+        }
+
+        .leave-battle-btn span {
+          display: none;
+        }
+
+        /* Challenge Description Row - Part of Header */
+        .mobile-challenge-row {
+          display: flex !important;
+          width: 100%;
+          flex-basis: 100%;
+          margin-top: 0.25rem;
+          padding-top: 0.25rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          align-items: center;
+          gap: 0.4rem;
+          min-height: 22px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: max-height 0.3s ease;
+        }
+
+        .mobile-challenge-row .challenge-text {
+          flex: 1;
+          font-size: 0.65rem;
+          color: var(--text-secondary);
+          line-height: 1.3;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          transition: all 0.3s ease;
+        }
+
+        .mobile-challenge-row.expanded {
+          align-items: flex-start;
+        }
+
+        .mobile-challenge-row.expanded .challenge-text {
+          white-space: normal;
+          overflow: visible;
+          -webkit-line-clamp: unset;
+        }
+
+        .mobile-challenge-row .mobile-hint-btn {
+          flex-shrink: 0;
+          padding: 0.25rem 0.5rem;
+          background: linear-gradient(135deg, var(--accent-color), #d454a3);
+          border: none;
+          border-radius: 4px;
+          color: white;
+          font-weight: 600;
+          font-size: 0.6rem;
+          cursor: pointer;
+        }
+
+        /* Main Battle Area */
         .battle-main {
+          flex-direction: column;
+          height: calc(100vh - 56px);
+          padding-top: 70px;
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* Hide original panels on mobile */
+        .challenge-panel,
+        .preview-panel,
+        .challenge-panel .test-results,
+        .preview-panel .opponent-progress {
+          display: none !important;
+        }
+
+        /* Mobile Challenge Info - Now integrated in header */
+        .mobile-challenge-info {
+          display: none !important;
+        }
+
+        /* Mobile Tab Navigation - Now in footer */
+        .mobile-panel-tabs {
+          display: none !important;
+        }
+
+        .mobile-panel-tab {
+          flex: 1;
+          padding: 0.6rem 0.5rem;
+          background: transparent;
+          border: none;
+          color: var(--text-secondary);
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.2rem;
+          transition: all 0.2s ease;
+          border-bottom: 2px solid transparent;
+        }
+
+        .mobile-panel-tab i {
+          font-size: 1rem;
+        }
+
+        .mobile-panel-tab.active {
+          color: var(--accent-color);
+          border-bottom-color: var(--accent-color);
+          background: rgba(255, 102, 196, 0.1);
+        }
+
+        .mobile-panel-tab:active {
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Mobile Panel Content */
+        .mobile-panel-content {
+          display: block !important;
+          position: fixed;
+          top: calc(56px + 100px);
+          left: 0;
+          right: 0;
+          bottom: 110px;
+          overflow: hidden;
+          background: var(--bg-color);
+          z-index: 98;
+        }
+
+        .mobile-panel {
+          display: none !important;
+          height: 100%;
+          overflow-y: auto;
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: var(--bg-color);
+        }
+
+        .mobile-panel.active {
+          display: block !important;
+        }
+
+        /* Code Panel placeholder (instructions panel removed) */
+
+        /* Code Panel */
+        .mobile-code-panel {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+        }
+
+        .mobile-code-panel.active {
+          display: flex !important;
           flex-direction: column;
         }
 
-        .challenge-panel,
-        .preview-panel {
+        .mobile-code-panel .CodeMirror {
+          font-size: 13px !important;
+        }
+
+        /* When code panel is active, show the desktop editor-panel inside mobile view */
+        body.mobile-code-active .editor-panel {
+          display: flex !important;
+          position: fixed !important;
+          top: calc(70px + 100px) !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 110px !important;
+          z-index: 99 !important;
+          flex-direction: column !important;
+          background: var(--bg-color) !important;
+        }
+
+        body.mobile-code-active .editor-panel .editor-tabs {
+          flex-shrink: 0;
+          display: flex;
+          background: var(--card-bg);
+          border-bottom: 1px solid var(--card-border);
+        }
+
+        body.mobile-code-active .editor-panel .editor-tabs button {
+          flex: 1;
+          padding: 0.5rem 0.25rem;
+          font-size: 0.7rem;
+        }
+
+        body.mobile-code-active .editor-panel .code-editors {
+          flex: 1;
+          min-height: 0;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+
+        body.mobile-code-active .editor-panel .code-editor {
+          display: none !important;
+          flex: 1;
+          min-height: 0;
+        }
+
+        body.mobile-code-active .editor-panel .code-editor.active {
+          display: flex !important;
+          height: 100% !important;
+          flex-direction: column;
+        }
+
+        body.mobile-code-active .editor-panel .CodeMirror {
+          flex: 1 1 0 !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          font-size: 14px !important;
+        }
+
+        body.mobile-code-active .editor-panel .CodeMirror-scroll {
+          min-height: 100% !important;
+        }
+
+        body.mobile-code-active .editor-actions {
+          display: none !important;
+        }
+
+        /* Hide desktop editor panel by default on mobile */
+        .editor-panel {
+          display: none !important;
+        }
+
+        /* Tests Panel */
+        .mobile-tests-panel {
+          padding: 1rem;
+        }
+
+        .mobile-tests-panel.active {
+          display: block !important;
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          overflow-y: auto;
+        }
+
+        .mobile-tests-panel h4 {
+          color: var(--accent-color);
+          font-size: 1rem;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding-bottom: 0.75rem;
+          border-bottom: 1px solid var(--card-border);
+        }
+
+        .mobile-tests-panel .test-case {
+          margin-bottom: 0.75rem;
+          padding: 0.75rem;
+          border-radius: 8px;
+          background: rgba(0, 0, 0, 0.2);
+        }
+
+        .mobile-tests-panel .test-case.passed {
+          border-left: 3px solid var(--success-color);
+        }
+
+        .mobile-tests-panel .test-case.failed {
+          border-left: 3px solid var(--danger-color);
+        }
+
+        /* Preview Panel */
+        .mobile-preview-panel {
+          padding: 0;
+        }
+
+        .mobile-panel.mobile-preview-panel.active {
+          display: flex !important;
+          flex-direction: column;
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 100%;
+          overflow: hidden;
+          z-index: 99;
+        }
+
+        .mobile-preview-panel .preview-container {
+          flex: 1;
+          min-height: 0;
+          padding: 0.5rem;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .mobile-preview-panel .preview-iframe {
+          flex: 1;
           width: 100%;
-          max-height: 200px;
+          height: 100%;
+          min-height: 200px;
+          border-radius: 8px;
+          border: 1px solid var(--card-border);
+          background: white;
+        }
+
+        /* Mobile Footer - Tabs + Opponent Progress + Actions */
+        .mobile-footer {
+          display: flex !important;
+          flex-direction: column;
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 100;
+          background: linear-gradient(
+            135deg,
+            rgba(45, 20, 92, 0.98),
+            rgba(26, 13, 46, 0.98)
+          );
+          border-top: 1px solid var(--card-border);
+        }
+
+        /* Footer Tab Navigation */
+        .mobile-footer-tabs {
+          display: flex;
+          border-bottom: 1px solid var(--card-border);
+        }
+
+        .mobile-footer-tabs .mobile-panel-tab {
+          flex: 1;
+          padding: 0.45rem 0.25rem;
+          background: transparent;
+          border: none;
+          color: var(--text-secondary);
+          font-size: 0.6rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.1rem;
+          transition: all 0.2s ease;
+          border-top: 2px solid transparent;
+        }
+
+        .mobile-footer-tabs .mobile-panel-tab i {
+          font-size: 0.85rem;
+        }
+
+        .mobile-footer-tabs .mobile-panel-tab.active {
+          color: var(--accent-color);
+          border-top-color: var(--accent-color);
+          background: rgba(255, 102, 196, 0.15);
+        }
+
+        .mobile-footer-tabs .mobile-panel-tab:active {
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Footer Content Row */
+        .mobile-footer-content {
+          display: flex;
+          align-items: center;
+          padding: 0.4rem 0.5rem;
+          gap: 0.5rem;
+        }
+
+        .mobile-opponent-bar {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+          flex: 1;
+        }
+
+        .opponent-info-compact {
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+          font-size: 0.65rem;
+          color: var(--text-secondary);
+          white-space: nowrap;
+        }
+
+        .opponent-info-compact i {
+          color: var(--accent-color);
+          font-size: 0.7rem;
+        }
+
+        .opponent-status {
+          color: var(--warning-color);
+          font-weight: 600;
+        }
+
+        .opponent-progress-compact {
+          width: 100%;
+          height: 4px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .opponent-progress-compact .progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--accent-color), #d454a3);
+          border-radius: 2px;
+          transition: width 0.3s ease;
+        }
+
+        .mobile-action-buttons {
+          display: flex;
+          gap: 0.4rem;
+        }
+
+        .mobile-action-buttons .btn {
+          padding: 0.5rem 0.75rem;
+          font-size: 0.75rem;
+          white-space: nowrap;
+        }
+
+        /* Hide old action bar */
+        .mobile-action-bar {
+          display: none !important;
+        }
+
+        /* Editor Tabs Styling for Mobile */
+        .editor-tabs button {
+          padding: 0.6rem 1rem;
+          font-size: 0.8rem;
+        }
+
+        .match-found-text {
+          font-size: 2.5rem;
+        }
+
+        .opponent-info {
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .vs-animation {
+          font-size: 2rem;
+          margin: 1rem 0;
+        }
+
+        .player-card {
+          padding: 1rem;
+          min-width: 150px;
+        }
+
+        .results-container {
+          padding: 1.5rem;
+          margin: 1rem;
+        }
+
+        .results-trophy {
+          font-size: 4rem;
+        }
+
+        .results-title {
+          font-size: 2rem;
+        }
+
+        .results-actions {
+          flex-direction: column;
+        }
+
+        .results-actions button {
+          width: 100%;
+        }
+      }
+
+      /* Hide mobile elements on desktop */
+      @media (min-width: 769px) {
+        .mobile-panel-tabs,
+        .mobile-panel-content,
+        .mobile-action-bar {
+          display: none !important;
         }
       }
 
@@ -793,6 +1581,78 @@
     </style>
   </head>
   <body>
+    <!-- Sidebar / Mobile Top Nav -->
+    <nav class="sidebar d-flex flex-column align-items-center">
+      <a href="/" class="nav-item" style="text-decoration: none">
+        <i class="fas fa-home" aria-hidden="true"></i>
+        <span>Home</span>
+      </a>
+      <a href="/rankings" class="nav-item" style="text-decoration: none">
+        <i class="fas fa-trophy" aria-hidden="true"></i>
+        <span>Rankings</span>
+      </a>
+      <a href="/options" class="nav-item" style="text-decoration: none">
+        <i class="fas fa-paint-brush" aria-hidden="true"></i>
+        <span>Options</span>
+      </a>
+      <a
+        href="/account"
+        class="nav-item account mt-auto mb-4"
+        style="text-decoration: none"
+      >
+        <i class="fas fa-user-circle" aria-hidden="true"></i>
+        <span>Account</span>
+      </a>
+    </nav>
+
+    <!-- Leave Battle Confirmation Modal -->
+    <div
+      class="modal fade"
+      id="leaveBattleModal"
+      tabindex="-1"
+      aria-labelledby="leaveBattleModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="leaveBattleModalLabel">
+              <i class="fas fa-exclamation-triangle"></i> Leave Battle?
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to leave?</p>
+            <p style="color: #ff6b6b; margin-top: 1rem">
+              <strong>⚠️ Warning:</strong> This will surrender the battle and
+              your opponent will automatically win!
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Stay in Battle
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              onclick="confirmLeaveBattle()"
+            >
+              Leave & Surrender
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Queue Screen -->
     <div class="queue-screen" id="queueScreen">
       <div class="queue-content">
@@ -909,6 +1769,24 @@
         >
           <i class="fas fa-sign-out-alt"></i> Leave
         </button>
+
+        <!-- Mobile Challenge Description Row (inside header) -->
+        <div
+          class="mobile-challenge-row"
+          style="display: none"
+          onclick="toggleMobileChallengeRow(event)"
+        >
+          <div class="challenge-text" id="mobileDescriptionText">
+            Loading challenge...
+          </div>
+          <button
+            class="mobile-hint-btn"
+            id="mobileHintBtnHeader"
+            onclick="showHint(); event.stopPropagation();"
+          >
+            <i class="fas fa-lightbulb"></i> Hint
+          </button>
+        </div>
       </div>
 
       <!-- Main Content -->
@@ -1020,6 +1898,143 @@
             </div>
           </div>
         </div>
+
+        <!-- ============================================
+             MOBILE-ONLY ELEMENTS
+             ============================================ -->
+
+        <!-- Mobile Challenge Info (Always Visible) -->
+        <div class="mobile-challenge-info" style="display: none">
+          <div class="challenge-expanded" id="mobileChallengeExpanded">
+            <div id="mobileDescription">
+              <p>Loading challenge description...</p>
+            </div>
+            <div class="mobile-hint-section hidden" id="mobileHintSection">
+              <div class="hint-box">
+                <strong><i class="fas fa-lightbulb"></i> Hint:</strong>
+                <p id="mobileHintText"></p>
+              </div>
+            </div>
+            <button
+              class="mobile-hint-btn"
+              id="mobileShowHintBtn"
+              onclick="showHint();"
+            >
+              <i class="fas fa-lightbulb"></i> Show Hint
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Panel Content -->
+        <div class="mobile-panel-content" style="display: none">
+          <!-- Code Panel - This is a slot. The desktop .editor-panel will be shown here via CSS -->
+          <div
+            class="mobile-panel mobile-code-panel active"
+            id="mobileCodePanel"
+          >
+            <!-- Desktop editor-panel content will be styled to appear here on mobile -->
+            <p
+              class="mobile-code-placeholder"
+              style="
+                padding: 1rem;
+                color: var(--text-secondary);
+                text-align: center;
+                display: none;
+              "
+            >
+              Switch to Code tab to see editor
+            </p>
+          </div>
+
+          <!-- Tests Panel -->
+          <div class="mobile-panel mobile-tests-panel" id="mobileTestsPanel">
+            <div id="mobileTestResults">
+              <p style="color: var(--text-secondary)">
+                Submit your code to see results...
+              </p>
+            </div>
+          </div>
+
+          <!-- Preview Panel -->
+          <div
+            class="mobile-panel mobile-preview-panel"
+            id="mobilePreviewPanel"
+          >
+            <div class="preview-container">
+              <iframe
+                class="preview-iframe"
+                id="mobilePreviewFrame"
+                sandbox="allow-scripts"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Footer (Tabs + Opponent Progress + Actions) -->
+        <div class="mobile-footer" style="display: none">
+          <!-- Tab Navigation in Footer -->
+          <div class="mobile-footer-tabs">
+            <button
+              class="mobile-panel-tab active"
+              onclick="switchMobilePanel('code')"
+              data-panel="code"
+            >
+              <i class="fas fa-code"></i>
+              <span>Code</span>
+            </button>
+            <button
+              class="mobile-panel-tab"
+              onclick="switchMobilePanel('tests')"
+              data-panel="tests"
+            >
+              <i class="fas fa-vial"></i>
+              <span>Tests</span>
+            </button>
+            <button
+              class="mobile-panel-tab"
+              onclick="switchMobilePanel('preview')"
+              data-panel="preview"
+            >
+              <i class="fas fa-eye"></i>
+              <span>Preview</span>
+            </button>
+          </div>
+          <!-- Footer Content: Opponent Progress + Action Buttons -->
+          <div class="mobile-footer-content">
+            <div class="mobile-opponent-bar">
+              <div class="opponent-info-compact">
+                <i class="fas fa-user-ninja"></i>
+                <span id="mobileOpponentName2">Opponent</span>
+                <span class="opponent-status" id="mobileOpponentCompleted2"
+                  >0/5</span
+                >
+              </div>
+              <div class="opponent-progress-compact">
+                <div
+                  class="progress-fill"
+                  id="mobileOpponentProgressBar2"
+                  style="width: 0%"
+                ></div>
+              </div>
+            </div>
+            <div class="mobile-action-buttons">
+              <button
+                class="btn btn-primary"
+                id="mobileSubmitBtn"
+                onclick="submitCode()"
+              >
+                <i class="fas fa-check"></i> Submit
+              </button>
+              <button
+                class="btn btn-secondary hidden"
+                id="mobileNextBtn"
+                onclick="nextChallenge()"
+              >
+                <i class="fas fa-arrow-right"></i> Next
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1068,10 +2083,487 @@
       type="module"
     ></script>
 
+    <!-- Bootstrap JS for Modal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
     <!-- Battle Logic -->
     <script src="{{ url_for('static', filename='code-battle.js') }}"></script>
+
+    <!-- Navigation Protection -->
+    <script>
+      let allowNavigation = false;
+
+      // Helper function to check if element is visible
+      function isElementVisible(elementId) {
+        const el = document.getElementById(elementId);
+        if (!el) return false;
+        const computedStyle = window.getComputedStyle(el);
+        return (
+          computedStyle.display !== "none" &&
+          computedStyle.visibility !== "hidden"
+        );
+      }
+
+      // Check if user is currently in queue or battle
+      function isUserInActiveBattle() {
+        return (
+          isElementVisible("queueScreen") ||
+          isElementVisible("battleScreen") ||
+          isElementVisible("matchFoundAnimation")
+        );
+      }
+
+      // Check if user is in a completed state (results screen)
+      function isInResultsScreen() {
+        return isElementVisible("resultsScreen");
+      }
+
+      // Prevent accidental navigation/page close during battle
+      window.addEventListener("beforeunload", function (event) {
+        if (
+          isUserInActiveBattle() &&
+          !isInResultsScreen() &&
+          !allowNavigation
+        ) {
+          // Emit leave event before unloading
+          if (
+            typeof socket !== "undefined" &&
+            socket &&
+            socket.connected &&
+            typeof currentMatchId !== "undefined" &&
+            currentMatchId
+          ) {
+            socket.emit("leave_code_battle", { match_id: currentMatchId });
+          }
+
+          event.preventDefault();
+          event.returnValue =
+            "You're in an active battle! Leaving will forfeit the match.";
+          return event.returnValue;
+        }
+      });
+
+      // Handle back button click
+      function handleBackNavigation(event) {
+        event.preventDefault();
+
+        // If in results screen, just navigate
+        if (isInResultsScreen()) {
+          window.location.href = "/user/competitive";
+          return;
+        }
+
+        // If in queue or battle, show confirmation
+        if (isUserInActiveBattle()) {
+          // Clean up any existing modals first
+          document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+            backdrop.remove();
+          });
+          document.body.classList.remove("modal-open");
+          document.body.style.overflow = "";
+          document.body.style.paddingRight = "";
+
+          // Show confirmation modal
+          const modalElement = document.getElementById("leaveBattleModal");
+          if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement, {
+              backdrop: "static",
+              keyboard: true,
+            });
+            modal.show();
+          }
+        } else {
+          window.location.href = "/user/competitive";
+        }
+      }
+
+      // Confirm leave battle from modal
+      function confirmLeaveBattle() {
+        // Close the modal
+        const modalElement = document.getElementById("leaveBattleModal");
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+          modal.hide();
+        }
+
+        // Force remove any lingering backdrops
+        setTimeout(() => {
+          document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+            backdrop.remove();
+          });
+          document.body.classList.remove("modal-open");
+          document.body.style.overflow = "";
+          document.body.style.paddingRight = "";
+        }, 100);
+
+        // Emit leave event if in battle
+        if (
+          typeof socket !== "undefined" &&
+          socket &&
+          socket.connected &&
+          typeof currentMatchId !== "undefined" &&
+          currentMatchId
+        ) {
+          socket.emit("leave_code_battle", { match_id: currentMatchId });
+        } else if (
+          typeof socket !== "undefined" &&
+          socket &&
+          socket.connected
+        ) {
+          // In queue, cancel it
+          socket.emit("cancel_code_queue");
+        }
+
+        // Allow navigation and redirect
+        allowNavigation = true;
+        window.location.href = "/user/competitive";
+      }
+
+      // Handle modal hidden event to clean up backdrop
+      document.addEventListener("DOMContentLoaded", function () {
+        const leaveBattleModalElement =
+          document.getElementById("leaveBattleModal");
+        if (leaveBattleModalElement) {
+          leaveBattleModalElement.addEventListener(
+            "hidden.bs.modal",
+            function () {
+              // Ensure backdrop is removed
+              document
+                .querySelectorAll(".modal-backdrop")
+                .forEach((backdrop) => {
+                  backdrop.remove();
+                });
+              document.body.classList.remove("modal-open");
+              document.body.style.overflow = "";
+              document.body.style.paddingRight = "";
+            }
+          );
+        }
+      });
+
+      // ==================== MOBILE PANEL SWITCHING ====================
+      let currentMobilePanel = "code"; // Default to code panel on mobile
+      let mobileInfoExpanded = false;
+
+      function switchMobilePanel(panelName) {
+        currentMobilePanel = panelName;
+
+        // Update tab buttons (now in footer)
+        document
+          .querySelectorAll(".mobile-footer-tabs .mobile-panel-tab")
+          .forEach((btn) => {
+            btn.classList.remove("active");
+            if (btn.dataset.panel === panelName) {
+              btn.classList.add("active");
+            }
+          });
+
+        // Update panels
+        document
+          .querySelectorAll(".mobile-panel-content .mobile-panel")
+          .forEach((panel) => {
+            panel.classList.remove("active");
+          });
+
+        // Show target panel
+        const panelMap = {
+          code: "mobileCodePanel",
+          tests: "mobileTestsPanel",
+          preview: "mobilePreviewPanel",
+        };
+
+        const targetPanel = document.getElementById(panelMap[panelName]);
+        if (targetPanel) {
+          targetPanel.classList.add("active");
+        }
+
+        // Toggle body class for code panel (used to show desktop editor)
+        if (panelName === "code") {
+          document.body.classList.add("mobile-code-active");
+          // Refresh CodeMirror editors with multiple delays for reliability
+          setTimeout(() => {
+            if (typeof htmlEditor !== "undefined") htmlEditor.refresh();
+            if (typeof cssEditor !== "undefined") cssEditor.refresh();
+            if (typeof jsEditor !== "undefined") jsEditor.refresh();
+          }, 100);
+          // Secondary refresh to ensure layout is complete
+          setTimeout(() => {
+            if (typeof htmlEditor !== "undefined") htmlEditor.refresh();
+            if (typeof cssEditor !== "undefined") cssEditor.refresh();
+            if (typeof jsEditor !== "undefined") jsEditor.refresh();
+          }, 300);
+        } else {
+          document.body.classList.remove("mobile-code-active");
+        }
+
+        // Update mobile preview when switching to preview panel
+        if (panelName === "preview") {
+          // Small delay to ensure panel is visible first
+          setTimeout(updateMobilePreview, 50);
+          setTimeout(updateMobilePreview, 200);
+        }
+      }
+
+      // Toggle mobile challenge info (collapsible)
+      function toggleMobileChallengeInfo() {
+        const infoContainer = document.querySelector(".mobile-challenge-info");
+        const expandedContent = document.getElementById(
+          "mobileChallengeExpanded"
+        );
+
+        mobileInfoExpanded = !mobileInfoExpanded;
+
+        if (infoContainer) {
+          infoContainer.classList.toggle("expanded", mobileInfoExpanded);
+        }
+        if (expandedContent) {
+          expandedContent.classList.toggle("hidden", !mobileInfoExpanded);
+        }
+      }
+
+      // Toggle mobile challenge row expansion (tap to see full description)
+      function toggleMobileChallengeRow(event) {
+        // Don't toggle if clicking on the hint button
+        if (event.target.closest(".mobile-hint-btn")) return;
+
+        const row = document.querySelector(".mobile-challenge-row");
+        if (row) {
+          row.classList.toggle("expanded");
+        }
+      }
+
+      // Collapse mobile challenge row (used when loading new challenge)
+      function collapseMobileChallengeRow() {
+        const row = document.querySelector(".mobile-challenge-row");
+        if (row) {
+          row.classList.remove("expanded");
+        }
+      }
+
+      // Auto-switch to Tests tab on submit (mobile only)
+      function autoSwitchToTestsOnSubmit() {
+        if (isMobileView()) {
+          switchMobilePanel("tests");
+        }
+      }
+
+      // Update mobile preview iframe
+      function updateMobilePreview() {
+        const mobilePreviewFrame =
+          document.getElementById("mobilePreviewFrame");
+
+        if (!mobilePreviewFrame) {
+          console.log("Mobile preview frame not found");
+          return;
+        }
+
+        // Try to get content from desktop preview first (already rendered)
+        const desktopPreviewFrame = document.getElementById("previewFrame");
+        if (desktopPreviewFrame && desktopPreviewFrame.srcdoc) {
+          mobilePreviewFrame.srcdoc = desktopPreviewFrame.srcdoc;
+          return;
+        }
+
+        // Fallback: Generate preview content directly from editors
+        if (
+          typeof htmlEditor !== "undefined" &&
+          typeof cssEditor !== "undefined" &&
+          typeof jsEditor !== "undefined"
+        ) {
+          try {
+            const html = htmlEditor.getValue();
+            const css = cssEditor.getValue();
+            const js = jsEditor.getValue();
+
+            const content = `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="UTF-8">
+                <style>${css}</style>
+              </head>
+              <body>
+                ${html}
+                <script>
+                  try {
+                    ${js}
+                  } catch (e) {
+                    console.error('JavaScript error:', e);
+                  }
+                <\/script>
+              </body>
+              </html>
+            `;
+
+            mobilePreviewFrame.srcdoc = content;
+          } catch (e) {
+            console.log("Could not update mobile preview:", e);
+          }
+        }
+      }
+
+      // Sync mobile UI with challenge data
+      function syncMobileChallenge(challenge) {
+        if (!challenge) return;
+
+        // Update mobile description in header row
+        const mobileDescText = document.getElementById("mobileDescriptionText");
+        if (mobileDescText && challenge.description) {
+          // Strip HTML tags and get plain text
+          const plainText = challenge.description.replace(/<[^>]*>/g, "");
+          mobileDescText.textContent = plainText;
+        }
+
+        // Update mobile description (old element, keep for compatibility)
+        const mobileDesc = document.getElementById("mobileDescription");
+        if (mobileDesc) {
+          mobileDesc.innerHTML = `<p>${challenge.description || ""}</p>`;
+        }
+
+        // Update mobile hint button visibility in header
+        const mobileHintBtnHeader = document.getElementById(
+          "mobileHintBtnHeader"
+        );
+        if (mobileHintBtnHeader) {
+          if (challenge.hint) {
+            mobileHintBtnHeader.classList.remove("hidden");
+          } else {
+            mobileHintBtnHeader.classList.add("hidden");
+          }
+        }
+
+        // Update mobile hint
+        const mobileHintSection = document.getElementById("mobileHintSection");
+        const mobileHintText = document.getElementById("mobileHintText");
+        const mobileShowHintBtn = document.getElementById("mobileShowHintBtn");
+
+        if (challenge.hint) {
+          if (mobileHintText) mobileHintText.textContent = challenge.hint;
+          if (mobileShowHintBtn) mobileShowHintBtn.classList.remove("hidden");
+          if (mobileHintSection) mobileHintSection.classList.add("hidden");
+        } else {
+          if (mobileShowHintBtn) mobileShowHintBtn.classList.add("hidden");
+          if (mobileHintSection) mobileHintSection.classList.add("hidden");
+        }
+
+        // Update mobile progress
+        const mobileProgress = document.getElementById("mobileProgress");
+        if (mobileProgress && typeof currentChallengeIndex !== "undefined") {
+          mobileProgress.textContent = `${
+            currentChallengeIndex + 1
+          }/${totalChallenges}`;
+        }
+
+        // Clear mobile test results
+        const mobileTestResults = document.getElementById("mobileTestResults");
+        if (mobileTestResults) {
+          mobileTestResults.innerHTML = `<p style="color: var(--text-secondary);">Submit your code to see results...</p>`;
+        }
+
+        // Reset mobile buttons
+        const mobileSubmitBtn = document.getElementById("mobileSubmitBtn");
+        const mobileNextBtn = document.getElementById("mobileNextBtn");
+        if (mobileSubmitBtn) mobileSubmitBtn.classList.remove("hidden");
+        if (mobileNextBtn) mobileNextBtn.classList.add("hidden");
+      }
+
+      // Sync mobile scores
+      function syncMobileScores(yourScore, opponentScore) {
+        const mobileYourScore = document.getElementById("mobileYourScore");
+        const mobileOpponentScore = document.getElementById(
+          "mobileOpponentScore"
+        );
+
+        if (mobileYourScore) mobileYourScore.textContent = yourScore;
+        if (mobileOpponentScore)
+          mobileOpponentScore.textContent = opponentScore;
+      }
+
+      // Sync mobile opponent progress (now in footer)
+      function syncMobileOpponentProgress(name, completed, total) {
+        // Update footer opponent info
+        const mobileOpponentName2 = document.getElementById(
+          "mobileOpponentName2"
+        );
+        const mobileOpponentCompleted2 = document.getElementById(
+          "mobileOpponentCompleted2"
+        );
+        const mobileOpponentProgressBar2 = document.getElementById(
+          "mobileOpponentProgressBar2"
+        );
+
+        if (mobileOpponentName2) mobileOpponentName2.textContent = name;
+        if (mobileOpponentCompleted2)
+          mobileOpponentCompleted2.textContent = `${completed}/${total}`;
+        if (mobileOpponentProgressBar2)
+          mobileOpponentProgressBar2.style.width = `${
+            (completed / total) * 100
+          }%`;
+      }
+
+      // Sync mobile test results
+      function syncMobileTestResults(resultHTML) {
+        const mobileTestResults = document.getElementById("mobileTestResults");
+        if (mobileTestResults) {
+          mobileTestResults.innerHTML = resultHTML;
+        }
+      }
+
+      // Show mobile next button
+      function showMobileNextButton() {
+        const mobileSubmitBtn = document.getElementById("mobileSubmitBtn");
+        const mobileNextBtn = document.getElementById("mobileNextBtn");
+        if (mobileSubmitBtn) mobileSubmitBtn.classList.add("hidden");
+        if (mobileNextBtn) mobileNextBtn.classList.remove("hidden");
+      }
+
+      // Check if on mobile
+      function isMobileView() {
+        return window.innerWidth <= 768;
+      }
+
+      // Initialize mobile panel visibility based on screen size
+      function initMobilePanels() {
+        const mobileChallengeRow = document.querySelector(
+          ".mobile-challenge-row"
+        );
+        const mobileContent = document.querySelector(".mobile-panel-content");
+        const mobileFooter = document.querySelector(".mobile-footer");
+
+        if (isMobileView()) {
+          if (mobileChallengeRow) mobileChallengeRow.style.display = "flex";
+          if (mobileContent) mobileContent.style.display = "block";
+          if (mobileFooter) mobileFooter.style.display = "flex";
+
+          // Make sure code panel is active and body class is set
+          if (currentMobilePanel === "code") {
+            document.body.classList.add("mobile-code-active");
+          }
+        } else {
+          if (mobileChallengeRow) mobileChallengeRow.style.display = "none";
+          if (mobileContent) mobileContent.style.display = "none";
+          if (mobileFooter) mobileFooter.style.display = "none";
+
+          // Remove mobile-specific body class on desktop
+          document.body.classList.remove("mobile-code-active");
+        }
+      }
+
+      // Listen for resize
+      window.addEventListener("resize", initMobilePanels);
+
+      // Initialize on DOM ready
+      document.addEventListener("DOMContentLoaded", function () {
+        initMobilePanels();
+
+        // Default to code panel on mobile
+        if (isMobileView()) {
+          switchMobilePanel("code");
+        }
+      });
+    </script>
   </body>
 </html>

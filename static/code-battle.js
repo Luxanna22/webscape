@@ -182,12 +182,32 @@ function cancelQueue() {
 }
 
 function leaveBattle() {
-    if (confirm('Are you sure you want to leave? This will count as a loss.')) {
-        console.log('Leaving battle...');
-        if (socket && socket.connected) {
-            socket.emit('leave_code_battle', { match_id: currentMatchId });
+    // Check if Bootstrap modal exists
+    const modalElement = document.getElementById("leaveBattleModal");
+    if (modalElement && typeof bootstrap !== 'undefined') {
+        // Clean up any existing modals first
+        document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+            backdrop.remove();
+        });
+        document.body.classList.remove("modal-open");
+        document.body.style.overflow = "";
+        document.body.style.paddingRight = "";
+
+        // Show the modal
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: "static",
+            keyboard: true,
+        });
+        modal.show();
+    } else {
+        // Fallback to confirm dialog
+        if (confirm('Are you sure you want to leave? This will count as a loss.')) {
+            console.log('Leaving battle...');
+            if (socket && socket.connected) {
+                socket.emit('leave_code_battle', { match_id: currentMatchId });
+            }
+            window.location.href = '/user/competitive';
         }
-        window.location.href = '/user/competitive';
     }
 }
 
@@ -324,14 +344,29 @@ function loadChallenge(challenge) {
     
     // Update preview
     updatePreview();
+    
+    // Sync mobile UI
+    if (typeof syncMobileChallenge === 'function') {
+        syncMobileChallenge(challenge);
+    }
+    
+    // Collapse mobile challenge row if expanded
+    if (typeof collapseMobileChallengeRow === 'function') {
+        collapseMobileChallengeRow();
+    }
+    
+    // Switch to Code tab on mobile for better UX
+    if (typeof switchMobilePanel === 'function') {
+        switchMobilePanel('code');
+    }
 }
 
 function switchTab(tab) {
-    // Update tab buttons
+    // Update desktop tab buttons
     document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
     document.getElementById(tab + 'Tab').classList.add('active');
     
-    // Update editor visibility
+    // Update desktop editor visibility
     document.querySelectorAll('.code-editor').forEach(e => e.classList.remove('active'));
     document.getElementById(tab + 'Editor').classList.add('active');
     
@@ -344,6 +379,12 @@ function switchTab(tab) {
 function showHint() {
     document.getElementById('hintSection').classList.remove('hidden');
     document.getElementById('showHintBtn').classList.add('hidden');
+    
+    // Sync to mobile
+    const mobileHintSection = document.getElementById('mobileHintSection');
+    const mobileShowHintBtn = document.getElementById('mobileShowHintBtn');
+    if (mobileHintSection) mobileHintSection.classList.remove('hidden');
+    if (mobileShowHintBtn) mobileShowHintBtn.classList.add('hidden');
 }
 
 function updatePreview() {
@@ -416,6 +457,17 @@ function handleChallengeResult(data) {
     if (data.passed && currentChallengeIndex < totalChallenges - 1) {
         document.getElementById('submitBtn').classList.add('hidden');
         document.getElementById('nextBtn').classList.remove('hidden');
+        
+        // Sync to mobile
+        if (typeof showMobileNextButton === 'function') {
+            showMobileNextButton();
+        }
+    }
+    
+    // Sync mobile scores
+    if (typeof syncMobileScores === 'function') {
+        const opponentScore = document.getElementById('opponentScore').textContent;
+        syncMobileScores(data.total_score, opponentScore);
     }
     
     // Show notification
@@ -475,6 +527,16 @@ function displayTestResults(results, passed) {
     }
     
     container.innerHTML = html;
+    
+    // Sync to mobile
+    if (typeof syncMobileTestResults === 'function') {
+        syncMobileTestResults(html);
+    }
+    
+    // Auto-switch to Tests tab on mobile after submit
+    if (typeof autoSwitchToTestsOnSubmit === 'function') {
+        autoSwitchToTestsOnSubmit();
+    }
 }
 
 function handleOpponentProgress(data) {
@@ -489,6 +551,15 @@ function handleOpponentProgress(data) {
     document.getElementById('opponentProgressBar').style.width = percentage + '%';
     document.getElementById('opponentCompleted').textContent = 
         `${completed}/${totalChallenges} completed`;
+    
+    // Sync to mobile
+    if (typeof syncMobileOpponentProgress === 'function') {
+        syncMobileOpponentProgress(opponentName, completed, totalChallenges);
+    }
+    if (typeof syncMobileScores === 'function') {
+        const yourScore = document.getElementById('yourScore').textContent;
+        syncMobileScores(yourScore, data.score);
+    }
 }
 
 function nextChallenge() {
