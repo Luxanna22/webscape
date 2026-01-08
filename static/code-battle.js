@@ -460,7 +460,7 @@ function displayTestResults(results, passed) {
                         <span>Test ${test.test_number} (${test.type})</span>
                         <i class="fas ${icon} test-icon ${status}"></i>
                     </div>
-                    ${test.error ? `<div style="color: var(--danger-color); font-size: 0.9rem;">Error: ${test.error}</div>` : ''}
+                    ${test.error ? `<div style="color: var(--danger-color); font-size: 0.9rem;">${test.error}</div>` : ''}
                     ${!test.passed ? `
                         <div style="font-size: 0.9rem; margin-top: 0.5rem;">
                             ${test.type === 'js' && test.expected !== undefined ? `

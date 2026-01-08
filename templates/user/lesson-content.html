@@ -1714,7 +1714,7 @@
                 const parsedId = parseInt(pageMetaEl.dataset.lessonContentId, 10);
                 if (!Number.isNaN(parsedId)) {
                   window.currentLessonContentId = parsedId;
-                  console.log('[Comments Debug] Updated currentLessonContentId from DOM:', parsedId);
+                  // console.log('[Comments Debug] Updated currentLessonContentId from DOM:', parsedId);
                 }
               }
               currentPageMeta = data.page_meta || null;
@@ -1828,20 +1828,20 @@
               initializePlaygroundEditor();
 
               // Update comment manager with new lesson page ID
-              console.log('[Comments Debug] AJAX navigation completed');
-              console.log('[Comments Debug] currentPageMeta:', currentPageMeta);
-              console.log('[Comments Debug] window.commentManager exists:', !!window.commentManager);
+              // console.log('[Comments Debug] AJAX navigation completed');
+              // console.log('[Comments Debug] currentPageMeta:', currentPageMeta);
+              // console.log('[Comments Debug] window.commentManager exists:', !!window.commentManager);
 
               if (window.commentManager && currentPageMeta && currentPageMeta.page_id) {
-                console.log('[Comments Debug] Updating to page_id:', currentPageMeta.page_id);
+                // console.log('[Comments Debug] Updating to page_id:', currentPageMeta.page_id);
                 window.currentLessonContentId = currentPageMeta.page_id;
                 window.commentManager.updateLessonId(currentPageMeta.page_id);
               } else {
-                console.warn('[Comments Debug] Cannot update comments:', {
+                /* console.warn('[Comments Debug] Cannot update comments:', {
                   hasCommentManager: !!window.commentManager,
                   hasPageMeta: !!currentPageMeta,
                   hasPageId: currentPageMeta ? !!currentPageMeta.page_id : false
-                });
+                }); */
               }
             });
         }
@@ -1920,7 +1920,7 @@
           }
 
           output.style.display = 'flex';
-          lessonPlaygroundFrameWindow = null;
+          // lessonPlaygroundFrameWindow = null; // No longer needed
           clearLessonDebugConsole(true);
 
           if (lessonDebugPanel) {
@@ -1935,28 +1935,67 @@
               outputContent.innerHTML = '';
               var iframe = document.createElement('iframe');
               iframe.setAttribute('title', 'Lesson playground output');
-              iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+              // Removed allow-same-origin to fix security warning
+              iframe.setAttribute('sandbox', 'allow-scripts');
+              iframe.style.width = '100%';
+              iframe.style.height = '100%';
+              iframe.style.border = 'none';
+
+              // Console interceptor script
+              var interceptor = `
+                <script>
+                  (function() {
+                    function send(type, payload) {
+                      try {
+                        window.parent.postMessage({
+                          source: 'embedded-playground',
+                          type: type,
+                          payload: payload
+                        }, '*');
+                      } catch(e) {}
+                    }
+
+                    function safeStringify(arg) {
+                      if (typeof arg === 'object' && arg !== null) {
+                        try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+                      }
+                      return String(arg);
+                    }
+
+                    var levels = ['log', 'error', 'warn', 'info'];
+                    levels.forEach(function(level) {
+                      var old = console[level];
+                      console[level] = function() {
+                        var args = Array.from(arguments).map(safeStringify);
+                        send('console', { level: level, args: args });
+                        if (old) old.apply(console, arguments);
+                      };
+                    });
+
+                    window.onerror = function(msg, url, line, col, error) {
+                      send('error', {
+                        message: msg,
+                        source: url,
+                        lineno: line,
+                        colno: col,
+                        stack: error ? error.stack : ''
+                      });
+                    };
+
+                    window.addEventListener('unhandledrejection', function(event) {
+                      send('error', {
+                        message: event.reason && event.reason.message ? event.reason.message : String(event.reason),
+                        stack: event.reason && event.reason.stack ? event.reason.stack : ''
+                      });
+                    });
+                  })();
+                <\/script>
+              `;
+
               outputContent.appendChild(iframe);
 
-              lessonPlaygroundFrameWindow =
-                iframe.contentWindow ||
-                (iframe.contentDocument && iframe.contentDocument.defaultView) ||
-                null;
-
-              if (lessonPlaygroundFrameWindow) {
-                installLessonDebugHooks(lessonPlaygroundFrameWindow);
-              }
-
-              var doc =
-                iframe.contentDocument ||
-                (lessonPlaygroundFrameWindow && lessonPlaygroundFrameWindow.document);
-              if (!doc) {
-                throw new Error('Unable to prepare preview frame.');
-              }
-
-              doc.open();
-              doc.write(code);
-              doc.close();
+              // Use srcdoc to safely inject content without allow-same-origin
+              iframe.srcdoc = interceptor + code;
 
               if (lessonDebugPanel) {
                 lessonDebugPanel.style.display = 'flex';
@@ -1972,6 +2011,26 @@
             }
           }, 700); // Simulate processing delay
         }
+
+        // Listener for embedded playground messages
+        window.addEventListener('message', function(event) {
+          if (event.data && event.data.source === 'embedded-playground') {
+             if (event.data.type === 'console') {
+                var p = event.data.payload;
+                appendLessonDebugEntry({ type: 'console', level: p.level, args: p.args });
+             } else if (event.data.type === 'error') {
+                var p = event.data.payload;
+                appendLessonDebugEntry({
+                  type: 'error',
+                  level: 'error',
+                  message: p.message,
+                  stack: p.stack,
+                  lineno: p.lineno,
+                  colno: p.colno
+                });
+             }
+          }
+        });
 
         function checkAnswer() {
           const selectedChoice = document.querySelector('input[name="choice"]:checked');
@@ -2107,11 +2166,14 @@
           var outer = document.getElementById('playground-editor-outer');
           var output = document.getElementById('playground-output');
           var btn = document.getElementById('playground-fullscreen-btn');
+
+          if (!wrapper || !outer || !output || !btn) return;
+
           var editorHeader = outer.querySelector('.playground-header');
           var outputHeader = output.querySelector('.playground-output-header');
           var outputContent = document.getElementById('playground-output-content');
           var debugPanel = document.getElementById('playground-debug-panel');
-          if (!wrapper || !btn) return;
+
           btn.onclick = function() {
             var isFullscreen = wrapper.classList.toggle('fullscreen');
             if (isFullscreen) {
@@ -2311,7 +2373,7 @@
       function clearAnalyticsSession() {
         sessionStorage.removeItem(`visitedPages_${currentUserId}`);
         sessionStorage.removeItem(`analyticsSent_${currentUserId}`);
-        console.log('Analytics session storage cleared for user:', currentUserId);
+        // console.log('Analytics session storage cleared for user:', currentUserId);
       }
 
       // Check if user has any existing analytics data and clear session if not

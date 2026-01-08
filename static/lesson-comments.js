@@ -23,29 +23,29 @@ class LessonCommentManager {
         if (this.commentContainer) {
             // Don't load comments immediately - wait for panel to open
             this.setupCharCounter();
-            console.log('[Comments] Initialized, waiting for panel to open');
+            // console.log('[Comments] Initialized, waiting for panel to open');
         } else {
-            console.warn('Comment container not found in DOM');
+            // console.warn('Comment container not found in DOM');
         }
     }
 
     // Update lesson ID when navigating between pages
     updateLessonId(newLessonId) {
-        console.log('[Comments] updateLessonId called:', {
+        /* console.log('[Comments] updateLessonId called:', {
             oldId: this.lessonContentId,
             newId: newLessonId,
             changed: this.lessonContentId !== newLessonId,
             commentsLoaded: this.commentsLoaded
-        });
+        }); */
         
         if (this.lessonContentId !== newLessonId) {
-            console.log('[Comments] Updating to new page ID:', newLessonId);
+            // console.log('[Comments] Updating to new page ID:', newLessonId);
             this.lessonContentId = newLessonId;
             this.comments = [];
             this.commentsLoaded = false; // Reset loaded flag
             this.isLoading = false; // Reset loading flag too
             this.lastLoadedLessonId = null;
-            console.log('[Comments] Reset state - commentsLoaded=false, isLoading=false');
+            // console.log('[Comments] Reset state - commentsLoaded=false, isLoading=false');
 
             let panelOpen = false;
             const panel = document.getElementById('lesson-comments-dropdown');
@@ -74,13 +74,13 @@ class LessonCommentManager {
             }
 
             if (panelOpen) {
-                console.log('[Comments] Panel already open, loading new page comments immediately');
+                // console.log('[Comments] Panel already open, loading new page comments immediately');
                 this.loadComments();
             } else {
-                console.log('[Comments] Comments will reload on next panel open');
+                // console.log('[Comments] Comments will reload on next panel open');
             }
         } else {
-            console.log('[Comments] Page ID unchanged, skipping reload');
+            // console.log('[Comments] Page ID unchanged, skipping reload');
         }
     }
 

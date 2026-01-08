@@ -189,13 +189,13 @@
       const socket = io();
 
       socket.on('connect', function () {
-        console.log('Badge system connected:', socket.id);
+        // console.log('Badge system connected:', socket.id);
       });
 
       socket.on('badge_awarded', function (data) {
-        console.log('🎉 Badge awarded via socket:', data);
+        // console.log('🎉 Badge awarded via socket:', data);
         if (data && data.badges) {
-          console.log('📛 Showing badges:', data.badges);
+          // console.log('📛 Showing badges:', data.badges);
           showBadges(data.badges);
         } else {
           console.warn('⚠️ Badge data missing or invalid:', data);
