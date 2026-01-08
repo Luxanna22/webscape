@@ -73,6 +73,7 @@
         align-items: center;
         padding-top: 20px;
         gap: 50px;
+        z-index: 1100;
       }
 
       .sidebar .nav-item {
@@ -408,6 +409,39 @@
         }
       }
 
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 0.4;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 0.6;
+        }
+      }
+
+      @keyframes glow {
+        0%,
+        100% {
+          text-shadow: 0 0 20px rgba(255, 105, 180, 0.6);
+        }
+        50% {
+          text-shadow: 0 0 40px rgba(255, 105, 180, 1),
+            0 0 60px rgba(255, 105, 180, 0.6);
+        }
+      }
+
+      @keyframes fadeInOut {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
       .match-found-text {
         font-family: "Luckiest Guy", cursive;
         font-size: 5rem;
@@ -511,6 +545,7 @@
           height: 56px !important;
           padding: 0 !important;
           gap: 0 !important;
+          z-index: 1100 !important;
 
           flex-direction: row !important;
           justify-content: space-around !important;
@@ -613,22 +648,134 @@
           width: 100%;
           max-width: 100%;
           padding: 1rem;
+          min-height: calc(100vh - 56px);
+        }
+
+        .matchmaking-content {
+          width: 100%;
+          max-width: 400px;
+          margin: 0 auto;
         }
 
         .matchmaking-card {
           padding: 2rem 1.5rem;
+          margin: 1.5rem 0;
         }
 
         .matchmaking-logo {
           font-size: 2rem;
         }
+
+        .matchmaking-animation {
+          width: 160px !important;
+          height: 160px !important;
+        }
+
+        .matchmaking-status {
+          font-size: 1.4rem;
+        }
+
+        .matchmaking-subtitle {
+          font-size: 0.95rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .btn-queue {
+          padding: 0.9rem 2rem;
+          font-size: 1rem;
+        }
+
+        /* Match Found - Tablet */
+        .match-found-animation {
+          padding: 1.5rem;
+        }
+
+        .match-found-text {
+          font-size: 3.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .match-found-content {
+          gap: 1.5rem;
+        }
+
+        .vs-animation {
+          font-size: 2.5rem;
+        }
+
+        .player-card-match {
+          min-width: 180px;
+          padding: 1.25rem 1.75rem;
+        }
       }
 
       @media (max-width: 575.98px) {
         .matchmaking-container {
-          width: 90%;
-          max-width: 90%;
+          width: 100%;
+          max-width: 100%;
+          min-height: calc(100vh - 56px);
+          padding: 0.5rem;
+          background: radial-gradient(
+            circle at center,
+            rgba(162, 89, 255, 0.15),
+            transparent 60%
+          );
         }
+
+        .matchmaking-container::before {
+          width: 200px;
+          height: 200px;
+        }
+
+        .matchmaking-content {
+          width: 100%;
+          padding: 0 0.5rem;
+        }
+
+        .matchmaking-logo {
+          font-size: 1.6rem;
+          margin-bottom: 0.5rem;
+          text-shadow: 0 0 20px rgba(255, 105, 180, 0.6);
+        }
+
+        .matchmaking-logo i {
+          font-size: 1.4rem;
+          margin-right: 0.5rem;
+        }
+
+        .matchmaking-card {
+          padding: 1.5rem 1rem;
+          margin: 1rem 0;
+          border-radius: 16px;
+          border-width: 1.5px;
+        }
+
+        .matchmaking-animation {
+          width: 140px !important;
+          height: 140px !important;
+          margin: 1rem auto !important;
+        }
+
+        .matchmaking-status {
+          font-size: 1.2rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .matchmaking-subtitle {
+          font-size: 0.85rem;
+          margin-bottom: 1rem;
+        }
+
+        .queue-actions {
+          margin-top: 1rem;
+        }
+
+        .btn-queue {
+          padding: 0.8rem 1.5rem;
+          font-size: 0.95rem;
+          border-radius: 10px;
+        }
+
         .quiz-card {
           padding: 1.5rem;
         }
@@ -640,22 +787,218 @@
           margin-bottom: 1rem;
         }
 
+        /* Match Found Mobile Styles */
+        .match-found-animation {
+          padding: 1rem;
+        }
+
         .match-found-text {
-          font-size: 3rem;
+          font-size: 2.2rem;
+          margin-bottom: 1rem;
+          text-shadow: 0 0 30px rgba(50, 255, 218, 0.6);
+        }
+
+        .match-found-text i {
+          display: block;
+          font-size: 2.5rem;
+          margin-bottom: 0.5rem;
         }
 
         .match-found-content {
           flex-direction: column;
+          gap: 0.75rem;
+          width: 100%;
+          padding: 0 1rem;
+        }
+
+        .vs-animation {
+          font-size: 1.8rem;
+          margin: 0.5rem 0;
+        }
+
+        .player-card-match {
+          min-width: 100%;
+          max-width: 280px;
+          padding: 1rem 1.5rem;
+          border-radius: 12px;
+        }
+
+        .player-name-match {
+          font-size: 1.2rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .player-rating-match {
+          font-size: 0.9rem;
+        }
+
+        .player-rating-match i {
+          color: #ffd700;
+        }
+      }
+
+      /* Extra small devices (portrait phones) */
+      @media (max-width: 375px) {
+        .matchmaking-logo {
+          font-size: 1.4rem;
+        }
+
+        .matchmaking-card {
+          padding: 1.25rem 0.75rem;
+        }
+
+        .matchmaking-animation {
+          width: 120px !important;
+          height: 120px !important;
+        }
+
+        .matchmaking-status {
+          font-size: 1.1rem;
+        }
+
+        .matchmaking-subtitle {
+          font-size: 0.8rem;
+        }
+
+        .btn-queue {
+          padding: 0.7rem 1.25rem;
+          font-size: 0.9rem;
+        }
+
+        .match-found-text {
+          font-size: 1.8rem;
+        }
+
+        .player-card-match {
+          padding: 0.75rem 1rem;
+        }
+
+        .player-name-match {
+          font-size: 1.1rem;
+        }
+
+        .vs-animation {
+          font-size: 1.5rem;
+        }
+      }
+
+      /* iOS Safe Area Support */
+      @supports (padding: max(0px)) {
+        @media (max-width: 768px) {
+          .matchmaking-container {
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+          }
+
+          .match-found-animation {
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+          }
+        }
+      }
+
+      /* Touch-friendly improvements for mobile */
+      @media (max-width: 768px) {
+        .btn-queue {
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+          min-height: 44px; /* iOS recommended touch target */
+        }
+
+        .btn-queue:active {
+          transform: scale(0.98);
+          opacity: 0.9;
+        }
+
+        /* Reduce motion for better performance on mobile */
+        @media (prefers-reduced-motion: reduce) {
+          .matchmaking-container::before {
+            animation: none;
+          }
+
+          .matchmaking-logo {
+            animation: none;
+          }
+
+          .matchmaking-status {
+            animation: none;
+          }
+
+          .vs-animation {
+            animation: none;
+          }
+
+          .match-found-text {
+            animation: none;
+          }
+        }
+      }
+
+      /* Landscape mode on mobile */
+      @media (max-width: 768px) and (orientation: landscape) {
+        .matchmaking-container {
+          min-height: calc(100vh - 56px);
+          padding: 0.5rem 2rem;
+        }
+
+        .matchmaking-card {
+          padding: 1rem 1.5rem;
+          margin: 0.5rem 0;
+        }
+
+        .matchmaking-animation {
+          width: 100px !important;
+          height: 100px !important;
+          margin: 0.5rem auto !important;
+        }
+
+        .matchmaking-logo {
+          font-size: 1.5rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .matchmaking-status {
+          font-size: 1.1rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .matchmaking-subtitle {
+          font-size: 0.8rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .queue-actions {
+          margin-top: 0.5rem;
+        }
+
+        .btn-queue {
+          padding: 0.6rem 1.25rem;
+          font-size: 0.9rem;
+        }
+
+        /* Match Found Landscape */
+        .match-found-animation {
+          flex-direction: row;
+          padding: 1rem 2rem;
+        }
+
+        .match-found-text {
+          font-size: 2rem;
+          margin-bottom: 0;
+          margin-right: 2rem;
+        }
+
+        .match-found-content {
+          flex-direction: row;
           gap: 1rem;
         }
 
         .vs-animation {
-          font-size: 2rem;
-          margin: 1rem 0;
+          font-size: 1.5rem;
+          margin: 0 0.5rem;
         }
 
         .player-card-match {
-          min-width: 150px;
+          min-width: auto;
+          padding: 0.75rem 1rem;
         }
       }
 
@@ -892,6 +1235,7 @@
               <p class="player-score" id="player-score-you">0</p>
             </div>
           </div>
+          <span class="vs-divider">VS</span>
           <div class="player-card" id="player-card-opponent">
             <img
               id="player-avatar-opponent"
@@ -1510,6 +1854,17 @@
           // Update fixed top bar
           if (timerBarFixed) {
             timerBarFixed.style.width = `${percentage}%`;
+            // Change color based on time remaining
+            if (remaining <= 5) {
+              timerBarFixed.style.background =
+                "linear-gradient(90deg, #ff4757 0%, #ff6b7a 100%)";
+            } else if (remaining <= 10) {
+              timerBarFixed.style.background =
+                "linear-gradient(90deg, #ffd700 0%, #ffed4a 100%)";
+            } else {
+              timerBarFixed.style.background =
+                "linear-gradient(90deg, #ff66c4 0%, #ff4da6 100%)";
+            }
           }
 
           if (remaining <= 0) {
