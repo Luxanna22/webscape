@@ -2,8 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#240e44" />
     <title>Code Playground | WebScape</title>
+    <link rel="manifest" href="/static/manifest.json" />
     <link
       rel="icon"
       href="/static/images/playground-mode.png"
@@ -106,6 +117,7 @@
         color: #a9a9a9;
         -webkit-user-select: none;
         user-select: none;
+        text-decoration: none;
       }
       .sidebar .nav-item i {
         font-size: 28px;
@@ -654,37 +666,242 @@
         color: var(--accent-color) !important;
         text-decoration: none !important;
       }
+
+      /* ========== MOBILE APP DESIGN ========== */
+      @media (max-width: 768px) {
+        body,
+        html {
+          overflow: auto;
+        }
+
+        /* Sidebar becomes top navigation bar */
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: auto;
+          width: 100% !important;
+          height: 56px !important;
+          flex-direction: row !important;
+          justify-content: space-around !important;
+          align-items: center !important;
+          padding: 0 10px !important;
+          padding-top: 0 !important;
+          background: linear-gradient(
+            135deg,
+            var(--bg-color) 0%,
+            var(--secondary-color) 100%
+          );
+          border-bottom: 1px solid rgba(255, 102, 196, 0.2);
+          border-right: none;
+          z-index: 1000;
+          gap: 0 !important;
+        }
+
+        .sidebar .nav-item {
+          flex-direction: column;
+          padding: 8px 12px;
+          margin: 0;
+          font-size: 0.7rem;
+          gap: 2px;
+        }
+
+        .sidebar .nav-item i {
+          font-size: 1.2rem !important;
+          margin-bottom: 0 !important;
+        }
+
+        .sidebar .nav-item span {
+          display: none;
+        }
+
+        .sidebar .nav-item img {
+          width: 28px !important;
+        }
+
+        .sidebar .nav-item.account {
+          margin: 0 !important;
+        }
+
+        .sidebar .nav-item:hover,
+        .sidebar .nav-item.active {
+          color: var(--accent-color);
+        }
+
+        /* Main playground area */
+        .playground {
+          margin-left: 0;
+          padding: 10px;
+          padding-top: 66px;
+          height: 100vh;
+          height: 100dvh;
+        }
+
+        /* Section title - hide on mobile */
+        .section-title {
+          display: none;
+        }
+
+        /* Tabs container */
+        .tabs-container {
+          flex-direction: column;
+        }
+
+        .tabs {
+          border-radius: 10px 10px 0 0;
+          flex-wrap: wrap;
+          gap: 0;
+        }
+
+        .tab {
+          padding: 8px 12px;
+          font-size: 0.8rem;
+          flex: 1;
+          text-align: center;
+        }
+
+        .live-output-label {
+          display: none;
+        }
+
+        /* AI Fix button */
+        .ai-fix-btn {
+          padding: 6px 10px;
+          font-size: 0.75rem;
+          white-space: nowrap;
+        }
+
+        .ai-fix-btn i {
+          margin-right: 4px;
+        }
+
+        /* Editor container - stack vertically */
+        .editor-container {
+          flex-direction: column;
+          height: calc(100vh - 100px);
+          height: calc(100dvh - 100px);
+        }
+
+        .editor,
+        .live-output {
+          width: 100% !important;
+          height: 50% !important;
+        }
+
+        .editor {
+          border-bottom: 2px solid var(--secondary-color);
+        }
+
+        .live-output {
+          border-left: none;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* CodeMirror adjustments */
+        .CodeMirror {
+          font-size: 13px !important;
+        }
+
+        /* Debug panel */
+        .debug-panel {
+          max-height: 35%;
+          min-height: 100px;
+        }
+
+        .debug-panel-header {
+          padding: 8px 10px;
+          font-size: 0.8rem;
+        }
+
+        .debug-clear-btn {
+          padding: 3px 8px;
+          font-size: 0.7rem;
+        }
+
+        .debug-panel-body {
+          font-size: 0.8rem;
+        }
+
+        /* AI Response modal */
+        .ai-response {
+          width: calc(100% - 20px) !important;
+          max-width: none;
+          left: 10px !important;
+          right: 10px !important;
+          top: 70px !important;
+          max-height: calc(100vh - 90px);
+        }
+
+        .ai-response-header {
+          padding: 12px 15px;
+        }
+
+        .ai-response-title {
+          font-size: 1rem;
+        }
+
+        .ai-response-content {
+          padding: 12px 15px;
+          font-size: 0.85rem;
+        }
+
+        .ai-close-btn {
+          font-size: 1.2rem;
+        }
+      }
+
+      /* Extra small screens */
+      @media (max-width: 480px) {
+        .playground {
+          padding: 8px;
+          padding-top: 60px;
+        }
+
+        .tab {
+          padding: 6px 8px;
+          font-size: 0.75rem;
+        }
+
+        .ai-fix-btn {
+          padding: 5px 8px;
+          font-size: 0.7rem;
+        }
+
+        .editor-container {
+          height: calc(100vh - 90px);
+          height: calc(100dvh - 90px);
+        }
+
+        .CodeMirror {
+          font-size: 12px !important;
+        }
+
+        .debug-panel {
+          min-height: 80px;
+        }
+      }
     </style>
   </head>
   <body>
-    <!-- Sidebar -->
+    <!-- Sidebar / Mobile Top Nav -->
     <nav class="sidebar d-flex flex-column align-items-center">
-      <div class="nav-item levels">
-        <a href="/"
-          ><img
-            src="/static/images/book-icon.png"
-            alt="webscape-logo"
-            width="50px"
-        /></a>
-        <br />
-      </div>
-
-      <div class="nav-item badges">
-        <a href="/rankings">
-          <i class="fas fa-award" aria-hidden="true"></i>
-          <span>Rankings</span>
-        </a>
-      </div>
-      <div class="nav-item options">
-        <a href="/options">
-          <i class="fas fa-paint-brush" aria-hidden="true"></i>
-          <span>Options</span>
-        </a>
-      </div>
-      <div class="nav-item account mt-auto mb-4">
+      <a href="/" class="nav-item levels">
+        <i class="fas fa-home" aria-hidden="true"></i>
+        <span>Home</span>
+      </a>
+      <a href="/rankings" class="nav-item badges">
+        <i class="fas fa-trophy" aria-hidden="true"></i>
+        <span>Rankings</span>
+      </a>
+      <a href="/options" class="nav-item options">
+        <i class="fas fa-paint-brush" aria-hidden="true"></i>
+        <span>Options</span>
+      </a>
+      <a href="/account" class="nav-item account mt-auto mb-4">
         <i class="fas fa-user-circle" aria-hidden="true"></i>
         <span>Account</span>
-      </div>
+      </a>
     </nav>
 
     <!-- Playground -->
