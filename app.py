@@ -4856,22 +4856,110 @@ def user_lesson_content_ajax(level, chapter_id):
             points = chapter.get('points_reward', 0)
             chapter_title = chapter.get('title', '')
             html = render_template_string('''
+<style>
+  .congrats-summary {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .congrats-summary .lottie-container {
+    width: 180px;
+    height: 180px;
+    margin: 0 auto;
+  }
+  .congrats-summary .lottie-container dotlottie-player {
+    transform: scale(1.4);
+  }
+  .congrats-summary .congrats-title {
+    margin-top: 15px;
+  }
+  .congrats-summary .rewards {
+    margin: 20px 0;
+  }
+  .congrats-summary .rewards span {
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .congrats-summary .completion-note {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.95rem;
+    margin-top: 10px;
+  }
+  @media (max-width: 768px) {
+    .congrats-summary {
+      padding: 20px 15px;
+      min-height: auto;
+    }
+    .congrats-summary .lottie-container {
+      width: 120px !important;
+      height: 120px !important;
+    }
+    .congrats-summary .lottie-container dotlottie-player {
+      width: 120px !important;
+      height: 120px !important;
+      transform: scale(1.2) !important;
+    }
+    .congrats-summary .congrats-title {
+      font-size: 1.6rem !important;
+      text-shadow: 2px 2px 0px #7e31ef !important;
+      margin-top: 10px !important;
+    }
+    .congrats-summary .congrats-subtitle {
+      font-size: 0.9rem !important;
+      padding: 0 5px;
+      line-height: 1.4;
+    }
+    .congrats-summary .rewards {
+      flex-direction: column !important;
+      gap: 10px !important;
+      width: 100%;
+      padding: 0 10px;
+      margin: 15px 0 !important;
+    }
+    .congrats-summary .rewards span {
+      font-size: 1rem !important;
+      padding: 10px 16px !important;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .congrats-summary .completion-note {
+      font-size: 0.8rem;
+      padding: 0 10px;
+    }
+  }
+  @media (max-width: 380px) {
+    .congrats-summary .congrats-title {
+      font-size: 1.4rem !important;
+    }
+    .congrats-summary .congrats-subtitle {
+      font-size: 0.82rem !important;
+    }
+    .congrats-summary .rewards span {
+      font-size: 0.9rem !important;
+    }
+  }
+</style>
 <div class="congrats-summary text-center">
-  <dotlottie-player src="https://lottie.host/1aaf6a28-e236-4b85-80a9-36d4f5fdcc54/YzZgsLVQjc.lottie" background="transparent" speed="1" style="width: 200px; height: 200px; margin: 0 auto; scale: 1.5;" autoplay></dotlottie-player>
-  <h2 class="congrats-title" style="color: #ff69b4; font-family: 'Luckiest Guy', cursive; font-size: 3.5rem; text-shadow: 3px 3px 0px #7e31ef;">Congratulations!</h2>
-  <p class="congrats-subtitle" style="font-size: 1.5rem; color: #fff; margin-top: 10px;">You've completed <b>{{ chapter_title }}</b>!</p>
-  <div class="rewards d-flex justify-content-center gap-4 my-4">
-    <span style="font-size: 1.8rem; color: gold; background: rgba(0,0,0,0.2); padding: 10px 20px; border-radius: 10px;"><i class="fas fa-star"></i> <b>{{ xp }}</b> XP</span>
-    <span style="font-size: 1.8rem; color: #ff69b4; background: rgba(0,0,0,0.2); padding: 10px 20px; border-radius: 10px;"><i class="fas fa-trophy"></i> <b>{{ points }}</b> Points</span>
+  <div class="lottie-container">
+    <dotlottie-player src="https://lottie.host/1aaf6a28-e236-4b85-80a9-36d4f5fdcc54/YzZgsLVQjc.lottie" background="transparent" speed="1" autoplay></dotlottie-player>
   </div>
-  <div class="cta mt-4">
-    <button class="btn btn-lg end-btn" style="font-size: 1.5rem; padding: 12px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);" onclick="window.location.href='/user/classic/{{ level }}'">Back to Chapters</button>
+  <h2 class="congrats-title" style="color: #ff69b4; font-family: 'Luckiest Guy', cursive; font-size: 2.8rem; text-shadow: 3px 3px 0px #7e31ef;">Congratulations!</h2>
+  <p class="congrats-subtitle" style="font-size: 1.2rem; color: #fff; margin-top: 8px;">You've completed <b>{{ chapter_title }}</b>!</p>
+  <div class="rewards d-flex justify-content-center gap-3 my-3">
+    <span style="font-size: 1.4rem; color: gold; background: rgba(0,0,0,0.25); padding: 10px 18px;"><i class="fas fa-star"></i> <b>{{ xp }}</b> XP</span>
+    <span style="font-size: 1.4rem; color: #ff69b4; background: rgba(0,0,0,0.25); padding: 10px 18px;"><i class="fas fa-trophy"></i> <b>{{ points }}</b> Points</span>
   </div>
+  <p class="completion-note"><i class="fas fa-check-circle" style="color: #4ade80;"></i> Your progress has been saved</p>
 </div>
 ''', xp=xp, points=points, chapter_title=chapter_title, level=level)
             return jsonify({
                 'html': html,
-                'next_button_text': None,
+                'next_button_text': 'Back to Chapters',
                 'is_quiz_page': False,
                 'is_congrats': True
             })
@@ -4980,7 +5068,7 @@ def user_lesson_content_ajax(level, chapter_id):
   <div id="playground-fullscreen-wrapper" class="playground-fullscreen-wrapper">
     <div id="playground-editor-outer" class="playground-outer position-relative">
       <div class="playground-toolbar">
-        <span class="playground-title"><i class="fas fa-code"></i> Code Playground</span>
+        <span class="playground-title"><i class="fas fa-code"></i> <span class="playground-title-text">Code Playground</span></span>
         <div class="playground-actions">
           <select id="playground-language" class="playground-lang-select" onchange="changePlaygroundMode(this.value)">
             <option value="htmlmixed">HTML/CSS/JS</option>
@@ -5006,6 +5094,26 @@ def user_lesson_content_ajax(level, chapter_id):
     </div>
   </div>
   <style>
+    /* Hide playground title text on mobile */
+    @media (max-width: 768px) {
+      .playground-title-text {
+        display: none;
+      }
+      .playground-toolbar {
+        padding: 10px 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .playground-actions {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .playground-actions select,
+      .playground-actions button {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+      }
+    }
     .playground-fullscreen-wrapper.fullscreen .playground-outer {
       flex: 1 1 0;
       min-width: 0;

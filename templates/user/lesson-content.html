@@ -2,7 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#240e44" />
     <title>WebScape</title>
+    <link rel="manifest" href="/static/manifest.json" />
     <link
       rel="icon"
       href="/static/images/playground-mode.png"
@@ -136,6 +148,7 @@
         font-size: 14px;
         color: #a9a9a9;
         user-select: none;
+        text-decoration: none;
       }
       .sidebar .nav-item i {
         font-size: 28px;
@@ -333,14 +346,22 @@
       .loader-container {
         position: fixed;
         top: 0;
-        left: 90px;
-        width: calc(100% - 90px);
+        left: 0;
+        width: 100%;
         height: 100%;
         background-color: var(--bg-color);
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1000;
+        z-index: 9999;
+      }
+
+      /* Desktop loader offset for sidebar */
+      @media (min-width: 769px) {
+        .loader-container {
+          left: 90px;
+          width: calc(100% - 90px);
+        }
       }
 
       .congrats-summary {
@@ -891,6 +912,605 @@
           border-top: 2px solid #2d145c;
         }
       }
+
+      /* ========== MOBILE APP DESIGN ========== */
+      @media (max-width: 768px) {
+        /* Sidebar becomes top navigation bar */
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: auto;
+          width: 100% !important;
+          height: 56px !important;
+          flex-direction: row !important;
+          justify-content: space-around !important;
+          align-items: center !important;
+          padding: 0 10px !important;
+          background: linear-gradient(
+            135deg,
+            var(--bg-color) 0%,
+            var(--secondary-color) 100%
+          );
+          border-bottom: 1px solid rgba(255, 102, 196, 0.2);
+          border-right: none;
+          z-index: 1000;
+          gap: 0;
+        }
+
+        .sidebar .nav-item {
+          flex-direction: column;
+          padding: 8px 12px;
+          margin: 0;
+          font-size: 0.7rem;
+          gap: 2px;
+          color: rgba(255, 255, 255, 0.7);
+          text-decoration: none;
+        }
+
+        .sidebar .nav-item i {
+          font-size: 1.2rem;
+        }
+
+        .sidebar .nav-item span {
+          display: none;
+        }
+
+        .sidebar .nav-item.account {
+          margin: 0 !important;
+        }
+
+        .sidebar .nav-item:hover,
+        .sidebar .nav-item.active {
+          color: var(--accent-color);
+          background: rgba(255, 102, 196, 0.1);
+          border-radius: 8px;
+        }
+
+        /* Progress bar adjustments */
+        .progress-bar {
+          top: 56px;
+          left: 0;
+          width: 100%;
+        }
+
+        /* Main content adjustments */
+        .main-content {
+          margin-left: 0;
+          padding-top: 70px;
+          padding-bottom: 100px;
+          min-height: 100vh;
+        }
+
+        /* Section header - clean single row layout */
+        .section-header {
+          flex-wrap: nowrap !important;
+          padding: 8px 12px;
+          gap: 8px;
+          align-items: center;
+          background: rgba(36, 14, 68, 0.95);
+          position: sticky;
+          top: 56px;
+          z-index: 99;
+          margin-bottom: 0 !important;
+        }
+
+        /* Back button - icon only */
+        .section-header > div:first-child {
+          flex: 0 0 auto !important;
+        }
+
+        #prev-btn {
+          font-size: 1.3rem !important;
+          padding: 8px 10px;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+          margin: 0;
+        }
+
+        #prev-btn .prev-text {
+          display: none;
+        }
+
+        /* Chapter title - centered, truncated */
+        .section-header > div:nth-child(2) {
+          flex: 1 1 auto !important;
+          text-align: center !important;
+          font-size: 1rem !important;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding: 0 5px;
+        }
+
+        /* Action icons - compact group */
+        .section-header > div:last-child {
+          flex: 0 0 auto !important;
+          gap: 4px !important;
+        }
+
+        .section-header > div:last-child .btn-link {
+          font-size: 1.1rem !important;
+          padding: 8px !important;
+          background: rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+        }
+
+        /* Section content - lesson text/quizzes */
+        .section-content {
+          margin: 0 !important;
+          padding: 12px 15px !important;
+          padding-bottom: 20px !important;
+          border-radius: 0;
+        }
+
+        .section-content h2 {
+          font-size: 1.15rem;
+          margin-bottom: 12px;
+        }
+
+        .section-content .content {
+          font-size: 0.88rem;
+          line-height: 1.55;
+        }
+
+        .section-content .content p {
+          margin-bottom: 10px;
+        }
+
+        .section-content .content code {
+          font-size: 0.82rem;
+        }
+
+        .section-content img {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+
+        .section-content pre {
+          font-size: 0.78rem;
+          overflow-x: auto;
+          padding: 10px;
+          border-radius: 8px;
+          margin: 10px 0;
+        }
+
+        .section-content pre code {
+          font-size: 0.78rem;
+        }
+
+        /* Notes section */
+        .notes-section {
+          margin: 15px 0 !important;
+          padding: 12px !important;
+        }
+
+        /* Quiz form styling - full width choices */
+        #quiz-form {
+          width: 100%;
+        }
+
+        .form-check {
+          margin-bottom: 10px;
+          padding: 0;
+        }
+
+        /* Keep input hidden as in base styles */
+        .form-check-input {
+          display: none;
+        }
+
+        /* Label is the clickable card */
+        .form-check-label {
+          display: block;
+          width: 100%;
+          padding: 14px 16px;
+          font-size: 0.92rem;
+          line-height: 1.4;
+          border-radius: 12px;
+          box-sizing: border-box;
+        }
+
+        .form-check-label:active {
+          transform: scale(0.98);
+        }
+
+        /* Section footer (Next/Check button) */
+        .section-footer {
+          left: 0;
+          width: 100%;
+          padding: 12px 15px;
+          padding-bottom: calc(12px + env(safe-area-inset-bottom));
+          background: linear-gradient(
+            0deg,
+            var(--bg-color) 80%,
+            transparent 100%
+          );
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .section-footer .end-btn,
+        .section-footer #next-btn {
+          width: 100%;
+          padding: 14px 20px;
+          font-size: 1.1rem;
+          border-radius: 12px;
+        }
+
+        /* Quiz feedback container */
+        .dynamic-text-result-container {
+          width: 100%;
+          margin: 0 !important;
+          padding: 0;
+        }
+
+        .dynamic-text-result {
+          width: 100%;
+          padding: 0;
+          font-size: 0.88rem;
+        }
+
+        /* Quiz feedback styling */
+        #quiz-feedback {
+          width: 100%;
+          padding: 12px 15px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          margin: 0;
+        }
+
+        #quiz-feedback > div:first-child {
+          font-size: 1.1rem !important;
+          gap: 8px !important;
+          flex-wrap: wrap;
+        }
+
+        #quiz-feedback svg {
+          width: 28px !important;
+          height: 28px !important;
+        }
+
+        #quiz-feedback .mt-2 {
+          font-size: 0.82rem !important;
+          margin-top: 8px !important;
+          line-height: 1.4;
+        }
+
+        /* Playground (code editor) mobile styling */
+        .playground-fullscreen-wrapper {
+          margin: 15px 0;
+        }
+
+        .playground-outer {
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .playground-toolbar {
+          padding: 10px 12px;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        /* Hide "Code Playground" text, keep only icon */
+        .playground-title {
+          font-size: 1rem;
+        }
+
+        .playground-title-text {
+          display: none;
+        }
+
+        .playground-title i {
+          font-size: 1.1rem;
+        }
+
+        .playground-actions {
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .playground-actions select,
+        .playground-actions button {
+          padding: 6px 10px;
+          font-size: 0.8rem;
+        }
+
+        #playground-editor-container,
+        .CodeMirror {
+          font-size: 13px !important;
+        }
+
+        .playground-output {
+          margin-top: 10px;
+          border-radius: 12px;
+        }
+
+        /* Debug panel mobile */
+        .debug-panel {
+          max-height: 150px;
+          font-size: 0.8rem;
+        }
+
+        /* Fullscreen playground mobile */
+        .playground-fullscreen-btn {
+          bottom: 15px;
+          right: 10px;
+          width: 36px;
+          height: 36px;
+          font-size: 1rem;
+        }
+
+        /* Loader - full screen coverage */
+        .loader-container {
+          left: 0 !important;
+          width: 100% !important;
+          padding-top: 0;
+          z-index: 9999;
+        }
+
+        /* Congrats summary mobile */
+        .congrats-summary {
+          padding: 15px 12px;
+          margin: 10px;
+          text-align: center;
+        }
+
+        .congrats-summary h2,
+        .congrats-summary .congrats-title {
+          font-size: 1.3rem !important;
+          margin-bottom: 8px;
+        }
+
+        .congrats-summary .congrats-subtitle {
+          font-size: 0.9rem !important;
+        }
+
+        .congrats-summary .rewards {
+          flex-wrap: wrap;
+          gap: 8px;
+          justify-content: center;
+        }
+
+        .congrats-summary .rewards span {
+          padding: 6px 12px;
+          font-size: 0.85rem;
+        }
+
+        .congrats-summary .cta {
+          margin-top: 15px;
+        }
+
+        .congrats-summary .cta .btn {
+          padding: 10px 20px;
+          font-size: 0.9rem;
+        }
+
+        /* Chapter recap modal mobile */
+        .chapter-recap-modal .modal-dialog {
+          margin: 10px;
+          max-width: calc(100% - 20px);
+        }
+
+        .chapter-recap-modal .modal-content {
+          border-radius: 12px;
+        }
+
+        .chapter-recap-modal .modal-header {
+          padding: 12px 15px;
+        }
+
+        .chapter-recap-modal .modal-title {
+          font-size: 1.1rem;
+        }
+
+        .chapter-recap-modal .modal-body {
+          padding: 12px 15px;
+          max-height: 60vh !important;
+        }
+
+        /* Chapter report (quiz recap + takeaways) */
+        .chapter-report {
+          padding: 15px !important;
+          border-radius: 10px !important;
+        }
+
+        .chapter-report h4 {
+          font-size: 1rem !important;
+          margin-bottom: 10px;
+        }
+
+        .chapter-report p {
+          font-size: 0.85rem !important;
+        }
+
+        .chapter-report ol,
+        .chapter-report ul {
+          padding-left: 18px !important;
+          font-size: 0.82rem;
+        }
+
+        .chapter-report li {
+          margin-bottom: 10px !important;
+        }
+
+        /* Takeaway report */
+        .takeaway-report {
+          margin-top: 18px !important;
+        }
+
+        .takeaway-report h4 {
+          font-size: 1rem !important;
+        }
+
+        .takeaway-report h5 {
+          font-size: 0.9rem !important;
+        }
+
+        .takeaway-report ul {
+          padding-left: 16px !important;
+        }
+
+        .takeaway-report li {
+          font-size: 0.82rem !important;
+          margin-bottom: 6px !important;
+        }
+
+        .takeaway-report p {
+          font-size: 0.8rem !important;
+        }
+
+        /* Sidebar overlay for mobile - ensure it shows */
+        #comments-backdrop {
+          z-index: 1040 !important;
+        }
+
+        /* Comments side panel - full screen on mobile */
+        #lesson-comments-dropdown {
+          width: 100vw !important;
+          max-width: 100vw !important;
+          border-left: none !important;
+          border-radius: 0 !important;
+        }
+
+        #lesson-comments-dropdown .card-header {
+          padding: 12px 15px !important;
+          padding-top: calc(12px + env(safe-area-inset-top)) !important;
+        }
+
+        #lesson-comments-dropdown .card-header h5 {
+          font-size: 1rem;
+        }
+
+        #lesson-comments-dropdown .card-body {
+          padding: 10px !important;
+        }
+
+        #lesson-comments-dropdown .comment-item {
+          padding: 10px;
+          font-size: 0.85rem;
+        }
+
+        #lesson-comments-dropdown textarea {
+          font-size: 0.9rem;
+        }
+
+        /* Playground side panel - full screen on mobile */
+        #lesson-playground-dropdown {
+          width: 100vw !important;
+          max-width: 100vw !important;
+          border-left: none !important;
+          border-radius: 0 !important;
+        }
+
+        #lesson-playground-dropdown .card-header {
+          padding: 12px 15px !important;
+          padding-top: calc(12px + env(safe-area-inset-top)) !important;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        #lesson-playground-dropdown .card-header h5 {
+          font-size: 1rem;
+        }
+
+        #lesson-playground-dropdown .card-header .btn {
+          padding: 6px 12px;
+          font-size: 0.85rem;
+        }
+
+        #lesson-playground-dropdown .CodeMirror {
+          font-size: 13px !important;
+        }
+
+        /* Playground output in sidebar */
+        #lesson-playground-dropdown .playground-output {
+          min-height: 150px;
+          max-height: 200px;
+        }
+      }
+
+      /* Extra small screens */
+      @media (max-width: 480px) {
+        .section-header > div:nth-child(2) {
+          font-size: 0.9rem !important;
+        }
+
+        .section-header > div:last-child .btn-link {
+          font-size: 1rem !important;
+          padding: 6px !important;
+        }
+
+        #prev-btn {
+          font-size: 1.1rem !important;
+          padding: 6px 8px !important;
+        }
+
+        .section-content h2 {
+          font-size: 1rem;
+        }
+
+        .section-content .content {
+          font-size: 0.82rem;
+          line-height: 1.5;
+        }
+
+        /* Quiz choices - extra small */
+        .form-check-label {
+          padding: 12px 14px;
+          font-size: 0.85rem;
+        }
+
+        /* Quiz feedback - extra small */
+        #quiz-feedback {
+          padding: 10px 12px;
+        }
+
+        #quiz-feedback > div:first-child {
+          font-size: 1rem !important;
+        }
+
+        #quiz-feedback svg {
+          width: 24px !important;
+          height: 24px !important;
+        }
+
+        #quiz-feedback .mt-2 {
+          font-size: 0.78rem !important;
+        }
+
+        .notes-section {
+          padding: 10px !important;
+          font-size: 0.82rem;
+        }
+
+        .dynamic-text-result {
+          font-size: 0.82rem;
+          padding: 8px 12px;
+        }
+
+        .section-footer .end-btn,
+        .section-footer #next-btn {
+          padding: 12px 16px;
+          font-size: 1rem;
+        }
+
+        .playground-toolbar {
+          padding: 8px 10px;
+        }
+
+        .playground-title {
+          font-size: 0.8rem;
+        }
+
+        .playground-actions select,
+        .playground-actions button {
+          padding: 5px 8px;
+          font-size: 0.75rem;
+        }
+      }
     </style>
   </head>
   <body>
@@ -906,33 +1526,24 @@
       ></dotlottie-player>
     </div>
 
-    <!-- Sidebar -->
+    <!-- Sidebar / Mobile Top Nav -->
     <nav class="sidebar d-flex flex-column align-items-center">
-      <div class="nav-item levels">
-        <a href="/"
-          ><img
-            src="/static/images/book-icon.png"
-            alt="webscape-logo"
-            width="50px"
-        /></a>
-        <br />
-      </div>
-      <!-- <div class="nav-item levels">
-        <i class="fas fa-bars" aria-hidden="true"></i>
-        <span>Levels</span>
-      </div> -->
-      <div class="nav-item badges">
-        <i class="fas fa-award" aria-hidden="true"></i>
-        <span>Badges</span>
-      </div>
-      <div class="nav-item options">
+      <a href="/" class="nav-item levels">
+        <i class="fas fa-home" aria-hidden="true"></i>
+        <span>Home</span>
+      </a>
+      <a href="/rankings" class="nav-item badges">
+        <i class="fas fa-trophy" aria-hidden="true"></i>
+        <span>Rankings</span>
+      </a>
+      <a href="/options" class="nav-item options">
         <i class="fas fa-paint-brush" aria-hidden="true"></i>
         <span>Options</span>
-      </div>
-      <div class="nav-item account mt-auto mb-4">
+      </a>
+      <a href="/account" class="nav-item account mt-auto mb-4">
         <i class="fas fa-user-circle" aria-hidden="true"></i>
         <span>Account</span>
-      </div>
+      </a>
     </nav>
     <!-- top-most line progress bar -->
     <div class="progress-bar">
@@ -955,7 +1566,8 @@
             style="font-size: 1.5rem; text-decoration: none; display: none"
             onclick="goPreviousPage()"
           >
-            <i class="fas fa-angle-left"></i> Previous
+            <i class="fas fa-chevron-left"></i
+            ><span class="prev-text"> Previous</span>
           </button>
         </div>
         <!-- Chapter title -->
@@ -1753,11 +2365,22 @@
               // Clear dynamic text result (quiz feedback)
               document.getElementById('dynamic-text-result').innerHTML = '<div id="quiz-feedback" class="mt-2"></div>';
               if (data.is_congrats) {
-                // Hide navigation/footer buttons
-                if (nextBtn) nextBtn.style.display = 'none';
+                // Show footer with "Back to Chapters" button
                 const prevBtn = document.getElementById('prev-btn');
                 if (prevBtn) prevBtn.style.display = 'none';
-                document.querySelector('.section-footer').style.display = 'none';
+
+                const nextBtn = document.getElementById('next-btn');
+                if (nextBtn) {
+                  nextBtn.textContent = data.next_button_text || 'Back to Chapters';
+                  nextBtn.style.display = '';
+                  nextBtn.disabled = false;
+                  nextBtn.onclick = function() {
+                    window.location.href = '/user/classic/' + encodeURIComponent(level);
+                  };
+                }
+
+                // Keep footer visible
+                document.querySelector('.section-footer').style.display = '';
 
                 const triggerConfetti = () => {
                   if (!confettiShown) {
@@ -2946,8 +3569,12 @@
         );
         const backdrop = document.getElementById("comments-backdrop");
 
-        if (commentsPanel) commentsPanel.style.right = "-450px";
-        if (playgroundPanel) playgroundPanel.style.right = "-600px";
+        if (commentsPanel)
+          commentsPanel.style.right =
+            window.innerWidth <= 768 ? "-100vw" : "-450px";
+        if (playgroundPanel)
+          playgroundPanel.style.right =
+            window.innerWidth <= 768 ? "-100vw" : "-600px";
         if (backdrop) backdrop.style.display = "none";
       }
 
@@ -2957,10 +3584,12 @@
         const commentsPanel = document.getElementById(
           "lesson-comments-dropdown"
         );
+        const isMobile = window.innerWidth <= 768;
+        const closedPosition = isMobile ? "-100vw" : "-600px";
 
         if (panel.style.right === "0px") {
           // Close
-          panel.style.right = "-600px";
+          panel.style.right = closedPosition;
           // Only hide backdrop if comments panel is also closed
           if (!commentsPanel || commentsPanel.style.right !== "0px") {
             backdrop.style.display = "none";
@@ -3266,6 +3895,8 @@
         const panel = document.getElementById('lesson-comments-dropdown');
         const backdrop = document.getElementById('comments-backdrop');
         const playgroundPanel = document.getElementById('lesson-playground-dropdown');
+        const isMobile = window.innerWidth <= 768;
+        const closedPosition = isMobile ? '-100vw' : '-450px';
 
         const metaEl = document.getElementById('lesson-page-meta');
         if (metaEl && metaEl.dataset.lessonContentId) {
@@ -3277,7 +3908,7 @@
 
         if (panel.style.right === '0px') {
           // Close panel
-          panel.style.right = '-450px';
+          panel.style.right = closedPosition;
           // Only hide backdrop if playground panel is also closed
           if (!playgroundPanel || playgroundPanel.style.right !== '0px') {
               backdrop.style.display = 'none';
