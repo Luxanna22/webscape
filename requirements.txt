@@ -3,8 +3,9 @@ Flask-Session==0.5.0
 mysql-connector-python==8.1.0
 Werkzeug==2.3.7
 Flask-SocketIO==5.3.5
-gunicorn
-eventlet
+gunicorn==21.2.0
+gevent
+gevent-websocket
 bcrypt
 requests
 google-analytics-data
