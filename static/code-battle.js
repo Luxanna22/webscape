@@ -260,6 +260,12 @@ function handleBattleStart(data) {
     document.getElementById('queueScreen').classList.add('hidden');
     document.getElementById('battleScreen').style.display = 'flex';
     
+    // Hide global mobile navigation during battle
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar && window.innerWidth <= 768) {
+        sidebar.style.setProperty('display', 'none', 'important');
+    }
+    
     // Load first challenge
     loadChallenge(data.challenge);
     
@@ -593,6 +599,12 @@ function handleBattleEnd(data) {
     
     // Hide battle screen
     document.getElementById('battleScreen').style.display = 'none';
+    
+    // Restore global mobile navigation if hidden
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar && window.innerWidth <= 768) {
+        sidebar.style.removeProperty('display');
+    }
     
     // Show results
     displayResults(data);

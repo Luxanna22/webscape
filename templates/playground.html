@@ -682,10 +682,11 @@
           overscroll-behavior-y: none;
         }
 
-        /* Top Navigation Bar - matching classic.html */
+        /* Bottom Navigation Bar - matching classic.html */
         .sidebar {
           position: fixed !important;
-          top: 0 !important;
+          bottom: 0 !important;
+          top: auto !important;
           left: 0 !important;
           right: 0 !important;
           width: 100vw !important;
@@ -699,8 +700,9 @@
           align-items: center !important;
 
           background: rgba(58, 20, 100, 0.95) !important;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          border-bottom: none !important;
+          box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.3);
 
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
@@ -744,10 +746,10 @@
         /* Main playground area */
         .playground {
           position: fixed;
-          top: 56px;
+          top: 0;
           left: 0;
           right: 0;
-          bottom: 0;
+          bottom: 56px;
           margin-left: 0;
           padding: 0;
           height: auto;
@@ -1898,6 +1900,9 @@ function changeColor() {
 
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
+              if (response.status === 401) {
+                throw new Error("Please log in first to analyze code in the code playground.");
+              }
               if (response.status === 403) {
                 throw new Error(errorData.error || "Insufficient points.");
               }

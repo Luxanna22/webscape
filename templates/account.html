@@ -877,13 +877,13 @@
 
       /* ==================== MOBILE APP DESIGN ==================== */
       @media (max-width: 768px) {
-        /* Top navigation bar */
+        /* Bottom navigation bar */
         .sidebar {
           position: fixed !important;
-          top: 0 !important;
+          bottom: 0 !important;
           left: 0 !important;
           right: 0 !important;
-          bottom: auto !important;
+          top: auto !important;
           width: 100vw !important;
           height: 56px !important;
           flex-direction: row !important;
@@ -895,7 +895,9 @@
           backdrop-filter: blur(12px) !important;
           -webkit-backdrop-filter: blur(12px) !important;
           z-index: 1000 !important;
-          border-bottom: 1px solid rgba(255, 102, 196, 0.2) !important;
+          border-top: 1px solid rgba(255, 102, 196, 0.2) !important;
+          border-bottom: none !important;
+          box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.3) !important;
         }
 
         .sidebar .nav-item {
@@ -930,7 +932,7 @@
         /* Main content adjustments */
         .main-content {
           margin-left: 0 !important;
-          padding: 70px 1rem 2rem !important;
+          padding: 16px 1rem 80px !important;
           min-height: 100vh !important;
         }
 

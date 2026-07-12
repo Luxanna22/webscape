@@ -5,3 +5,6 @@ ca.pem
 __pycache__/
 *.pyc
 .venv/
+old-migrations/
+zombie-files/
+zombie-db/

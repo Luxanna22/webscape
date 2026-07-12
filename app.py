@@ -72,7 +72,7 @@ def get_ga_credentials_path():
         return temp_file
     else:
         # Fallback to local file (for development)
-        return os.path.join(os.getcwd(), 'ga-credentials.json')
+        return os.path.join(os.getcwd(), 'ga-credentialsss.json')
 
 # Configure upload settings
 UPLOAD_FOLDER = 'static/uploads/lesson_images'
@@ -477,6 +477,82 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
 def inject_google_client_id():
     return {
         'google_client_id': GOOGLE_CLIENT_ID
+    }
+
+# System settings database helpers and context processor
+def get_system_setting(key, default=None):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = %s", (key,))
+        row = cursor.fetchone()
+        if row:
+            return row['setting_value']
+    except Exception as e:
+        print(f"Error fetching system setting {key}:", str(e))
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+    return default
+
+def set_system_setting(key, value):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO system_settings (setting_key, setting_value) 
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE setting_value = %s
+        """, (key, value, value))
+        conn.commit()
+        return True
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error updating system setting {key}:", str(e))
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def init_system_settings_table():
+    try:
+        db_connection = get_db_connection()
+        db_cursor = db_connection.cursor()
+        db_cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                setting_key VARCHAR(100) PRIMARY KEY,
+                setting_value VARCHAR(255)
+            )
+        """)
+        db_connection.commit()
+        
+        # Insert default maintenance notice state (false) if not present
+        db_cursor.execute("""
+            INSERT IGNORE INTO system_settings (setting_key, setting_value) 
+            VALUES ('maintenance_notice_active', 'false')
+        """)
+        db_connection.commit()
+    except Exception as e:
+        print("Error initializing system_settings table:", str(e))
+    finally:
+        if 'db_cursor' in locals() and db_cursor:
+            db_cursor.close()
+        if 'db_connection' in locals() and db_connection:
+            db_connection.close()
+
+@app.context_processor
+def inject_maintenance_state():
+    return {
+        'maintenance_active': get_system_setting('maintenance_notice_active', 'false') == 'true'
     }
 
 # Store active queues and matches
@@ -4252,8 +4328,30 @@ def admin_update_quiz_question(question_id):
 # Call this when the app starts
 _log_db_startup_info()
 init_chapters_table()
+init_system_settings_table()
 init_google_auth_columns()
 recalculate_all_user_ratings()
+
+# API endpoints for maintenance notice setting
+@app.route('/api/system-settings/maintenance-notice', methods=['GET'])
+def get_maintenance_notice():
+    active = get_system_setting('maintenance_notice_active', 'false') == 'true'
+    return jsonify({'active': active})
+
+@app.route('/api/system-settings/maintenance-notice', methods=['POST'])
+def update_maintenance_notice():
+    data = request.get_json() or {}
+    password = data.get('password')
+    active = data.get('active')
+    
+    if password != os.getenv('MAINTENANCE_PASSWORD', 'webscape123'):
+        return jsonify({'success': False, 'error': 'Invalid password'}), 403
+        
+    val_str = 'true' if active else 'false'
+    if set_system_setting('maintenance_notice_active', val_str):
+        return jsonify({'success': True, 'active': active})
+    else:
+        return jsonify({'success': False, 'error': 'Failed to update database'}), 500
 
 @app.route('/api/analyze-code', methods=['POST'])
 def analyze_code():
@@ -4589,7 +4687,7 @@ def add_lesson_content():
 
         conn.commit()
         # Create table for pvp code challenges
-        db_cursor.execute(
+        cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS pvp_code_challenges (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -4605,7 +4703,7 @@ def add_lesson_content():
             """
         )
         # Create table for pvp quiz questions
-        db_cursor.execute(
+        cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS pvp_quiz_questions (
                 id INT AUTO_INCREMENT PRIMARY KEY,
