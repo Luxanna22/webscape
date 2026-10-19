@@ -77,6 +77,13 @@ def get_ga_credentials_path():
 # Configure upload settings
 UPLOAD_FOLDER = 'static/uploads/lesson_images'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+try:
+    MAX_UPLOAD_MB = int(os.getenv('MAX_UPLOAD_MB', '5'))
+except ValueError:
+    MAX_UPLOAD_MB = 5
+if MAX_UPLOAD_MB <= 0:
+    MAX_UPLOAD_MB = 5
+MAX_CONTENT_LENGTH = MAX_UPLOAD_MB * 1024 * 1024
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -451,6 +458,7 @@ def get_db_connection():
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'lux')
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Add Google Analytics context processor
@@ -608,6 +616,14 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('role') != 'admin':
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 403
         return f(*args, **kwargs)
     return decorated_function
 
@@ -3099,7 +3115,7 @@ def _run_js_test(js_code, test_case, challenge):
         # Build test code
         test_code = f"{js_code}\nconsole.log(JSON.stringify({function_call}));"
         
-        print(f"[_run_js_test] Executing test code:\n{test_code}\n")
+        print(f"[_run_js_test] Executing JS test for function call: {function_call}")
         
         # Run with Node.js
         proc = subprocess.run(
@@ -4410,7 +4426,7 @@ def analyze_code():
             return jsonify({'error': 'No message provided'}), 400
 
         code = data.get('message')
-        print("Sending code to Gemini API:", code)  # Debug log
+        print(f"Sending code to Gemini API for user_id={user_id}, code_length={len(code)}")
 
         # Gemini API endpoint and model (per official docs)
         api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
@@ -4425,8 +4441,7 @@ def analyze_code():
                 {"parts": [{"text": prompt}]}
             ]
         }
-        print("[Gemini DEBUG] Prompt sent to Gemini:", prompt)
-        print("[Gemini DEBUG] Payload sent to Gemini:", payload)
+        print(f"[Gemini DEBUG] Prompt prepared for user_id={user_id}, prompt_length={len(prompt)}")
 
         response = requests.post(
             api_url,
@@ -4439,7 +4454,7 @@ def analyze_code():
         )
 
         print("Gemini API Response Status:", response.status_code)  # Debug log
-        print("Gemini API Response:", response.text)  # Debug log
+        print(f"Gemini API Response Length: {len(response.text)}")
 
         if response.status_code != 200:
             return jsonify({
@@ -4561,6 +4576,7 @@ def proxy_4o():
 
 @app.route('/admin/lesson-content/<int:chapter_id>')
 @login_required
+@admin_required
 def get_lesson_content(chapter_id):
     try:
         conn = get_db_connection()
@@ -4583,6 +4599,7 @@ def get_lesson_content(chapter_id):
 
 @app.route('/admin/lesson-content/<int:page_id>/edit')
 @login_required
+@admin_required
 def get_lesson_content_for_edit(page_id):
     try:
         conn = get_db_connection()
@@ -4608,6 +4625,7 @@ def get_lesson_content_for_edit(page_id):
 
 @app.route('/admin/lesson-content/add', methods=['POST'])
 @login_required
+@admin_required
 def add_lesson_content():
     try:
         conn = get_db_connection()
@@ -4727,6 +4745,7 @@ def add_lesson_content():
 
 @app.route('/admin/lesson-content/<int:page_id>', methods=['PUT'])
 @login_required
+@admin_required
 def update_lesson_content(page_id):
     try:
         conn = get_db_connection()
@@ -4883,6 +4902,7 @@ def update_lesson_content(page_id):
 
 @app.route('/admin/lesson-content/<int:page_id>', methods=['DELETE'])
 @login_required
+@admin_required
 def delete_lesson_content(page_id):
     try:
         conn = get_db_connection()
@@ -5992,4 +6012,8 @@ def admin_top_users():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000)
+    try:
+        port = int(os.getenv('PORT', '5000'))
+    except ValueError:
+        port = 5000
+    socketio.run(app, debug=os.getenv('FLASK_DEBUG', '0') == '1', port=port)
